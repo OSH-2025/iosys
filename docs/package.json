@@ -14,7 +14,6 @@
     "markdown-it-mathjax3": "^4.3.2",
     "mermaid": "^11.4.1",
     "tinyglobby": "^0.2.12",
-    "vite-plugin-font": "^5.1.0",
     "vitepress-plugin-mermaid": "^2.0.17"
   },
   "packageManager": "pnpm@9.15.4"

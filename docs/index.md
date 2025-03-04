@@ -11,7 +11,7 @@ Say hello to our awesome team.
 <script setup>
 import { VPTeamMembers } from 'vitepress/theme'
 
-const members = [
+const members = randomize([
   {
     avatar: 'https://www.github.com/kermanx.png',
     name: '熊桐睿',
@@ -52,5 +52,9 @@ const members = [
       { icon: 'github', link: 'https://github.com/BloomFallr' }
     ]
   },
-]
+])
+
+function randomize(arr) {
+  return arr.sort(() => Math.random() - 0.5)
+}
 </script>

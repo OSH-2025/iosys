@@ -2,8 +2,6 @@
 import DefaultTheme from 'vitepress/theme'
 // @ts-expect-error
 import { useSidebar } from 'vitepress/dist/client/theme-default/composables/sidebar'
-// import './fonts/NotoSansSC-VariableFont_wght.ttf?subsets'
-// import './fonts/MapleMono-CN-Regular.ttf?subsets'
 
 const { Layout } = DefaultTheme
 
@@ -15,7 +13,7 @@ const {
 } = useSidebar()
 
 function openSidebar() {
-  const el = document.querySelector('div.VPLocalNav.has-sidebar.empty button') as any;
+  const el = document.querySelector('div.VPLocalNav.has-sidebar button') as any;
   el.click();
 }
 
