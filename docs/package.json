@@ -1,0 +1,21 @@
+{
+  "scripts": {
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview"
+  },
+  "dependencies": {
+    "vitepress": "^1.6.3",
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.10",
+    "chokidar": "^4.0.3",
+    "markdown-it-mathjax3": "^4.3.2",
+    "mermaid": "^11.4.1",
+    "tinyglobby": "^0.2.12",
+    "vite-plugin-font": "^5.1.0",
+    "vitepress-plugin-mermaid": "^2.0.17"
+  },
+  "packageManager": "pnpm@9.15.4"
+}
