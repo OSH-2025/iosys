@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import DefaultTheme from 'vitepress/theme'
+import DefaultTheme, { VPSocialLink } from 'vitepress/theme'
+import { useData } from 'vitepress'
+import { computed } from 'vue'
 // @ts-expect-error
 import { useSidebar } from 'vitepress/dist/client/theme-default/composables/sidebar'
 
@@ -11,6 +13,9 @@ const {
   // open: openSidebar,
   // close: closeSidebar,
 } = useSidebar()
+
+const data = useData()
+const base = computed(() => data.site.value.base)
 
 function openSidebar() {
   const el = document.querySelector('div.VPLocalNav.has-sidebar button') as any;
@@ -54,6 +59,15 @@ const onTouchEnd = (e: TouchEvent): void => {
       >
         <span class="vpi-align-left menu-icon"></span>
       </button>
+    </template>
+    <template #sidebar-nav-after>
+      <div style="flex-grow: 1" />
+      <div>
+        <VPSocialLink
+          icon="github"
+          :link="`https://github.com/OSH-2025${base}`"
+        />
+      </div>
     </template>
   </Layout>
 </template>
