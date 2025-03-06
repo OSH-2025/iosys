@@ -6,7 +6,9 @@
 
 Say hello to our awesome team.
 
+<ClientOnly>
 <VPTeamMembers size="small" :members="members" />
+</ClientOnly>
 
 <script setup>
 import { VPTeamMembers } from 'vitepress/theme'
