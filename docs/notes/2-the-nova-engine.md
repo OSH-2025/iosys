@@ -46,7 +46,7 @@ Nova 是使用 Rust 编写的新的 JavaScript 引擎，目前尚未完成，通
 
 2. 博客中提到，Nova 目前没有使用 Rust 的 lifetimes 来保证垃圾回收的安全性（写了又删了，目前正在重新添加回去），我们可以作出一些尝试。
 
-### 来自 Nova 作者的回复
+### 来自 Nova 团队成员的回复
 
 > 通过在 Nova 的 Discord 频道询问 Nova 的作者，[得到了热情的回复](https://discord.com/channels/1012084654389604372/1347207092477628537)。
 >
@@ -121,3 +121,11 @@ Nova 是使用 Rust 编写的新的 JavaScript 引擎，目前尚未完成，通
 17. Implement the Temporal proposal. Technically, this might not be too hard as there exist rust libraries that explicitly model themselves after this proposal's API. You can probably mostly just wrap a library like that and it'll get you pretty far. But the API surface is large so this will still be a lot of work.
 
   实现 Temporal 提案。技术上来说，这可能并不难，因为有一些 Rust 库明确地以这个提案的 API 为模型。你可以将这样的库包装起来，这样就能走得很远。但由于 API 很多，所以这仍然会是一个巨大的工作量。（和上文的 5. Date 类似但肯定更加复杂些）
+
+18. implement enums and namespace for the typescript flag
+
+  实现 TypeScript 的枚举和命名空间的运行时支持。（难度不高，工作量也不是很大）
+
+19. eventually once the garbage collector is more fleshed out using the type system (behind the typescript feature) to allocate accordingly
+
+  一旦垃圾回收器更加完善，就可以使用类型系统（在 TypeScript 特性后面）来进行相应的分配。（感觉我们很难做这个，因为这件事还没有定论）
