@@ -4,6 +4,8 @@
 
 关于 The Nova JavaScript Engine，作为备选的选题之一。
 
+GitHub 仓库: https://github.com/trynova/nova
+
 ## 背景
 
 目前已知的可用的 JavaScript 引擎有：
