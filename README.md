@@ -10,6 +10,7 @@
 - [朱雨田](https://github.com/rubatotree)
 - [许逸凡](https://github.com/xuyifan7-star)
 - [冉竣宇](https://github.com/BloomFallr)
+- [徐铭凯](https://github.com/chromiumarka)
 
 ## Development
 

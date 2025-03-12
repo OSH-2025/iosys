@@ -54,6 +54,14 @@ const members = randomize([
       { icon: 'github', link: 'https://github.com/BloomFallr' }
     ]
   },
+  {
+    avatar: 'https://www.github.com/chromiumarka.png',
+    name: '徐铭凯',
+    // title: '',
+    links: [
+      { icon: 'github', link: 'https://github.com/chromiumarka' }
+    ]
+  },
 ])
 
 function randomize(arr) {
