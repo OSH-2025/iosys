@@ -26,6 +26,13 @@ export default defineConfig({
           return { id: +(id ?? ''), text: displayName, link: `/notes/${name}` };
         }).sort((a, b) => a.id - b.id),
       },
+      {
+        text: "前期调研报告",
+        items: globSync("preliminary/*.md").map((path) => {
+          const name = basename(path, ".md");
+          return { text: name, link: `/preliminary/${name}` };
+        }),
+      },
     ],
   },
   vite: {
