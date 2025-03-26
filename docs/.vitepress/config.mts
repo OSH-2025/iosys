@@ -4,10 +4,10 @@ import { globSync } from "tinyglobby";
 import { basename } from "path";
 
 export default defineConfig({
-  title: "OSH Project",
-  description: "",
+  title: "Team IOSYS",
+  description: "Team IOSYS of USTC OSH 2025",
   themeConfig: {
-    siteTitle: "OSH Project",
+    siteTitle: "Team IOSYS",
     sidebar: [
       {
         text: "Home",

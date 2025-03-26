@@ -1,6 +1,8 @@
-# OSH Project
+# Team IOSYS
 
-[Course homepage](https://osh-2025.github.io/)
+[**Repository**](https://github.com/OSH-2025/IOSYS) | [**Course homepage**](https://osh-2025.github.io/)
+
+Team IOSYS of USTC OSH 2025 - not "IOSYS".
 
 ## Our Team
 
