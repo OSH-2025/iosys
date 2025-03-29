@@ -4,7 +4,7 @@
 
 关于 The Nova JavaScript Engine，作为备选的选题之一。
 
-GitHub 仓库: https://github.com/trynova/nova
+GitHub 仓库：https://github.com/trynova/nova
 
 ## 背景
 
@@ -40,7 +40,7 @@ Nova 是使用 Rust 编写的新的 JavaScript 引擎，目前尚未完成，通
 
 ## 我们可以做什么
 
-首先，由于 Nova 并非简单地从 C 到Rust 的改写，而是采用了许多新的设计，Nova 的作者和贡献者们也仍在不断地进行新的探索和尝试，因此我认为在一个学期内直接将 Nova 完成是不现实的。
+首先，由于 Nova 并非简单地从 C 到 Rust 的改写，而是采用了许多新的设计，Nova 的作者和贡献者们也仍在不断地进行新的探索和尝试，因此我认为在一个学期内直接将 Nova 完成是不现实的。
 
 但我们依然有许多可以做的事情：
 
