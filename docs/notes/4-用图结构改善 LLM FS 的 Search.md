@@ -152,23 +152,31 @@ RAG可分为5个基本流程：知识文档的准备；嵌入模型（embedding 
 >
 > 23℃: 03-27 21:35:05
 > 那你希望做的是
+>
 > Touko: 03-27 21:35:05
 > 我看了下
+>
 > 23℃: 03-27 21:35:17
 > 把这些文件预先分类，分配到多个不同的向量空间内
+>
 > Touko: 03-27 21:35:25
 > 他的搜索空间居然是一个一个添加文件（
+>
 > 23℃: 03-27 21:35:33
 > 然后先选定向量空间，再在向量空间中具体搜索
+>
 > 23℃: 03-27 21:35:36
 > 来降低复杂度吗
+>
 > 23℃: 03-27 21:35:52
 > 把"数组"变成"搜索树"
 >
 > 23℃: 03-27 22:16:19
 > 其实本来也就是个树形结构了 只不过不是按照知识分类做的 而是做的空间划分树（
+>
 > 23℃: 03-27 22:17:07
 > 那你觉得按照知识分类得到的树 比起对向量空间做暴力空间划分得到的树 有什么优势吗
+>
 > 23℃: 03-27 22:17:15
 > 我觉得肯定是有的 但是什么呢
 
@@ -506,7 +514,7 @@ Graph RAG 的增强功能也有其自身的挑战。在我的实验中，我提�
 
 #### Graph RAG 的不足与优化方向
 
-**文章[26]《From RAG to GraphRAG...》**总结了Graph RAG的不足：
+文章《From RAG to GraphRAG...》总结了Graph RAG的不足：
 
 > GraphRAG, like RAG, has clear limitations, which include how to form graphs, generate queries for querying these graphs, and ultimately decide how much information to retrieve based on these queries. The main challenges are ‘query generation’, ‘reasoning boundary’, and ‘information extraction’.
 
@@ -516,7 +524,7 @@ Graph RAG 的增强功能也有其自身的挑战。在我的实验中，我提�
 2. **查询生成**：如何在生成知识图谱上的查询？
 3. **推理边界**：如何限制查询结果的规模？
 
-像前边提到的，知识抽取/关键词/查询语言的微调模型主要专注于信息抽取和查询生成。另外，**论文[24]《Reasoning on Graphs...》**实现的基于图的推理增强框架（RoG）则是在推理边界方向尝试的创新（思路有点类似RAT）：
+像前边提到的，知识抽取/关键词/查询语言的微调模型主要专注于信息抽取和查询生成。另外，**论文《Reasoning on Graphs...》**实现的基于图的推理增强框架（RoG）则是在推理边界方向尝试的创新（思路有点类似RAT）：
 
 ![RoG：基于图的推理增强](../assets/graphrag-research/v2-edca3e71b652d017ec35d288607bb1fe_1440w.png)
 
@@ -530,7 +538,7 @@ Graph RAG的内容索引阶段主要目标便是构建高质量的知识图谱�
 - **知识抽取微调**：通用大模型在三元组的识别上实际测试下来仍达不到理想预期，针对知识抽取的微调模型反而表现出更好地效果，如前面提到的OneKE。
 - **图社区总结**：这部分源自于微软的Graph RAG的研究工作，通过构建知识图谱时生成图社区摘要，以解决知识图谱在面向总结性查询时“束手无策”的问题。另外，同时结合图社区总结与子图明细可以生成更高质量的上下文。
 - **多模态知识图谱**：多模态知识图谱可以大幅扩展Graph RAG知识库的内容丰富度，对客观世界的数据更加友好，浙大的[MyGO](https://arxiv.org/abs/2404.09468)框架提出的方法提升MMKGC（Multi-modal Knowledge Graph Completion）的准确性和可靠性。Graph RAG可以借助于MMKG（Multi-modal Knowledge Graph）和MLLM（Multi-modal Large Language Model）实现更全面的多模态RAG能力。
-- **混合存储**：同时使用向量/图等多种存储系统，结合传统RAG和Graph各自的优点，组成混合RAG。参考**文章[27]《GraphRAG: Design Patterns...》**提出的多种Graph RAG架构，如图学习语义聚类、图谱向量双上下文增强、向量增强图谱搜索、混合检索、图谱增强向量搜索等，可以充分利用不同存储的优势提升检索质量。
+- **混合存储**：同时使用向量/图等多种存储系统，结合传统RAG和Graph各自的优点，组成混合RAG。参考**文章《GraphRAG: Design Patterns...》**提出的多种Graph RAG架构，如图学习语义聚类、图谱向量双上下文增强、向量增强图谱搜索、混合检索、图谱增强向量搜索等，可以充分利用不同存储的优势提升检索质量。
 
 ![混合检索的Graph RAG](../assets/graphrag-research/v2-730237cbcf16bf1694d95de1e663d0bc_1440w.png)
 
@@ -549,9 +557,7 @@ Graph RAG的检索生成阶段主要目标便是从知识图谱上召回高质�
 2. 思考 Graph RAG 对怎样的文件系统有优化优势。
 3. 按照文章手动实现一个 Graph RAG。文章写得很详细。我们要实现两个阶段：内容索引阶段（得到高质量的知识图谱），检索生成阶段（从知识图谱上高质量召回上下文）。
 
-
-
-参考资料：
+## 参考资料
 
 https://github.com/OSH-2024/vivo50
 
