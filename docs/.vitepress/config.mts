@@ -1,5 +1,6 @@
 // import { withMermaid } from "vitepress-plugin-mermaid";
 import { defineConfig } from "vitepress";
+import Footnote from 'markdown-it-footnote'
 import { globSync } from "tinyglobby";
 import { basename } from "path";
 
@@ -42,6 +43,9 @@ export default defineConfig({
   markdown: {
     theme: "dark-plus",
     math: true,
+    config(md) {
+      md.use(Footnote);
+    },
   },
   appearance: "force-dark",
   head: [

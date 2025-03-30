@@ -11,6 +11,7 @@
   "devDependencies": {
     "@types/node": "^22.10.10",
     "chokidar": "^4.0.3",
+    "markdown-it-footnote": "^4.0.0",
     "markdown-it-mathjax3": "^4.3.2",
     "mermaid": "^11.4.1",
     "tinyglobby": "^0.2.12",
