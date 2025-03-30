@@ -62,7 +62,7 @@ const onTouchEnd = (e: TouchEvent): void => {
       </button>
     </template>
     <template #sidebar-nav-after>
-      <div style="flex-grow: 1" />
+      <div flex-grow />
       <div>
         <VPSocialLink
           icon="github"

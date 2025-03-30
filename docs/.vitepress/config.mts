@@ -4,7 +4,7 @@ import Footnote from 'markdown-it-footnote'
 import { globSync } from "tinyglobby";
 import { basename } from "path";
 import UnoCSS from 'unocss/vite'
-import { presetIcons, presetWind3, presetAttributify } from 'unocss';
+import { presetIcons, presetWind3, presetAttributify, transformerDirectives } from 'unocss';
 
 export default defineConfig({
   title: "Team IOSYS",
@@ -45,7 +45,10 @@ export default defineConfig({
           presetWind3(),
           presetAttributify(),
           presetIcons(),
-        ]
+        ],
+        transformers: [
+          transformerDirectives(),
+        ],
       }),
     ],
   },
