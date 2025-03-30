@@ -4,6 +4,7 @@ import { useData } from 'vitepress'
 import { computed } from 'vue'
 // @ts-expect-error
 import { useSidebar } from 'vitepress/dist/client/theme-default/composables/sidebar'
+import 'uno.css'
 
 const { Layout } = DefaultTheme
 

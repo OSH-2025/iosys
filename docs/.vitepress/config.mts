@@ -3,6 +3,8 @@ import { defineConfig } from "vitepress";
 import Footnote from 'markdown-it-footnote'
 import { globSync } from "tinyglobby";
 import { basename } from "path";
+import UnoCSS from 'unocss/vite'
+import { presetIcons, presetWind3, presetAttributify } from 'unocss';
 
 export default defineConfig({
   title: "Team IOSYS",
@@ -28,7 +30,7 @@ export default defineConfig({
         }).sort((a, b) => a.id - b.id),
       },
       {
-        text: "前期调研报告",
+        text: "调研报告",
         items: globSync("preliminary/*.md").map((path) => {
           const name = basename(path, ".md");
           return { text: name, link: `/preliminary/${name}` };
@@ -38,6 +40,13 @@ export default defineConfig({
   },
   vite: {
     plugins: [
+      UnoCSS({
+        presets: [
+          presetWind3(),
+          presetAttributify(),
+          presetIcons(),
+        ]
+      }),
     ],
   },
   markdown: {

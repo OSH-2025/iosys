@@ -1,5 +1,9 @@
 # 选题讨论
 
+<div bg-red-500 bg-op-60 rounded-xl my-4 p-4 font-bold text-black text-white>
+Status: SUSPENDED
+</div>
+
 ### 目前全组成员经过讨论，初步确定选题为：
 
 - 对 Rust 编写的 JS 引擎 Nova 进行完善和性能优化。预期可以比目前唯一的 Rust 编写的 JS 引擎 Boa 快 30% 以上。
