@@ -17,6 +17,10 @@ export default defineConfig({
         link: "/",
       },
       {
+        text: "Schedule",
+        link: "/schedule",
+      },
+      {
         text: "Notes",
         items: globSync("notes/*.md").map((path) => {
           const name = basename(path, ".md");
