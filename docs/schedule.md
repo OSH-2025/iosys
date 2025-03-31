@@ -32,7 +32,7 @@ aside: false
   <tr>
     <td>调研报告撰写</td>
     <td>03/29-03/30</td>
-    <td>整理了 LLM+FS 方向的所有调研内容，撰写了一份调研报告。</td>
+    <td>整理了 LLM+FS 方向的所有调研内容，撰写了一份<a href="https://osh-2025.github.io/iosys/preliminary/%E8%B0%83%E7%A0%94%E6%8A%A5%E5%91%8A.html">调研报告</a>。</td>
     <td>朱雨田、冉竣宇负责了调研报告中大部分内容的编写。熊桐睿做了部分修改。其余组员也参与了撰写。</td>
   </tr></tbody>
 </table>
