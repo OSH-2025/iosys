@@ -388,22 +388,22 @@ print(result.text_content)
 
 ## 参考文献
 
-[^1]: https://platform.openai.com/docs/guides/function-calling
+\[1\] https://platform.openai.com/docs/guides/function-calling
 
-[^2]: https://blog.langchain.dev/tool-calling-with-langchain/
+\[2\] https://blog.langchain.dev/tool-calling-with-langchain/
 
-[^3]: https://platform.openai.com/docs/guides/prompt-engineering
+\[3\] https://platform.openai.com/docs/guides/prompt-engineering
 
-[^4]: https://platform.openai.com/docs/guides/embeddings
+\[4\] https://platform.openai.com/docs/guides/embeddings
 
-[^5]: https://platform.openai.com/docs/guides/tools-file-search
+\[5\] https://platform.openai.com/docs/guides/tools-file-search
 
-[^6]: https://platform.openai.com/docs/guides/pdf-files?api-mode=responses
+\[6\] https://platform.openai.com/docs/guides/pdf-files?api-mode=responses
 
-[^7]: https://zhuanlan.zhihu.com/p/12023998398
+\[7\] https://zhuanlan.zhihu.com/p/12023998398
 
-[^8]: https://zhuanlan.zhihu.com/p/660552323
+\[8\] https://zhuanlan.zhihu.com/p/660552323
 
-[^9]: https://zhuanlan.zhihu.com/p/16514918391
+\[9\] https://zhuanlan.zhihu.com/p/16514918391
 
-[^10]: https://www.8kiz.cn/archives/23695.html
+\[10\] https://www.8kiz.cn/archives/23695.html
