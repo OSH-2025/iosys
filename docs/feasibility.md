@@ -379,6 +379,31 @@ print(result.text_content)
 
 ## 技术路线
 
+1. 复现往年图文件系统相关项目（ArkFS，vivo50 等），进一步发掘可优化之处与可参考之处；
+2. 在本地部署现有的 GraphRAG 框架，比较并选取最优的框架；
+3. 完成文件系统和 LLM 之间的交互，完成从文件系统到知识图谱的相互转换；
+4. 尝试解决往年图文件系统相关项目的一致性、准确性等问题；
+5. 为用户开发合适的文件系统前端，实现友好的交互逻辑；
+6. 扩展文件系统的适用范围，例如扩展到分布式文件系统等。
+
 ## 参考文献
 
 [^1]: https://platform.openai.com/docs/guides/function-calling
+
+[^2]: https://blog.langchain.dev/tool-calling-with-langchain/
+
+[^3]: https://platform.openai.com/docs/guides/prompt-engineering
+
+[^4]: https://platform.openai.com/docs/guides/embeddings
+
+[^5]: https://platform.openai.com/docs/guides/tools-file-search
+
+[^6]: https://platform.openai.com/docs/guides/pdf-files?api-mode=responses
+
+[^7]: https://zhuanlan.zhihu.com/p/12023998398
+
+[^8]: https://zhuanlan.zhihu.com/p/660552323
+
+[^9]: https://zhuanlan.zhihu.com/p/16514918391
+
+[^10]: https://www.8kiz.cn/archives/23695.html
