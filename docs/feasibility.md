@@ -166,49 +166,25 @@ Tool calling 除了用来让模型调用工具以获取信息以外，也可以�
 
 AIOS 中的 AIOS System Call，在现阶段下即表现为一种 tool calling 的形式。
 
-### LLM 对复杂文件格式的处理能力
+### 复杂文件的文本化
 
-- 现代 LLM 服务（如 OpenAI API）已具备处理一些非纯文本文件格式（以 PDF 为例）的能力，这为 iosys 理解和管理多样化文件内容提供了关键技术支撑。
-- 其实现机制通常结合了**文本提取**和**页面图像分析**。通过将提取出的文本和每页的图像同时输入给具备视觉能力的模型，LLM 可以综合理解文本信息和图表、布局等视觉元素中包含的关键信息。
-- 提供了灵活的文件输入方式，如**预先上传文件获取 ID** 或 **直接在请求中发送 Base64 编码的文件数据**，这使得 iosys 在架构上可以方便地集成文件内容到 LLM 的处理流程中。
-- 虽然存在更多的 token 消耗、文件大小/页数限制以及需要特定多模态模型支持等实际考量，但这明确证明了**技术上存在让 LLM "读懂"并分析 PDF 等常见复杂文档内容的可行路径**。
-- 这项能力极大地扩展了 iosys 的适用范围。它不再局限于处理简单的文本文件，而是有潜力对包含图文报告、演示文稿、扫描文档等的 PDF 文件进行深度的语义理解、摘要、查询和组织，显著提升了作为一个通用文件管理系统的实用价值。
-  以下是 openai 给出的一个 PDF 处理样例:
+目前而言，所有主流模型都只能处理文本数据（多模态模型还可以处理图像），而不能直接处理二进制数据。对于复杂文件（如 PDF、Word 文档等），我们需要将其转换为文本格式，以便 LLM 能够理解和处理。
 
-  ```python
-  import base64
-  from openai import OpenAI
-  client = OpenAI()
+同时，为了保留一定程度的格式，且允许嵌入图像等信息，Markdown 是公认的一种较好的文本化格式。我们可以将复杂文件转换为 Markdown 格式，以便 LLM 进行处理。
 
-  with open("draconomicon.pdf", "rb") as f:
-      data = f.read()
+我们将选择 [markitdown](https://github.com/microsoft/markitdown) 作为文本化工具。它是一个开源的 Python 库，支持将 PDF、Word、PPT、Excel 等文档格式转换为 Markdown，供 LLM 处理。
 
-  base64_string = base64.b64encode(data).decode("utf-8")
+以下是一个示例：
 
-  response = client.responses.create(
-      model="gpt-4o",
-      input=[
-          {
-              "role": "user",
-              "content": [
-                  {
-                      "type": "input_file",
-                      "filename": "draconomicon.pdf",
-                      "file_data": f"data:application/pdf;base64,{base64_string}",
-                  },
-                  {
-                      "type": "input_text",
-                      "text": "What is the first dragon in the book?",
-                  },
-              ],
-          },
-      ]
-  )
+```py
+from markitdown import MarkItDown
 
-  print(response.output_text)
-  ```
+md = MarkItDown(enable_plugins=False) # Set to True to enable plugins
+result = md.convert("test.xlsx")
+print(result.text_content)
+```
 
-### 用于语义理解的向量嵌入 (Vector Embeddings) 和向量数据库 (Vector Databases):
+### 用于语义理解的向量嵌入 (Vector Embeddings) 和向量数据库 (Vector Databases)
 
 - **核心机制:** IOSYS 实现语义能力的一个基础技术是使用**向量嵌入**。这是由专门的 AI 模型生成的文本字符串（如文件内容、摘要或用户查询）的数值向量表示（浮点数列表）。其关键原理在于**两个向量之间的距离衡量了它们的语义相关性**——距离小意味着含义高度相似，距离大则表示相关性低。
 - **可用性与模型:** 一部分 AI 平台通过 API 端点提供了强大且高效的**嵌入模型**（例如 `text-embedding-3-small`）。可以通过以下方式调用 API 获取嵌入：
@@ -219,11 +195,10 @@ AIOS 中的 AIOS System Call，在现阶段下即表现为一种 tool calling �
 
   response = client.embeddings.create(
       input="Your text string goes here",  # 需要转换的文本
-      model="text-embedding-3-small"     # 指定嵌入模型
+      model="text-embedding-3-small"       # 指定嵌入模型
   )
 
-  embedding_vector = response.data[0].embedding # 提取嵌入向量
-  # print(embedding_vector) # 输出向量，是一长串浮点数
+  print(response.data[0].embedding)  # 输出嵌入向量，是一长串浮点数
   ```
 
   这些模型接收文本输入，并输出高维度的嵌入向量（例如，`text-embedding-3-small` 默认 1536 维，`text-embedding-3-large` 默认 3072 维，并可能支持通过 `dimensions` 参数进行缩减）。使用最新的、性能优越的模型可以确保更好的语义捕捉能力和潜在的成本效益。
@@ -266,7 +241,8 @@ AIOS 中的 AIOS System Call，在现阶段下即表现为一种 tool calling �
 - 这种能力通常结合了 **语义搜索（基于含义匹配）和关键字搜索**，允许用户通过自然语言查询，让 LLM 自动在预先上传和处理（向量化）的文件集合中找到最相关的信息片段。
 - 该功能还支持返回**明确的文件引用（Citations/Annotations）**，将 LLM 生成内容中的信息溯源到具体的源文件，增强了结果的可信度和可用性。同时，提供结果数量限制、元数据过滤等**定制化选项**，允许在效率和效果之间进行权衡。
 - 这项技术说明了**将 LLM 与向量化文件检索深度集成**的可行性。它说明了存在一个经过验证的、可能可行方式去实现**自然语言语义文件搜索**的路径。用户可以用自然语言提问（“查找关于深度学习项目进展的报告”），iosys 可以利用类似机制，让 LLM 驱动后端在文件库中进行检索，并将找到的信息整合到响应或文件操作建议中，是实现 iosys 核心功能的关键技术依据之一。
-  以下是 openai 给出的一个文件搜索样例:
+
+  以下是 OpenAI SDK 的一个文件搜索样例:
 
   ```python
   response = client.responses.create(
@@ -282,14 +258,17 @@ AIOS 中的 AIOS System Call，在现阶段下即表现为一种 tool calling �
           }
       }]
   )
-  print(response)
   ```
 
-### 利用结构化输出 (Structured Outputs) 确保 LLM 响应格式的可靠性:
+### 利用结构化输出 (Structured Outputs) 确保 LLM 响应格式的可靠性
+
 #### 核心功能
- 大多数提供了一项名为 **Structured Outputs** 的手段，它能**强制要求 LLM 的输出严格遵守用户提供的 JSON Schema**。这与仅保证输出为合法 JSON 的旧“JSON mode”不同，Structured Outputs 确保了响应不仅是有效的 JSON，而且其结构和内容完全符合预定义的模式。
+
+大多数提供了一项名为 **Structured Outputs** 的手段，它能**强制要求 LLM 的输出严格遵守用户提供的 JSON Schema**。这与仅保证输出为合法 JSON 的旧“JSON mode”不同，Structured Outputs 确保了响应不仅是有效的 JSON，而且其结构和内容完全符合预定义的模式。
+
 #### 实现方式:
- 在调用 API 时，通过在 `text` 参数中设置 `format` 为 `{ "type": "json_schema", "schema": {...}, "strict": True }` 来启用。但注意,开发者需要自己定义一个详细的 JSON Schema 来描述期望的输出结构。
+
+在调用 API 时，通过在 `text` 参数中设置 `format` 为 `{ "type": "json_schema", "schema": {...}, "strict": True }` 来启用。但注意,开发者需要自己定义一个详细的 JSON Schema 来描述期望的输出结构。
 
   ```python
   # 示例：要求 LLM 从文本中提取结构化信息并按 Schema 输出
@@ -334,21 +313,23 @@ AIOS 中的 AIOS System Call，在现阶段下即表现为一种 tool calling �
   # print(event_data)
   # 输出类似: {'name': '科学展览会', 'date': '周五', 'participants': ['Alice', 'Bob']}
   ```
-#### 适用场景:
-  - **可靠的指令生成:** 当 IOSYS 需要将用户的自然语言指令（例如，“查找我上周关于 IOSYS 的报告”）转换为内部可执行的结构化命令或查询参数（如 `{"action": "search", "keywords": ["IOSYS", "报告"], "date_range": "last_week"}`）时，Structured Outputs 能够确保生成的 JSON **格式永远正确**，从而极大地提高系统的稳定性和可靠性，避免因 LLM 输出格式错误导致的执行失败和重试。
-  - **精确的数据提取:** 如果需要从文件内容中提取特定信息（如标题、作者、摘要、关键实体等），可以定义一个 Schema 来强制 LLM 以标准化的 JSON 格式返回这些信息，便于后续的结构化存储和处理。
-  - **简化下游处理:** 由于输出格式得到了保证，IOSYS 的后续处理模块可以直接解析 JSON 数据，无需编写复杂的验证逻辑或错误处理代码来应对 LLM 可能产生的格式偏差。
-  - **类型安全:** 确保了返回数据的类型符合预期（如字符串、数字、布尔、数组等），减少了类型错误的可能性。
 
-### 提示工程 (Prompt Engineering):
+#### 适用场景
 
-- 与 LLM 的有效交互严重依赖于如何设计输入提示（Prompts）。提示工程作为一项关键技术，能够让我们**精确地引导和约束 LLM 的行为**。
-- 在 iosys 中，提示工程将用于：
-  - 将用户的自然语言查询（可能模糊或不完整）**转化为清晰、明确的任务指令**，供 LLM 理解和执行。
-  - 指示 LLM **针对文件内容执行特定分析**，如摘要、关键词提取、关系识别等。
-  - 要求 LLM **以特定的结构化格式（如 JSON）输出结果**，便于后续程序解析和执行具体的文件系统操作（如生成文件列表、操作指令、元数据标签等）。
-  - **实现复杂任务的分解**，通过一系列精心设计的提示链（Prompt Chaining）或 ReAct (Reasoning and Acting) 模式，引导 LLM 完成多步骤的文件管理任务。
-- 成熟的提示工程技术和不断发展的最佳实践，为 iosys 利用 LLM 实现其核心功能提供了必要的技术手段，确保 LLM 能够可靠、可控地服务于文件系统的需求。
+- **可靠的指令生成:** 当 IOSYS 需要将用户的自然语言指令（例如，“查找我上周关于 IOSYS 的报告”）转换为内部可执行的结构化命令或查询参数（如 `{"action": "search", "keywords": ["IOSYS", "报告"], "date_range": "last_week"}`）时，Structured Outputs 能够确保生成的 JSON **格式永远正确**，从而极大地提高系统的稳定性和可靠性，避免因 LLM 输出格式错误导致的执行失败和重试。
+- **精确的数据提取:** 如果需要从文件内容中提取特定信息（如标题、作者、摘要、关键实体等），可以定义一个 Schema 来强制 LLM 以标准化的 JSON 格式返回这些信息，便于后续的结构化存储和处理。
+- **简化下游处理:** 由于输出格式得到了保证，IOSYS 的后续处理模块可以直接解析 JSON 数据，无需编写复杂的验证逻辑或错误处理代码来应对 LLM 可能产生的格式偏差。
+- **类型安全:** 确保了返回数据的类型符合预期（如字符串、数字、布尔、数组等），减少了类型错误的可能性。
+
+### 提示词工程
+
+- 与 LLM 高效交互的关键在于精心设计提示词。通过提示词工程，我们可以精准引导并约束 LLM 输出预期结果。
+- 在 iosys 系统中，提示词工程用于：
+  - 将用户可能模糊或不完整的自然语言查询转化为清晰、明确的任务指令，为 LLM 提供准确操作依据。
+  - 指示 LLM 针对文件内容执行特定的分析任务，例如摘要生成、关键词抽取以及关系识别。
+  - 强制 LLM 以结构化格式（如 JSON）输出结果，便于后续程序解析并执行具体的文件系统操作，如生成文件列表或更新元数据。
+  - 分解复杂任务：通过精心设计的提示链（Prompt Chaining）或 ReAct（Reasoning and Acting）模式，引导 LLM 完成多步骤的文件管理任务。
+- 成熟的提示词工程技术和不断演进的最佳实践为 iosys 利用 LLM 实现核心功能提供了扎实保障，确保其输出既可靠又可控，满足现代文件系统的多样化需求。
 
 ## 技术路线
 
