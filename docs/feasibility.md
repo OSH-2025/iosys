@@ -285,6 +285,61 @@ AIOS 中的 AIOS System Call，在现阶段下即表现为一种 tool calling �
   print(response)
   ```
 
+### 利用结构化输出 (Structured Outputs) 确保 LLM 响应格式的可靠性:
+#### 核心功能
+ 大多数提供了一项名为 **Structured Outputs** 的手段，它能**强制要求 LLM 的输出严格遵守用户提供的 JSON Schema**。这与仅保证输出为合法 JSON 的旧“JSON mode”不同，Structured Outputs 确保了响应不仅是有效的 JSON，而且其结构和内容完全符合预定义的模式。
+#### 实现方式:
+ 在调用 API 时，通过在 `text` 参数中设置 `format` 为 `{ "type": "json_schema", "schema": {...}, "strict": True }` 来启用。但注意,开发者需要自己定义一个详细的 JSON Schema 来描述期望的输出结构。
+
+  ```python
+  # 示例：要求 LLM 从文本中提取结构化信息并按 Schema 输出
+  import json
+  from openai import OpenAI
+
+  client = OpenAI()
+
+  response = client.responses.create(
+      model="gpt-4o-2024-08-06", # 确保使用支持的模型
+      input=[
+          {"role": "system", "content": "从用户输入中提取事件信息。"},
+          {"role": "user", "content": "Alice 和 Bob 周五要去参加科学展览会。"}
+      ],
+      text={
+          "format": {
+              "type": "json_schema", # 指定使用 JSON Schema
+              "name": "calendar_event", # Schema 的名称（可选）
+              "schema": { # 定义具体的 JSON Schema
+                  "type": "object",
+                  "properties": {
+                      "name": { "type": "string", "description": "事件名称" },
+                      "date": { "type": "string", "description": "事件日期" },
+                      "participants": {
+                          "type": "array",
+                          "items": { "type": "string" },
+                          "description": "参与者列表"
+                      },
+                  },
+                  "required": ["name", "date", "participants"], # 指定必须包含的字段
+                  "additionalProperties": False # 不允许额外的字段
+              },
+              "strict": True # 强制严格遵守 Schema (推荐)
+          }
+      }
+  )
+
+  # 输出保证是符合 Schema 的 JSON 字符串
+  # print(response.output_text)
+  # 可以安全地解析为 Python 对象
+  event_data = json.loads(response.output_text)
+  # print(event_data)
+  # 输出类似: {'name': '科学展览会', 'date': '周五', 'participants': ['Alice', 'Bob']}
+  ```
+#### 适用场景:
+  - **可靠的指令生成:** 当 IOSYS 需要将用户的自然语言指令（例如，“查找我上周关于 IOSYS 的报告”）转换为内部可执行的结构化命令或查询参数（如 `{"action": "search", "keywords": ["IOSYS", "报告"], "date_range": "last_week"}`）时，Structured Outputs 能够确保生成的 JSON **格式永远正确**，从而极大地提高系统的稳定性和可靠性，避免因 LLM 输出格式错误导致的执行失败和重试。
+  - **精确的数据提取:** 如果需要从文件内容中提取特定信息（如标题、作者、摘要、关键实体等），可以定义一个 Schema 来强制 LLM 以标准化的 JSON 格式返回这些信息，便于后续的结构化存储和处理。
+  - **简化下游处理:** 由于输出格式得到了保证，IOSYS 的后续处理模块可以直接解析 JSON 数据，无需编写复杂的验证逻辑或错误处理代码来应对 LLM 可能产生的格式偏差。
+  - **类型安全:** 确保了返回数据的类型符合预期（如字符串、数字、布尔、数组等），减少了类型错误的可能性。
+
 ### 提示工程 (Prompt Engineering):
 
 - 与 LLM 的有效交互严重依赖于如何设计输入提示（Prompts）。提示工程作为一项关键技术，能够让我们**精确地引导和约束 LLM 的行为**。
