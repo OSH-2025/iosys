@@ -10,9 +10,11 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.10",
+    "@unocss/extractor-mdc": "66.1.0-beta.8",
     "chokidar": "^4.0.3",
     "markdown-it-footnote": "^4.0.0",
     "markdown-it-mathjax3": "^4.3.2",
+    "markdown-it-mdc": "^0.2.5",
     "mermaid": "^11.4.1",
     "tinyglobby": "^0.2.12",
     "unocss": "66.1.0-beta.7",

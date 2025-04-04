@@ -88,7 +88,7 @@ Tool calls 也叫 function calls，是大模型操作外部工具的一种方式
 
 对于 iosys 来说，tool calling 也是 LLM 操作文件系统的接口。
 
-![Function call](./assets/feasibility/function-call.png)
+![Function call](./assets/feasibility/function-call.png){.px-20}
 
 #### 通过 OpenAI SDK 调用
 
