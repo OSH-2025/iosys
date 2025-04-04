@@ -271,49 +271,49 @@ print(result.text_content)
 
 在调用 API 时，通过在 `text` 参数中设置 `format` 为 `{ "type": "json_schema", "schema": {...}, "strict": True }` 来启用。但注意,开发者需要自己定义一个详细的 JSON Schema 来描述期望的输出结构。
 
-  ```python
-  # 示例：要求 LLM 从文本中提取结构化信息并按 Schema 输出
-  import json
-  from openai import OpenAI
+```python
+# 示例：要求 LLM 从文本中提取结构化信息并按 Schema 输出
+import json
+from openai import OpenAI
 
-  client = OpenAI()
+client = OpenAI()
 
-  response = client.responses.create(
-    model="gpt-4o-2024-08-06", # 确保使用支持的模型
-    input=[
-        {"role": "system", "content": "从用户输入中提取事件信息。"},
-        {"role": "user", "content": "Alice 和 Bob 周五要去参加科学展览会。"}
-    ],
-    text={
-      "format": {
-        "type": "json_schema", # 指定使用 JSON Schema
-        "name": "calendar_event", # Schema 的名称（可选）
-        "schema": { # 定义具体的 JSON Schema
-          "type": "object",
-          "properties": {
-            "name": { "type": "string", "description": "事件名称" },
-            "date": { "type": "string", "description": "事件日期" },
-            "participants": {
-              "type": "array",
-              "items": { "type": "string" },
-              "description": "参与者列表"
-            },
+response = client.responses.create(
+  model="gpt-4o-2024-08-06", # 确保使用支持的模型
+  input=[
+      {"role": "system", "content": "从用户输入中提取事件信息。"},
+      {"role": "user", "content": "Alice 和 Bob 周五要去参加科学展览会。"}
+  ],
+  text={
+    "format": {
+      "type": "json_schema", # 指定使用 JSON Schema
+      "name": "calendar_event", # Schema 的名称（可选）
+      "schema": { # 定义具体的 JSON Schema
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "事件名称" },
+          "date": { "type": "string", "description": "事件日期" },
+          "participants": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "参与者列表"
           },
-          "required": ["name", "date", "participants"], # 指定必须包含的字段
-          "additionalProperties": False # 不允许额外的字段
         },
-        "strict": True # 强制严格遵守 Schema (推荐)
-      }
+        "required": ["name", "date", "participants"], # 指定必须包含的字段
+        "additionalProperties": False # 不允许额外的字段
+      },
+      "strict": True # 强制严格遵守 Schema (推荐)
     }
-  )
+  }
+)
 
-  # 输出保证是符合 Schema 的 JSON 字符串
-  # print(response.output_text)
-  # 可以安全地解析为 Python 对象
-  event_data = json.loads(response.output_text)
-  # print(event_data)
-  # 输出类似: {'name': '科学展览会', 'date': '周五', 'participants': ['Alice', 'Bob']}
-  ```
+# 输出保证是符合 Schema 的 JSON 字符串
+# print(response.output_text)
+# 可以安全地解析为 Python 对象
+event_data = json.loads(response.output_text)
+# print(event_data)
+# 输出类似: {'name': '科学展览会', 'date': '周五', 'participants': ['Alice', 'Bob']}
+```
 
 #### 适用场景
 
@@ -343,7 +343,7 @@ print(result.text_content)
 - **更好的连接信息点**：GraphRAG 能够处理那些需要从多个数据点合成新见解的任务。
 - **更全面的理解能力**：GraphRAG 更擅长对大型数据集进行全面理解，能够更好地处理复杂的抽象问题。
 
-而借助微软开源的GeaphRAG项目，我们可以快速做到以下事项：
+而借助微软开源的 GeaphRAG 项目，我们可以快速做到以下事项：
 
 - **基于图的检索**：传统的 RAG 方法使用向量相似性进行检索，而 GraphRAG 引入了知识图谱来捕捉实体、关系及其他重要元数据，从而更有效地进行推理。
 - **层次聚类**：GraphRAG 使用 Leiden 技术进行层次聚类，将实体及其关系进行组织，提供更丰富的上下文信息来处理复杂的查询。
@@ -370,22 +370,21 @@ print(result.text_content)
 
 Ray 是一个开源的通用分布式计算框架，旨在简化大规模机器学习、深度学习等计算密集型任务的开发与部署。其设计以高性能、灵活性和易用性为核心，支持跨语言（以 Python 为主）和异构硬件（CPU/GPU）的分布式计算。
 
-使用Anaconda可以部署Ray的py环境，也可以使用Docker部署拉取Ray的镜像。经过实验发现测试发现用Ray后吞吐量为原来7.4倍，且平均CPU占用率更低。推测其原因可能是将原来限制在单核上的任务绕过了python的单核限制部署到了多核上。
+使用 Anaconda 可以部署 Ray 的 py 环境，也可以使用 Docker 部署拉取 Ray 的镜像。经过实验发现测试发现用 Ray 后吞吐量为原来 7.4 倍，且平均 CPU 占用率更低。推测其原因可能是将原来限制在单核上的任务绕过了 python 的单核限制部署到了多核上。
 
-在本项目中其重要意义在于使本地进行llm推理成为了可能。原先单机部署llm的瓶颈在于内存大小与推理速度，通过多机器的算力与内存的协作能够有效改进这几点。
+在本项目中其重要意义在于使本地进行 llm 推理成为了可能。原先单机部署 llm 的瓶颈在于内存大小与推理速度，通过多机器的算力与内存的协作能够有效改进这几点。
 
-虽然发现前几年小组对Ray分布式部署的实验[11]发现在计算资源还相对充足时分布式部署加速效果不够理想，但在应对模型推理的计算与内存资源高度紧张的任务时加速作用应当相当可观。
+虽然发现前几年小组对 Ray 分布式部署的实验\[11\]发现在计算资源还相对充足时分布式部署加速效果不够理想，但在应对模型推理的计算与内存资源高度紧张的任务时加速作用应当相当可观。
 
-下图为使用Ray进行的小规模计算任务的实验，实验中仅部署了单节点作为测试，后续可以在局域网中进行多机互联再进行大规模计算部署测试以及大模型部署测试。
+下图为使用 Ray 进行的小规模计算任务的实验，实验中仅部署了单节点作为测试，后续可以在局域网中进行多机互联再进行大规模计算部署测试以及大模型部署测试。
 
-![img](assets/2025-04-02 20.48.45.png)
+![img](assets/2025-04-02_20.48.45.png)
 
 #### JuiceFS
 
-JuiceFS是一款面向云原生的高性能分布式文件系统，采用数据与元数据分离的架构设计，支持 POSIX、HDFS 和 S3 协议，兼容主流计算框架和云平台，广泛应用于大数据分析、机器学习及容器化场景‌。‌其支持毫秒级元数据操作延迟，支持千亿级文件存储。
+JuiceFS 是一款面向云原生的高性能分布式文件系统，采用数据与元数据分离的架构设计，支持 POSIX、HDFS 和 S3 协议，兼容主流计算框架和云平台，广泛应用于大数据分析、机器学习及容器化场景 ‌。‌ 其支持毫秒级元数据操作延迟，支持千亿级文件存储。
 
-JuiceFS是在项目中希望对文件系统引入分布式文件系统的设想实现方式。相较于Ceph和3FS的优势在于支持不同的操作系统泛用性强且开发成熟操作简单，很容易在其基础上再进行开发。
-
+JuiceFS 是在项目中希望对文件系统引入分布式文件系统的设想实现方式。相较于 Ceph 和 3FS 的优势在于支持不同的操作系统泛用性强且开发成熟操作简单，很容易在其基础上再进行开发。
 
 ## 技术路线
 
