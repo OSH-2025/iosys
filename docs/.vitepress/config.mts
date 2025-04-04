@@ -34,11 +34,17 @@ export default defineConfig({
         }).sort((a, b) => a.id - b.id),
       },
       {
-        text: "调研报告",
-        items: globSync("preliminary/*.md").map((path) => {
-          const name = basename(path, ".md");
-          return { text: name, link: `/preliminary/${name}` };
-        }),
+        text: "Reports",
+        items: [
+          {
+            text: "调研报告",
+            link: "/preliminary/",
+          },
+          {
+            text: "可行性报告",
+            link: "/feasibility",
+          },
+        ]
       },
     ],
   },
