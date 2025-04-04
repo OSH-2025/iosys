@@ -1,10 +1,17 @@
 // import { withMermaid } from "vitepress-plugin-mermaid";
 import { defineConfig } from "vitepress";
-import Footnote from 'markdown-it-footnote'
+import Footnote from "markdown-it-footnote";
+import Mdc from "markdown-it-mdc";
 import { globSync } from "tinyglobby";
 import { basename } from "path";
-import UnoCSS from 'unocss/vite'
-import { presetIcons, presetWind3, presetAttributify, transformerDirectives } from 'unocss';
+import UnoCSS from "unocss/vite";
+import {
+  presetIcons,
+  presetWind3,
+  presetAttributify,
+  transformerDirectives,
+} from "unocss";
+import extractorMdc from "@unocss/extractor-mdc";
 
 export default defineConfig({
   title: "Team IOSYS",
@@ -22,16 +29,27 @@ export default defineConfig({
       },
       {
         text: "Notes",
-        items: globSync("notes/*.md").map((path) => {
-          const name = basename(path, ".md");
-          const id = name.match(/^(\d+)\-/)?.[1];
-          if (!id) {
-            console.log(`Invalid note name: ${name}. Should start with an ID`);
-          }
-          let displayName = id ? name.slice(id.length + 1) : name;
-          displayName = displayName.split('-').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-          return { id: +(id ?? ''), text: displayName, link: `/notes/${name}` };
-        }).sort((a, b) => a.id - b.id),
+        items: globSync("notes/*.md")
+          .map((path) => {
+            const name = basename(path, ".md");
+            const id = name.match(/^(\d+)\-/)?.[1];
+            if (!id) {
+              console.log(
+                `Invalid note name: ${name}. Should start with an ID`
+              );
+            }
+            let displayName = id ? name.slice(id.length + 1) : name;
+            displayName = displayName
+              .split("-")
+              .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+              .join(" ");
+            return {
+              id: +(id ?? ""),
+              text: displayName,
+              link: `/notes/${name}`,
+            };
+          })
+          .sort((a, b) => a.id - b.id),
       },
       {
         text: "Reports",
@@ -44,21 +62,16 @@ export default defineConfig({
             text: "可行性报告",
             link: "/feasibility",
           },
-        ]
+        ],
       },
     ],
   },
   vite: {
     plugins: [
       UnoCSS({
-        presets: [
-          presetWind3(),
-          presetAttributify(),
-          presetIcons(),
-        ],
-        transformers: [
-          transformerDirectives(),
-        ],
+        presets: [presetWind3(), presetAttributify(), presetIcons()],
+        transformers: [transformerDirectives()],
+        extractors: [extractorMdc()],
       }),
     ],
   },
@@ -66,6 +79,7 @@ export default defineConfig({
     theme: "dark-plus",
     math: true,
     config(md) {
+      md.use(Mdc);
       md.use(Footnote);
     },
   },
