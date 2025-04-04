@@ -51,7 +51,7 @@ outline: [2, 4]
       - **Storage Manager**: 管理 Agent 运行所需的数据存储。
       - **Tool Manager**: 管理和协调 Agent 可以使用的外部工具或 API。
       - **Access Manager**: 控制 Agent 对资源和工具的访问权限。
-    - **与 OS Kernel 的交互**: AIOS Kernel 需要通过 **OS System Call** 接口与底层的 OS Kernel 交互，以获取硬件资源（如通过 OS 内存管理器分配内存，通过文件系统读写磁盘等）。
+    - **与 OS Kernel 的交互**: AIOS Kernel 需要通过 OS System Call 接口与底层的 OS Kernel 交互，以获取硬件资源（如通过 OS 内存管理器分配内存，通过文件系统读写磁盘等）。
 
 3.  **硬件层 (Hardware Layer)**:
 
