@@ -2,7 +2,9 @@
   "scripts": {
     "dev": "vitepress dev",
     "build": "vitepress build",
-    "preview": "vitepress preview"
+    "preview": "vitepress preview",
+    "dev:midterm": "slidev ./midterm/slides.md",
+    "build:midterm": "slidev build ./midterm/slides.md --out ../.vitepress/dist/midterm"
   },
   "dependencies": {
     "vitepress": "^1.6.3",
@@ -18,7 +20,10 @@
     "mermaid": "^11.4.1",
     "tinyglobby": "^0.2.12",
     "unocss": "66.1.0-beta.7",
-    "vitepress-plugin-mermaid": "^2.0.17"
+    "vitepress-plugin-mermaid": "^2.0.17",
+    "@slidev/cli": "^51.5.0",
+    "@slidev/theme-seriph": "latest",
+    "vue": "^3.5.13"
   },
   "packageManager": "pnpm@9.15.4"
 }

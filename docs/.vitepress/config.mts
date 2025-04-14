@@ -62,6 +62,10 @@ export default defineConfig({
             text: "可行性报告",
             link: "/feasibility",
           },
+          {
+            text: "中期报告",
+            link: "/midterm/entry",
+          },
         ],
       },
     ],
@@ -92,5 +96,8 @@ export default defineConfig({
         href: "/favicon.ico",
       },
     ],
+  ],
+  srcExclude: [
+    "**/slides.md",
   ],
 });
