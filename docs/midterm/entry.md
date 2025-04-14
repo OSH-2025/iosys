@@ -4,7 +4,7 @@ aside: false
 
 # 中期报告
 
-<a :href="url" text-xl my-2 block>
+<a :href="url" text-xl my-2 block target="_blank">
   全屏观看
 </a>
 

@@ -38,7 +38,7 @@ jobs:
       - name: Build site
         run: |
           pnpm build --base /${{github.event.repository.name}}/
-          pnpm build:midterm --base /${{github.event.repository.name}}/
+          pnpm build:midterm --base /${{github.event.repository.name}}/midterm/
         working-directory: ./docs
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
