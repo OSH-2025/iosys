@@ -9,8 +9,9 @@
     <div class="flex flex-1 overflow-hidden">
       <!-- Left Sidebar -->
       <aside class="w-108 max-w-40% bg-white border-r border-gray-200 p-4 flex flex-col">
-        <div class="flex-1">
-          <!-- Sidebar content will go here -->
+        <div class="flex-1 overflow-hidden">
+          <!-- Chat messages component -->
+          <Messages />
         </div>
 
         <!-- Input and Submit Button -->
@@ -32,3 +33,7 @@
     </div>
   </div>
 </template>
+
+<script setup lang="ts">
+import Messages from './components/Messages.vue';
+</script>
