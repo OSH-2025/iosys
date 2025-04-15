@@ -10,8 +10,11 @@
   },
   "packageManager": "pnpm@9.15.5",
   "devDependencies": {
+    "@types/markdown-it": "^14.1.2",
     "@unocss/reset": "66.1.0-beta.11",
     "@vitejs/plugin-vue": "^5.2.3",
+    "github-markdown-css": "^5.8.1",
+    "markdown-it": "^14.1.0",
     "unocss": "66.1.0-beta.11",
     "vite": "^6.2.6",
     "vue": "^3.5.13"

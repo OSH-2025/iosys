@@ -8,13 +8,14 @@
         message.fromUser ? 'self-end bg-black text-white' : 'self-start bg-gray-100 text-black'
       ]"
     >
-      <p class="text-sm">{{ message.content }}</p>
+      <Markdown :content="message.content" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { messages } from '../states';
+import Markdown from './Markdown.vue';
 </script>
 
 <style scoped>

@@ -8,7 +8,7 @@ interface Message {
 export const messages = reactive<Message[]>([
   {
     fromUser: false,
-    content: "Hello! How can I assist you today?",
+    content: "### Hello!\nHow can I assist you today?",
   },
   {
     fromUser: true,
