@@ -1,0 +1,10 @@
+[project]
+name = "iosys"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.12",
+    "openai>=1.75.0",
+]
