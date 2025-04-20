@@ -108,6 +108,29 @@ What{.sect}
 
 What{.sect}
 
+### 我们要做什么
+
+<div text-3xl mt-2 underlined mb-1> Agent2Agent Protocol (A2A) </div>
+<div italic text-4 op-60>(Proposed by Google, 2025.4.9)</div>
+
+<img v-drag="[49,211,397,NaN]" src="https://google.github.io/A2A/images/a2a_actors.png" />
+
+<div fixed inset-2 border="yellow 4 rounded-4" />
+
+<div v-drag="[507,231,215,NaN]" v-click border="1.5 black rounded-xl" px-2 py-1>
+
+### A2A or MCP? {.mb-2.text-primary}
+
+- MCP：工具的调用
+- A2A：智能体的协作
+- We need **BOTH**!
+
+</div>
+
+---
+
+What{.sect}
+
 ## 我们要做什么
 
 ![arch](/../assets/arch.svg){.w-100.ml--3}
