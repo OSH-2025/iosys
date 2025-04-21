@@ -11,6 +11,9 @@
     "vue": "^3.5.13"
   },
   "devDependencies": {
+    "@iconify-json/vscode-icons": "^1.2.19",
+    "@slidev/cli": "^51.5.0",
+    "@slidev/theme-seriph": "latest",
     "@types/node": "^22.10.10",
     "@unocss/extractor-mdc": "66.1.0-beta.8",
     "chokidar": "^4.0.3",
@@ -21,8 +24,6 @@
     "tinyglobby": "^0.2.12",
     "unocss": "66.1.0-beta.7",
     "vitepress-plugin-mermaid": "^2.0.17",
-    "@slidev/cli": "^51.5.0",
-    "@slidev/theme-seriph": "latest",
     "vue": "^3.5.13"
   },
   "packageManager": "pnpm@9.15.4"

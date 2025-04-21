@@ -1,6 +1,6 @@
 ---
 theme: seriph
-background: https://cdn.jsdelivr.net/gh/USTCdev/slidev-theme-ustc@master/assets/backgrounds/bg3.jpg
+background: https://cdn.jsdelivr.net/gh/USTCdev/slidev-theme-ustc@master/assets/backgrounds/bg2.jpg
 title: Midterm Report
 mdc: true
 colorSchema: light
@@ -22,27 +22,39 @@ Why{.sect}
 - [My-Glow (2023)](https://github.com/OSH-2023/My-Glow) 基于 [Wowkiddy (2022)](https://github.com/OSH-2022/x-WowKiddy) 和 [TOBEDONE (2022)](https://github.com/OSH-2022/x-TOBEDONE) 
 
   ✅ 自然语言/语音交互、任务序列转换 <br>
-  ⚠️ RAG架构限制 [✨ GraphRAG]{.float-right.mr-30}
+  ⚠️ RAG架构限制 [✨ GraphRAG]{.float-right.mr-50}
 
 - [ArkFS (2024)](https://github.com/OSH-2024/ArkFS)
 
   ✅ 多模态向量化、二分图映射 <br>
-  ⚠️ 图结构简化 [✨ 知识图谱优化、对象-关系建模]{.float-right.mr-30}
+  ⚠️ 图结构简化 [✨ 知识图谱优化、对象-关系建模]{.float-right.mr-50}
 
 - [vivo50 (2024)](https://github.com/OSH-2024/vivo50)
 
   ✅ 分布式框架优化、鲁棒性监控 <br>
-  ⚠️ 传统打标方法 [✨ Llama Index、GraphRAG]{.float-right.mr-30}
+  ⚠️ 传统打标方法 [✨ Llama Index、GraphRAG]{.float-right.mr-50}
 
-<div v-drag="[471,179,323,288]" border="3 yellow-500 dashed rounded-xl" pt-1 pl-2 text-yellow-600>
+<div v-drag="[396,185,319,270]" border="3 yellow-500 dashed rounded-xl" pt-1 pl-2 text-yellow-600>
 我们的改进
 </div>
+
+---
+
+What{.sect}
+
+### 我们要做什么
+
+更强大的文件系统 Agent {.text-3xl.underlined.mb-4}
+
+- 用自然语言进行文件操作
+- 用图形式重新组织文件
+- 提升增删查改等操作的效率
 
 ---
 zoom: 0.85
 ---
 
-Why{.sect}
+What{.sect}
 
 ## 创新点
 
@@ -78,52 +90,22 @@ Why{.sect}
 
 What{.sect}
 
-### 我们要做什么
-
-更强大的文件系统 Agent {.text-3xl.underlined.mb-4}
-
-- 用自然语言进行文件操作
-- 用图形式重新组织文件
-- 提升增删查改等操作的效率
-
----
-
-What{.sect}
-
-### 我们要做什么
-
-创新地结合
-
-<div text-xl mt--4>
-
-- 用自然语言进行文件操作
-- 用图形式重新组织文件
-- 提升增删查改等操作的效率
-
-</div>
-
-协同发挥各自的优势
-
----
-
-What{.sect}
-
-### 我们要做什么
+### The Additional Capability
 
 <div text-3xl mt-2 underlined mb-1> Agent2Agent Protocol (A2A) </div>
-<div italic text-4 op-60>(Proposed by Google, 2025.4.9)</div>
+<div italic text-4 op-80>(Proposed by Google, 2025.4.9)</div>
 
-<img v-drag="[49,211,397,NaN]" src="https://google.github.io/A2A/images/a2a_actors.png" />
+<img v-drag="[49,216,374,NaN]" src="https://google.github.io/A2A/images/a2a_actors.png" />
 
 <div fixed inset-2 border="yellow 4 rounded-4" />
 
-<div v-drag="[507,231,215,NaN]" v-click border="1.5 black rounded-xl" px-2 py-1>
+<div v-drag="[454,238,308,NaN]" border="1.5 black rounded-xl" px-2 py-1>
 
 ### A2A or MCP? {.mb-2.text-primary}
 
-- MCP：工具的调用
-- A2A：智能体的协作
-- We need **BOTH**!
+- A2A: How agents collaborate
+- MCP: How functions are provided
+- No conflict
 
 </div>
 
@@ -131,7 +113,7 @@ What{.sect}
 
 What{.sect}
 
-## 我们要做什么
+## 总体架构
 
 ![arch](/../assets/arch.svg){.w-100.ml--3}
 
@@ -190,7 +172,19 @@ D[Excel] -----> E
 E ----> F[Markdown] ----> G((LLM))
 ```
 
+<div v-drag="[439,75,315,NaN]" border="1.5 black rounded-xl" px-2 py-1>
+
+### Embedded image? {.mb-2.text-primary}
+
+- Fork [Microsoft/markitdown]{.font-mono.ml-1}
+- Convert to text description
+- As separate images with links
+
+</div>
+
 ---
+
+<img src="https://microsoft.github.io/graphrag/img/GraphRag-Figure1.jpg" z--1 fixed op-40 inset-y-20 right-0 />
 
 How{.sect}
 
@@ -219,15 +213,25 @@ JuiceFS {.text-3xl.underlined.mb-4}
 
 </div>
 
+<div italic op-80 mt-8>
+Not new but it works!
+</div>
+
 ---
 class: mt--4
 ---
 
 Recap{.sect}
 
-## 我们的架构图
+## 我们的架构图 <span text-lg italic op-80> Work in Progress... </span>
 
 ![arch](/../assets/arch.svg){.w-120.ml--4.mt--4}
+
+<div v-drag="[530,139,40,NaN]" h-20 i-vscode-icons-file-type-typescript-official />
+
+<div v-drag="[530,230,40,NaN]" h-20 i-vscode-icons-file-type-python />
+
+<div v-drag="[530,324,40,NaN]" h-20 i-vscode-icons-file-type-python />
 
 ---
 layout: end
