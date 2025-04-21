@@ -27,8 +27,8 @@ Why{.sect}
 
 - [My-Glow (2023)](https://github.com/OSH-2023/My-Glow) 基于 [Wowkiddy (2022)](https://github.com/OSH-2022/x-WowKiddy) 和 [TOBEDONE (2022)](https://github.com/OSH-2022/x-TOBEDONE) 
 
-  ✅ 自然语言/语音交互、任务序列转换 <br>
-  ⚠️ RAG架构限制 [✨ GraphRAG]{.float-right.mr-50}
+  ✅ 分布式框架优化、鲁棒性监控 <br>
+  ⚠️ 传统打标方法 [✨ Llama Index、GraphRAG]{.float-right.mr-50}
 
 - [ArkFS (2024)](https://github.com/OSH-2024/ArkFS)
 
@@ -37,10 +37,10 @@ Why{.sect}
 
 - [vivo50 (2024)](https://github.com/OSH-2024/vivo50)
 
-  ✅ 分布式框架优化、鲁棒性监控 <br>
-  ⚠️ 传统打标方法 [✨ Llama Index、GraphRAG]{.float-right.mr-50}
+  ✅ 自然语言/语音交互、任务序列转换 <br>
+  ⚠️ RAG架构限制 [✨ GraphRAG]{.float-right.mr-50}
 
-<div v-drag="[396,185,319,270]" border="3 yellow-500 dashed rounded-xl" pt-1 pl-2 text-yellow-600>
+<div v-drag="[389,168,310,282]" border="3 yellow-500 dashed rounded-xl" pt-1 pl-2 text-yellow-600>
 我们的改进
 </div>
 
