@@ -9,7 +9,13 @@ canvasWidth: 800
 
 # 中期报告
 
-Team IOSYS {.text-2xl.!op-80} 
+<div class="text-4 op-80">
+
+Team IOSYS
+
+熊桐睿 张海川 朱雨田 许逸凡 冉竣宇 徐铭凯
+
+</div>
 
 ---
 zoom: 0.85
@@ -37,6 +43,16 @@ Why{.sect}
 <div v-drag="[396,185,319,270]" border="3 yellow-500 dashed rounded-xl" pt-1 pl-2 text-yellow-600>
 我们的改进
 </div>
+
+---
+zoom: 0.85
+---
+
+Why{.sect}
+
+## The AIOS [Trend]{.text-primary}
+
+<img src="/../assets/research/image-1.png" w-160 mt-2 ml--4 />
 
 ---
 
@@ -95,7 +111,7 @@ What{.sect}
 <div text-3xl mt-2 underlined mb-1> Agent2Agent Protocol (A2A) </div>
 <div italic text-4 op-80>(Proposed by Google, 2025.4.9)</div>
 
-<img v-drag="[49,216,374,NaN]" src="https://google.github.io/A2A/images/a2a_actors.png" />
+<img v-drag="[49,215,378,NaN]" src="https://google.github.io/A2A/images/a2a_actors.png" />
 
 <div fixed inset-2 border="yellow 4 rounded-4" />
 
