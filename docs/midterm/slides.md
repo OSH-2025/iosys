@@ -57,6 +57,25 @@ Why{.sect}
 </div>
 
 ---
+layout: fact
+class: bg-black bg-op-10
+---
+
+## 真正的意义是什么？
+
+为什么这些 LLM+FS 系统，都没有流行起来？
+
+<div flex justify-center items-center mt-6>
+我们真的那么需要
+<div inline-flex flex-col text-sm>
+<div> “删除电脑中一张包含一棵树的图片” </div>
+<div> “寻找我的身份证正反面照片” </div>
+</div>
+吗？
+</div>
+
+
+---
 
 What{.sect}
 
@@ -117,7 +136,7 @@ What{.sect}
 
 <div fixed inset-2 border="yellow 4 rounded-4" />
 
-<div v-drag="[454,238,308,NaN]" border="1.5 black rounded-xl" px-2 py-1>
+<div v-drag="[454,238,308,NaN]" border="1.5 black op-70 rounded-xl" px-2 py-1>
 
 ### A2A or MCP? {.mb-2.text-primary}
 
@@ -190,7 +209,7 @@ D[Excel] -----> E
 E ----> F[Markdown] ----> G((LLM))
 ```
 
-<div v-drag="[439,75,315,NaN]" border="1.5 black rounded-xl" px-2 py-1>
+<div v-drag="[439,75,315,NaN]" border="1.5 black op-70 rounded-xl" px-2 py-1>
 
 ### Embedded image? {.mb-2.text-primary}
 
