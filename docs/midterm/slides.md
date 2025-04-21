@@ -50,9 +50,11 @@ zoom: 0.85
 
 Why{.sect}
 
-## The AIOS [Trend]{.text-primary}
+## The [AIOS]{.text-4xl} [Trend]{.text-primary}
 
+<div flex justify-center>
 <img src="/../assets/research/image-1.png" w-160 mt-2 ml--4 />
+</div>
 
 ---
 
