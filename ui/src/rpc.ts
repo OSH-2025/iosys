@@ -1,5 +1,7 @@
 import { errorMessage } from "./states";
 
+const BASE_URL = "http://localhost:8000";
+
 export default {
   chat: defineApi<{ text: string }, string>("/chat"),
 };
@@ -7,7 +9,7 @@ export default {
 function defineApi<Request, Response>(endpoint: string) {
   return async (request: Request): Promise<Response> => {
     try {
-      const response = await fetch(endpoint, {
+      const response = await fetch(BASE_URL + endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -22,6 +24,7 @@ function defineApi<Request, Response>(endpoint: string) {
 
       return await response.json();
     } catch (error) {
+      errorMessage.value = `${error}`;
       throw error;
     }
   };
