@@ -1,4 +1,4 @@
-import { reactive } from "vue";
+import { reactive, ref } from "vue";
 
 interface Message {
   fromUser: boolean;
@@ -27,3 +27,5 @@ export const messages = reactive<Message[]>([
     content: "Thank you! Let me check that for you.",
   },
 ]);
+
+export const errorMessage = ref<string | null>(null);

@@ -16,10 +16,10 @@
 
         <!-- Input and Submit Button -->
         <div class="mt-4">
-          <input type="text"
+          <input v-model="inputText" type="text"
             class="w-full border border-gray-200 rounded-md p-2 mb-3 focus:outline-none focus:border-black transition-colors duration-150"
             placeholder="Enter text..." />
-          <button
+          <button @click="handleSubmit"
             class="w-full bg-black hover:bg-gray-800 text-white font-normal py-2 px-4 rounded-md transition duration-150">
             Submit
           </button>
@@ -31,9 +31,40 @@
         <!-- Main content will go here -->
       </main>
     </div>
+
+    <!-- Error Popup -->
+    <div v-if="errorMessage"
+      class="fixed bottom-4 right-4 bg-red-100 border border-red-300 shadow-md p-4 rounded-md text-red-700">
+      {{ errorMessage }}
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref, watch } from 'vue';
 import Messages from './components/Messages.vue';
+import rpc from './rpc';
+import { errorMessage } from './states';
+
+const inputText = ref('');
+
+const handleSubmit = async () => {
+  if (!inputText.value.trim()) return;
+  await rpc.chat({ text: inputText.value });
+};
+
+let errorTimeout: number | null = null;
+watch(
+  errorMessage,
+  (newValue) => {
+    if (newValue) {
+      if (errorTimeout) clearTimeout(errorTimeout);
+      errorTimeout = window.setTimeout(() => {
+        errorMessage.value = null;
+        errorTimeout = null;
+      }, 5000); // Popup disappears after 3 seconds
+    }
+  },
+  { immediate: true }
+);
 </script>
