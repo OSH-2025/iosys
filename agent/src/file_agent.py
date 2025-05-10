@@ -286,4 +286,14 @@ class FileAgent:
         except Exception as e:
             return {"status": "error", "message": str(e)}
             
+    def _list_files(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """列出目录内容"""
+        if "directory_path" not in params:
+            return {"status": "error", "message": "缺少必要参数: directory_path"}
+        
+        try:
+            pass
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+    
 
