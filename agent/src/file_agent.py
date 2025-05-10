@@ -296,4 +296,40 @@ class FileAgent:
         except Exception as e:
             return {"status": "error", "message": str(e)}
     
-
+    def _read_file(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """读取文件内容"""
+        if "file_path" not in params:
+            # 默认路径为当前目录
+            params["file_path"] = "."
+            # return {"status": "error", "message": "缺少必要参数: file_path"}
+        
+        try:
+            file_path = self._normalize_path(params["file_path"])
+            
+            # 检查文件是否存在
+            if not os.path.exists(file_path) or not os.path.isfile(file_path):
+                return {"status": "error", "message": f"文件不存在: {params['file_path']}"}
+            
+            # 读取文件内容
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+                
+            return {
+                "status": "success",
+                "message": f"成功读取文件: {params['file_path']}",
+                "content": content
+            }
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+    
+    def _write_file(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """写入文件内容"""
+        if "file_path" not in params or "content" not in params:
+            # 默认路径为当前目录
+            params["file_path"] = "."
+            # return {"status": "error", "message": "缺少必要参数: file_path 或 content"}
+        
+        try:
+            pass
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
