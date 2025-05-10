@@ -208,4 +208,38 @@ class FileAgent:
         except Exception as e:
             return {"status": "error", "message": str(e)}
     
+    def _delete_file(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """删除文件"""
+        if "file_path" not in params:
+            # 默认路径为当前目录
+            params["file_path"] = "."
+            # return {"status": "error", "message": "缺少必要参数: file_path"}
+        
+        try:
+            file_path = self._normalize_path(params["file_path"])
+            
+            # 检查文件是否存在
+            if not os.path.exists(file_path) or not os.path.isfile(file_path):
+                return {"status": "error", "message": f"文件不存在: {params['file_path']}"}
+            
+            # 删除文件
+            os.remove(file_path)
+                
+            return {
+                "status": "success",
+                "message": f"文件删除成功: {params['file_path']}"
+            }
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
     
+    def _delete_directory(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """删除目录"""
+        if "directory_path" not in params:
+            return {"status": "error", "message": "缺少必要参数: directory_path"}
+        
+        try:
+            pass
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+    
+
