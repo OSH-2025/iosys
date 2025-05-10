@@ -32,10 +32,6 @@ async def chat_endpoint(request: ChatRequest):
     try:
         # Use OpenAI SDK to get a response
         completion = client.chat.completions.create(
-            extra_headers={
-                "HTTP-Referer": "<YOUR_SITE_URL>",  # Optional. Site URL for rankings on openrouter.ai.
-                "X-Title": "<YOUR_SITE_NAME>",  # Optional. Site title for rankings on openrouter.ai.
-            },
             extra_body={},
             model="google/gemini-2.0-flash-001",
             messages=[
