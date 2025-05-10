@@ -5,6 +5,15 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "a2a",
+    "dotenv>=0.9.9",
     "fastapi>=0.115.12",
+    "langchain-core>=0.3.59",
+    "langchain-google-genai>=2.1.4",
+    "langchain-openai>=0.3.16",
+    "langgraph>=0.4.3",
     "openai>=1.75.0",
 ]
+
+[tool.uv.sources]
+a2a = { path = "third/a2a-python-sdk" }
