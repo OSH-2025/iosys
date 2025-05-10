@@ -27,8 +27,9 @@
       </aside>
 
       <!-- Right Main Content -->
-      <main class="flex-1 bg-white p-6">
+      <main class="flex-1 bg-white">
         <!-- Main content will go here -->
+         <GraphView />
       </main>
     </div>
 
@@ -43,6 +44,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import Messages from './components/Messages.vue';
+import GraphView from './components/GraphView.vue';
 import rpc from './rpc';
 import { errorMessage } from './states';
 
