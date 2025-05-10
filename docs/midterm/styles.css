@@ -11,6 +11,6 @@
   --uno: mt--4;
 }
 
-.underlined {
+.underlined, [underlined] {
   --uno: border-b-2 border-black w-fit pb-1;
 }
