@@ -242,4 +242,26 @@ class FileAgent:
         except Exception as e:
             return {"status": "error", "message": str(e)}
     
+    def _move_file(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """移动文件"""
+        if "source_path" not in params or "destination_path" not in params:
+            return {"status": "error", "message": "缺少必要参数: source_path 或 destination_path"}
+        
+        try:
+            pass
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+    
+    # 其他操作方法的实现（如移动目录、重命名文件/目录等），遵循类似的模式...
+    
+    def _move_directory(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """移动目录"""
+        if "source_path" not in params or "destination_path" not in params:
+            return {"status": "error", "message": "缺少必要参数: source_path 或 destination_path"}
+        
+        try:
+            pass
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+    
 
