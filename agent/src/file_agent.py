@@ -112,4 +112,47 @@ class FileAgent:
         except:
             return False
     
+    def _execute_operation(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        执行层: 执行解析后的文件操作
+        
+        Args:
+            data: 解析后的结构化数据
+            
+        Returns:
+            Dict: 操作结果
+        """
+        operation = data["operation"].lower()
+        parameters = data["parameters"]
+        
+        # 根据操作类型分发到相应的处理函数
+        handlers = {
+            OperationType.CREATE_FILE.value: self._create_file,
+            OperationType.CREATE_DIRECTORY.value: self._create_directory,
+            OperationType.DELETE_FILE.value: self._delete_file,
+            OperationType.DELETE_DIRECTORY.value: self._delete_directory,
+            OperationType.MOVE_FILE.value: self._move_file,
+            OperationType.MOVE_DIRECTORY.value: self._move_directory,
+            OperationType.RENAME_FILE.value: self._rename_file,
+            OperationType.RENAME_DIRECTORY.value: self._rename_directory,
+            OperationType.LIST_FILES.value: self._list_files,
+            OperationType.READ_FILE.value: self._read_file,
+            OperationType.WRITE_FILE.value: self._write_file,
+        }
+        
+        if operation not in handlers:
+            return {
+                "status": "error",
+                "message": f"不支持的操作类型: {operation}"
+            }
+    
+    def _normalize_path(self, path: str) -> str:
+        """标准化路径，确保在基础目录下操作"""
+        norm_path = os.path.normpath(os.path.join(self.base_dir, path))
+        # 安全检查，确保路径不超出基础目录
+        if not norm_path.startswith(self.base_dir):
+            raise ValueError(f"安全限制: 路径必须在 {self.base_dir} 内")
+        return norm_path
+        
+    # 以下是各种文件操作的具体实现
     
