@@ -12,7 +12,7 @@ dependencies = [
     "langchain-google-genai>=2.1.4",
     "langchain-openai>=0.3.16",
     "langgraph>=0.4.3",
-    "markitdown",
+    "markitdown[all]",
     "openai>=1.75.0",
 ]
 
