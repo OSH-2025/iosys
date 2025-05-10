@@ -157,31 +157,31 @@ class FileAgent:
     # 以下是各种文件操作的具体实现
     
     def _create_file(self, params: Dict[str, Any]) -> Dict[str, Any]:
-    """创建文件"""
-    if "file_name" not in params or "path" not in params:
-        # 默认路径为当前目录
-        params["path"] = "."
-        # return {"status": "error", "message": "缺少必要参数: file_name 或 path"}
-    
-    try:
-        file_path = self._normalize_path(os.path.join(params["path"], params["file_name"]))
-        content = params.get("content", "")
+        """创建文件"""
+        if "file_name" not in params or "path" not in params:
+            # 默认路径为当前目录
+            params["path"] = "."
+            # return {"status": "error", "message": "缺少必要参数: file_name 或 path"}
         
-        # 检查文件是否已存在
-        if os.path.exists(file_path):
-            return {"status": "error", "message": f"文件已存在: {params['file_name']}"}
-        
-        # 创建文件
-        with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(content)
+        try:
+            file_path = self._normalize_path(os.path.join(params["path"], params["file_name"]))
+            content = params.get("content", "")
             
-        return {
-            "status": "success",
-            "message": f"文件创建成功: {params['file_name']}",
-            "path": os.path.relpath(file_path, self.base_dir)
-        }
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+            # 检查文件是否已存在
+            if os.path.exists(file_path):
+                return {"status": "error", "message": f"文件已存在: {params['file_name']}"}
+            
+            # 创建文件
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+                
+            return {
+                "status": "success",
+                "message": f"文件创建成功: {params['file_name']}",
+                "path": os.path.relpath(file_path, self.base_dir)
+            }
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
     
     def _create_directory(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """创建目录"""
@@ -264,7 +264,7 @@ class FileAgent:
         except Exception as e:
             return {"status": "error", "message": str(e)}
     
-        def _rename_file(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _rename_file(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """重命名文件"""
         if "file_path" not in params or "new_name" not in params:
             # 默认路径为当前目录
