@@ -1,7 +1,4 @@
-import os
-import sys
-
-from .agent_executor import CurrencyAgentExecutor
+from agent_executor import CurrencyAgentExecutor
 
 from a2a.server import A2AServer, DefaultA2ARequestHandler, InMemoryTaskStore
 from a2a.types import (
@@ -10,6 +7,7 @@ from a2a.types import (
     AgentCard,
     AgentSkill,
 )
+from dotenv import load_dotenv
 
 def start_a2a(host: str, port: int):
     task_store = InMemoryTaskStore()
@@ -45,3 +43,8 @@ def get_agent_card(host: str, port: int):
         skills=[skill],
         authentication=AgentAuthentication(schemes=['public']),
     )
+
+if __name__ == "__main__":
+    load_dotenv()
+    print("Starting A2A server...")
+    start_a2a(host="localhost", port=8001)
