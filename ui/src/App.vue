@@ -2,7 +2,7 @@
   <div class="flex flex-col h-screen bg-white">
     <!-- Title Bar -->
     <header class="bg-white text-black p-4 border-b border-gray-200">
-      <h1 class="text-xl font-normal">IOSYS</h1>
+      <h1 class="text-xl font-normal pl-2">IOSYS</h1>
     </header>
 
     <!-- Main Content Area -->
@@ -27,9 +27,10 @@
       </aside>
 
       <!-- Right Main Content -->
-      <main class="flex-1 bg-white">
+      <main class="relative flex-1 bg-white">
         <!-- Main content will go here -->
          <GraphView />
+         <FilePreview />
       </main>
     </div>
 
@@ -47,6 +48,7 @@ import Messages from './components/Messages.vue';
 import GraphView from './components/GraphView.vue';
 import rpc from './rpc';
 import { errorMessage, messages } from './states';
+import FilePreview from './components/FilePreview.vue';
 
 const inputText = ref('');
 

@@ -4,6 +4,7 @@ const BASE_URL = "http://localhost:8000";
 
 export default {
   chat: defineApi<{ input: string }, { response: string }>("/chat"),
+  preview: defineApi<{ id: string }, { url: string }>("/preview"),
 };
 
 function defineApi<Request, Response>(endpoint: string) {

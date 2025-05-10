@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from openai import OpenAI
 import os
+from fastapi.responses import FileResponse
 
 app = FastAPI()
 
@@ -45,3 +46,18 @@ async def chat_endpoint(request: ChatRequest):
     except Exception as e:
         print(f"Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+class PreviewRequest(BaseModel):
+    id: str
+
+@app.post("/preview")
+async def preview_endpoint(request: PreviewRequest):
+    return {
+        "url": f"http://localhost:8000/raw?filepath={request.id}",
+    }
+
+# GET /raw?filepath={filepath}
+@app.get("/raw")
+async def raw_endpoint(filepath: str):
+    return FileResponse(filepath, media_type='image/png')

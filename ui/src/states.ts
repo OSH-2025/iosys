@@ -50,3 +50,5 @@ export const graphEdges = shallowRef<Edge[]>([
   { from: 7, to: 5, label: 'generates' }, // Chunk 2.1 generates Answer
   { from: 6, to: 7 }, // Document 2 to Chunk 2.1
 ]);
+
+export const previewFile = ref<string | null>("D:/assets/avatar_modified.png");
