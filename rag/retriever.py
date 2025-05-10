@@ -11,7 +11,9 @@ class IOSYSQuery:
     max_results: int = 10
 
 class IOSYSResponse:
-    file_list: dict[str, float] = {}
+    file_list: list[str] = []
+    weights: list[float] = []
+    description: list[str] = []
 
 class IOSYSRetriever:
     def retrieve(self, query: IOSYSQuery) -> IOSYSResponse:
