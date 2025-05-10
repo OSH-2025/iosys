@@ -3,7 +3,7 @@ import { errorMessage } from "./states";
 const BASE_URL = "http://localhost:8000";
 
 export default {
-  chat: defineApi<{ text: string }, string>("/chat"),
+  chat: defineApi<{ input: string }, { response: string }>("/chat"),
 };
 
 function defineApi<Request, Response>(endpoint: string) {

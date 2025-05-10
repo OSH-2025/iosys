@@ -15,17 +15,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-# Define the request body model
-class ChatRequest(BaseModel):
-    text: str
-
-
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=os.environ.get("OPEN_ROUTER_API_KEY"),
 )
 
+class ChatRequest(BaseModel):
+    input: str
 
 @app.post("/chat")
 async def chat_endpoint(request: ChatRequest):
@@ -41,7 +37,7 @@ async def chat_endpoint(request: ChatRequest):
                 },
                 {
                     "role": "user",
-                    "content": request.text,
+                    "content": request.input,
                 },
             ],
         )

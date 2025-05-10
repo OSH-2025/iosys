@@ -46,13 +46,22 @@ import { ref, watch } from 'vue';
 import Messages from './components/Messages.vue';
 import GraphView from './components/GraphView.vue';
 import rpc from './rpc';
-import { errorMessage } from './states';
+import { errorMessage, messages } from './states';
 
 const inputText = ref('');
 
 const handleSubmit = async () => {
-  if (!inputText.value.trim()) return;
-  await rpc.chat({ text: inputText.value });
+  const input = inputText.value.trim();
+  if (!input) return;
+  inputText.value = '';
+  messages.push({ content: input, fromUser: true });
+  try {
+    const { response } = await rpc.chat({ input });
+    messages.push({ content: response, fromUser: false });
+  } catch (e) {
+    inputText.value ||= input;
+    messages.push({ content: '❌' + e, fromUser: false });
+  }
 };
 
 let errorTimeout: number | null = null;
