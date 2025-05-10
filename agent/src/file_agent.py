@@ -264,4 +264,26 @@ class FileAgent:
         except Exception as e:
             return {"status": "error", "message": str(e)}
     
+        def _rename_file(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """重命名文件"""
+        if "file_path" not in params or "new_name" not in params:
+            # 默认路径为当前目录
+            params["file_path"] = "."
+            # return {"status": "error", "message": "缺少必要参数: file_path 或 new_name"}
+        
+        try:
+            pass
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+    
+    def _rename_directory(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """重命名目录"""
+        if "directory_path" not in params or "new_name" not in params:
+            return {"status": "error", "message": "缺少必要参数: directory_path 或 new_name"}
+        
+        try:
+            pass
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+            
 
