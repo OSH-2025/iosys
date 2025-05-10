@@ -5,6 +5,7 @@ title: Midterm Report
 mdc: true
 colorSchema: light
 canvasWidth: 800
+routerMode: hash
 ---
 
 # 中期报告
