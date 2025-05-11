@@ -1,3 +1,4 @@
+#挂载需要macFUSE支持
 #!/bin/bash
 set -e
 
@@ -14,12 +15,6 @@ FS_NAME="myjfs"                        # 文件系统名称
 cleanup() {
     find "${BIN_DIR}" -type f ! -name 'juicefs' -delete
 }
-
-# 检查依赖
-if ! which fuse-overlayfs >/dev/null; then
-    echo "安装FUSE..."
-    sudo apt-get install -y fuse3 || sudo yum install -y fuse3
-fi
 
 # 创建目录
 mkdir -p "${BIN_DIR}" "${MOUNT_POINT}" "${CACHE_DIR}" "${LOCAL_META%/*}" "${LOCAL_STORAGE}"
@@ -47,3 +42,4 @@ echo "挂载到 ${MOUNT_POINT}..."
 cleanup
 echo "挂载完成！"
 echo -e "使用指南：\n卸载：fusermount -u ${MOUNT_POINT}\n状态：${BIN_DIR}/juicefs status sqlite3://${LOCAL_META}"
+
