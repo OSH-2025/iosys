@@ -4,11 +4,11 @@ set -e
 # 配置区
 JUICE_VERSION="1.2.3"                  # JuiceFS版本
 MOUNT_POINT="./fs"                     # 挂载点
-BIN_DIR="./juicefs"                    # 客户端目录
-CACHE_DIR="./cache"                    # 缓存目录
-LOCAL_META="$(pwd)/meta/jfs.db"        # 元数据文件（绝对路径）
-LOCAL_STORAGE="$(pwd)/storage"         # 存储目录（绝对路径）
-FS_NAME="myjfs"                        # 新增：符合规范的文件系统名称
+BIN_DIR="./jfs/juicefs"                    # 客户端目录
+CACHE_DIR="./jfs/cache"                    # 缓存目录
+LOCAL_META="./jfs/jfs.db"        # 元数据文件（绝对路径）
+LOCAL_STORAGE="./jfs/storage"         # 存储目录（绝对路径）
+FS_NAME="myjfs"                        # 文件系统名称
 
 # 自动清理函数
 cleanup() {
