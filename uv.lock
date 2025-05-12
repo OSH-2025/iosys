@@ -10,7 +10,7 @@ resolution-markers = [
 [[package]]
 name = "a2a"
 version = "0.2.0"
-source = { directory = "third/a2a-python-sdk" }
+source = { directory = "a2a_server/a2a-python-sdk" }
 dependencies = [
     { name = "httpx" },
     { name = "httpx-sse" },
@@ -550,14 +550,14 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "a2a", directory = "third/a2a-python-sdk" },
+    { name = "a2a", directory = "a2a_server/a2a-python-sdk" },
     { name = "dotenv", specifier = ">=0.9.9" },
     { name = "fastapi", specifier = ">=0.115.12" },
     { name = "langchain-core", specifier = ">=0.3.59" },
     { name = "langchain-google-genai", specifier = ">=2.1.4" },
     { name = "langchain-openai", specifier = ">=0.3.16" },
     { name = "langgraph", specifier = ">=0.4.3" },
-    { name = "markitdown", extras = ["all"], directory = "third/markitdown" },
+    { name = "markitdown", extras = ["all"], directory = "markitdown" },
     { name = "openai", specifier = ">=1.75.0" },
 ]
 
@@ -816,7 +816,7 @@ wheels = [
 
 [[package]]
 name = "markitdown"
-source = { directory = "third/markitdown" }
+source = { directory = "markitdown" }
 dependencies = [
     { name = "beautifulsoup4" },
     { name = "charset-normalizer" },

@@ -17,5 +17,5 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-a2a = { path = "third/a2a-python-sdk" }
-markitdown = { path = "third/markitdown" }
+a2a = { path = "a2a_server/a2a-python-sdk" }
+markitdown = { path = "markitdown" }
