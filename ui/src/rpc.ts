@@ -1,6 +1,9 @@
+/// <reference types="vite/client" />
+
 import { errorMessage } from "./states";
 
-const BASE_URL = "http://localhost:8000";
+const BASE_URL = import.meta.env.VITE_API_SERVER_URL;
+console.log("BASE_URL", BASE_URL);
 
 export default {
   chat: defineApi<{ input: string }, { response: string }>("/chat"),

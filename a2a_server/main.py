@@ -8,6 +8,7 @@ from a2a.types import (
     AgentSkill,
 )
 from dotenv import load_dotenv
+import os
 
 def start_a2a(host: str, port: int):
     task_store = InMemoryTaskStore()
@@ -47,4 +48,4 @@ def get_agent_card(host: str, port: int):
 if __name__ == "__main__":
     load_dotenv()
     print("Starting A2A server...")
-    start_a2a(host="localhost", port=8001)
+    start_a2a(host="localhost", port=os.getenv("A2A_SERVER_PORT"),)
