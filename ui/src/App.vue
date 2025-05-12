@@ -56,12 +56,17 @@ const handleSubmit = async () => {
   const input = inputText.value.trim();
   if (!input) return;
   inputText.value = '';
-  messages.push({ content: input, fromUser: true });
+  messages.push(
+    { content: input, fromUser: true },
+    { content: '...', fromUser: false },
+  );
   try {
     const { response } = await rpc.chat({ input });
+    messages.pop();
     messages.push({ content: response, fromUser: false });
   } catch (e) {
     inputText.value ||= input;
+    messages.pop();
     messages.push({ content: '❌' + e, fromUser: false });
   }
 };
