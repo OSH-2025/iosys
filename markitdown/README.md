@@ -1,3 +1,5 @@
+This is a fork of the original [MarkItDown](https://github.com/microsoft/markitdown/tree/main/packages/markitdown).
+
 # MarkItDown
 
 > [!IMPORTANT]
