@@ -48,4 +48,4 @@ def get_agent_card(host: str, port: int):
 if __name__ == "__main__":
     load_dotenv()
     print("Starting A2A server...")
-    start_a2a(host="localhost", port=os.getenv("A2A_SERVER_PORT"),)
+    start_a2a(host="localhost", port=int(os.getenv("A2A_SERVER_PORT")))

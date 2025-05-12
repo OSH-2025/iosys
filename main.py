@@ -8,8 +8,8 @@ def start_main_server():
     print("Starting main server...")
     uvicorn.run(
         "server.server:app",
-        ost="localhost",
-        port=os.getenv("MAIN_SERVER_PORT"),
+        host="localhost",
+        port=int(os.getenv("MAIN_SERVER_PORT")),
         reload=True,
     )
 
