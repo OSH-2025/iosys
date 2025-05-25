@@ -1,8 +1,17 @@
 <template>
   <div class="flex flex-col h-screen bg-white">
     <!-- Title Bar -->
-    <header class="bg-white text-black p-4 border-b border-gray-200">
+    <header class="bg-white text-black p-4 border-b border-gray-200 flex justify-between items-center">
       <h1 class="text-xl font-normal pl-2">IOSYS</h1>
+      <!-- Status Display -->
+      <div class="text-sm text-gray-600 flex space-x-4">
+        <div v-for="(value, key) in status" :key="key" class="flex items-center space-x-1">
+          <span class="font-medium">{{ key }}:</span>
+          <span :class="{'text-green-600': value === 'ready' || value === 'ok', 'text-red-600': value?.includes('error') || value?.includes('offline')}">
+            {{ value }}
+          </span>
+        </div>
+      </div>
     </header>
 
     <!-- Main Content Area -->
@@ -29,8 +38,8 @@
       <!-- Right Main Content -->
       <main class="relative flex-1 bg-white">
         <!-- Main content will go here -->
-         <GraphView />
-         <FilePreview />
+        <GraphView />
+        <FilePreview />
       </main>
     </div>
 
@@ -44,9 +53,10 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
+import { useIntervalFn } from '@vueuse/core';
 import Messages from './components/Messages.vue';
 import GraphView from './components/GraphView.vue';
-import rpc from './rpc';
+import rpc, { ApiResponse } from './rpc';
 import { errorMessage, messages } from './states';
 import FilePreview from './components/FilePreview.vue';
 
@@ -84,5 +94,20 @@ watch(
     }
   },
   { immediate: true }
+);
+
+const status = ref<Partial<ApiResponse<"status">>>({});
+useIntervalFn(
+  async () => {
+    try {
+      status.value = await rpc.status({});
+    } catch (e) {
+      status.value = {
+        server: 'offline',
+      }
+    }
+  },
+  10000,
+  { immediate: true, immediateCallback: true }
 );
 </script>

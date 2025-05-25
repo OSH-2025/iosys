@@ -16,10 +16,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+MODEL = "google/gemini-2.0-flash-001"
+
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=os.environ.get("OPEN_ROUTER_API_KEY"),
 )
+
+@app.post("/status")
+async def status_endpoint():
+    return {
+        "server": "ready",
+        "rag": "ready",
+        "llm": MODEL,
+        "fs": "ready",
+    }
 
 class ChatRequest(BaseModel):
     input: str
@@ -30,7 +41,7 @@ async def chat_endpoint(request: ChatRequest):
         # Use OpenAI SDK to get a response
         completion = client.chat.completions.create(
             extra_body={},
-            model="google/gemini-2.0-flash-001",
+            model=MODEL,
             messages=[
                 {
                     "role": "developer",

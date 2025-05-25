@@ -5,10 +5,15 @@ import { errorMessage } from "./states";
 const BASE_URL = import.meta.env.VITE_API_SERVER_URL;
 console.log("BASE_URL", BASE_URL);
 
-export default {
+const apis = {
+  status: defineApi<{}, { server: string, rag: string, llm: string, fs: string }>("/status"),
   chat: defineApi<{ input: string }, { response: string }>("/chat"),
   preview: defineApi<{ id: string }, { url: string }>("/preview"),
 };
+
+export default apis;
+
+export type ApiResponse<T extends keyof typeof apis> = Awaited<ReturnType<typeof apis[T]>>;
 
 function defineApi<Request, Response>(endpoint: string) {
   return async (request: Request): Promise<Response> => {
