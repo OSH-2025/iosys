@@ -1,2 +1,0 @@
-[fsspec.specs]
-jfs = juicefs.JuiceFS
