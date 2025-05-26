@@ -37,7 +37,6 @@ jobs:
       - name: Check for changes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: bash
         run: |
           git config --global user.name "$(git log -1 --pretty=format:%an)"
           git config --global user.email "$(git log -1 --pretty=format:%ae)"
@@ -47,3 +46,4 @@ jobs:
             git push
           else
             echo "No changes to commit."
+          fi
