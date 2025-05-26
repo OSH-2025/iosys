@@ -16,21 +16,42 @@
 
     <!-- Main Content Area -->
     <div class="flex flex-1 overflow-hidden">
-      <!-- Left Sidebar -->
-      <aside class="w-108 max-w-40% bg-white border-r border-gray-200 p-4 flex flex-col">
+      <!-- Left Sidebar - Chat -->
+      <aside class="w-80 max-w-40% bg-white border-r border-gray-200 p-4 flex flex-col">
         <div class="flex-1 overflow-hidden">
           <!-- Chat messages component -->
           <Messages />
+        </div>
+
+        <!-- Mode Toggle -->
+        <div class="mb-3">
+          <div class="flex bg-gray-100 rounded-md p-1">
+            <button 
+              @click="chatMode = 'chat'"
+              :class="['flex-1 py-2 px-3 rounded text-sm transition-colors', 
+                      chatMode === 'chat' ? 'bg-white text-black shadow-sm' : 'text-gray-600 hover:text-black']"
+            >
+              💬 Chat
+            </button>
+            <button 
+              @click="chatMode = 'agent'"
+              :class="['flex-1 py-2 px-3 rounded text-sm transition-colors', 
+                      chatMode === 'agent' ? 'bg-white text-black shadow-sm' : 'text-gray-600 hover:text-black']"
+            >
+              🤖 Agent
+            </button>
+          </div>
         </div>
 
         <!-- Input and Submit Button -->
         <div class="mt-4">
           <input v-model="inputText" type="text"
             class="w-full border border-gray-200 rounded-md p-2 mb-3 focus:outline-none focus:border-black transition-colors duration-150"
-            placeholder="Enter text..." />
+            :placeholder="chatMode === 'chat' ? 'Enter text...' : 'Enter file management command...'" 
+            @keyup.enter="handleSubmit" />
           <button @click="handleSubmit"
             class="w-full bg-black hover:bg-gray-800 text-white font-normal py-2 px-4 rounded-md transition duration-150">
-            Submit
+            {{ chatMode === 'chat' ? 'Submit' : 'Execute' }}
           </button>
         </div>
       </aside>
@@ -61,23 +82,44 @@ import { errorMessage, messages } from './states';
 import FilePreview from './components/FilePreview.vue';
 
 const inputText = ref('');
+const chatMode = ref<'chat' | 'agent'>('chat');
 
 const handleSubmit = async () => {
   const input = inputText.value.trim();
   if (!input) return;
   inputText.value = '';
+  
   messages.push(
     { content: input, fromUser: true },
     { content: '...', fromUser: false },
   );
+
   try {
-    const { response } = await rpc.chat({ input });
-    messages.pop();
-    messages.push({ content: response, fromUser: false });
+    if (chatMode.value === 'chat') {
+      const { response } = await rpc.chat({ input });
+      messages.pop();
+      messages.push({ content: response, fromUser: false });
+    } else {
+      const result = await rpc.agent({ command: input });
+      messages.pop();
+      
+      // Format agent response for display
+      let responseText = '';
+      if (result.status === 'success') {
+        responseText = `✅ ${result.message || 'Command executed successfully'}`;
+        if (result.result) {
+          responseText += `\n\nResult:\n${JSON.stringify(result.result, null, 2)}`;
+        }
+      } else {
+        responseText = `❌ ${result.message || 'Command failed'}`;
+      }
+      
+      messages.push({ content: responseText, fromUser: false });
+    }
   } catch (e) {
     inputText.value ||= input;
     messages.pop();
-    messages.push({ content: '❌' + e, fromUser: false });
+    messages.push({ content: '❌ ' + e, fromUser: false });
   }
 };
 

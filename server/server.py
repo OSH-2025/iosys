@@ -87,9 +87,14 @@ async def agent_endpoint(request: AgentRequest):
 
 
 @app.get("/files")
-async def list_files(path: str = ""):
+@app.post("/files")
+async def list_files(request: dict = None, path: str = ""):
     """List files and directories in the agent's managed directory"""
     try:
+        # Handle both GET and POST requests
+        if request and 'path' in request:
+            path = request['path'] or ""
+        
         target_path = Path(agent_base_dir) / path
         if not target_path.exists() or not str(target_path).startswith(agent_base_dir):
             raise HTTPException(status_code=404, detail="Path not found")
