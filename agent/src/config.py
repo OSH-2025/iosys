@@ -1,4 +1,4 @@
-from typing import Dict, Any, Optional
+from typing import Optional
 import logging
 
 class AgentConfig:
@@ -32,23 +32,4 @@ class AgentConfig:
         logging.basicConfig(
             level=numeric_level,
             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
-        
-    def to_dict(self) -> Dict[str, Any]:
-        """将配置转换为字典"""        
-        return {
-            "llm_model": self.llm_model,
-            "llm_api_base": self.llm_api_base,
-            "base_dir": self.base_dir,
-        }
-        
-    @classmethod
-    def from_dict(cls, config_dict: Dict[str, Any]) -> 'AgentConfig':
-        """从字典创建配置实例"""
-        return cls(
-            llm_api_key=config_dict.get("llm_api_key"),
-            llm_model=config_dict.get("llm_model", "deepseek-chat"),
-            llm_api_base=config_dict.get("llm_api_base"),
-            base_dir=config_dict.get("base_dir", "./"),
-            log_level=config_dict.get("log_level", "INFO")
         )
