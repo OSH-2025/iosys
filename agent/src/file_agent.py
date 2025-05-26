@@ -241,7 +241,7 @@ class FileAgent:
             # 检查操作类型是否受支持
             op = data["operation"].lower()
             return any(op == op_type.value for op_type in OperationType)
-        except:
+        except Exception:
             return False
 
     def _execute_operation(self, data: Dict[str, Any]) -> Dict[str, Any]:
