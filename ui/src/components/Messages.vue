@@ -1,5 +1,5 @@
 <template>
-  <div class="messages-container flex flex-col gap-3 overflow-y-auto pb-4">
+  <div class="messages-container flex flex-col gap-3 overflow-y-auto p-4">
     <div 
       v-for="(message, index) in messages" 
       :key="index" 

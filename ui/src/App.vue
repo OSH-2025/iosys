@@ -17,14 +17,14 @@
     <!-- Main Content Area -->
     <div class="flex flex-1 overflow-hidden">
       <!-- Left Sidebar - Chat -->
-      <aside class="w-80 max-w-40% bg-white border-r border-gray-200 p-4 flex flex-col">
+      <aside class="w-80 max-w-40% bg-white border-r border-gray-200 flex flex-col">
         <div class="flex-1 overflow-hidden">
           <!-- Chat messages component -->
           <Messages />
         </div>
 
         <!-- Mode Toggle -->
-        <div class="mb-3">
+        <div class="mb-3 mx-4">
           <div class="flex bg-gray-100 rounded-md p-1">
             <button 
               @click="chatMode = 'chat'"
@@ -44,10 +44,10 @@
         </div>
 
         <!-- Input and Submit Button -->
-        <div class="mt-4">
+        <div class="m-4 mt-0">
           <input v-model="inputText" type="text"
             class="w-full border border-gray-200 rounded-md p-2 mb-3 focus:outline-none focus:border-black transition-colors duration-150"
-            :placeholder="chatMode === 'chat' ? 'Enter text...' : 'Enter file management command...'" 
+            :placeholder="chatMode === 'chat' ? 'Enter text...' : 'Enter command...'" 
             @keyup.enter="handleSubmit" />
           <button @click="handleSubmit"
             class="w-full bg-black hover:bg-gray-800 text-white font-normal py-2 px-4 rounded-md transition duration-150">
