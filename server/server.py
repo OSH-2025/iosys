@@ -16,11 +16,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-MODEL = "google/gemini-2.0-flash-001"
+MODEL = os.environ.get("LLM_MODEL_NAME")
 
 client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=os.environ.get("OPEN_ROUTER_API_KEY"),
+    base_url=os.environ.get("LLM_BASE_URL"),
+    api_key=os.environ.get("LLM_API_KEY"),
 )
 
 @app.post("/status")

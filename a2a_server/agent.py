@@ -85,9 +85,9 @@ class CurrencyAgent:
 
     def __init__(self):
         self.model = ChatOpenAI(
-            model_name="google/gemini-2.0-flash-001",
-            openai_api_key=os.environ.get('OPEN_ROUTER_API_KEY'),
-            openai_api_base="https://openrouter.ai/api/v1",
+            model_name=os.environ.get('LLM_MODEL_NAME'),
+            openai_api_key=os.environ.get('LLM_API_KEY'),
+            openai_api_base=os.environ.get('LLM_BASE_URL'),
         )
         self.tools = [get_exchange_rate]
 

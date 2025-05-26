@@ -2,49 +2,35 @@
 # -*- coding: utf-8 -*-
 
 import os
-import sys
 import argparse
 import json
-
-# 添加项目根目录到Python路径
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-# 尝试加载.env文件
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-    print("已从.env文件加载环境变量")
-except ImportError:
-    print("未安装python-dotenv, 无法从.env文件加载环境变量")
+from dotenv import load_dotenv
 
 from src.app import FileManagerApp
 from src.config import AgentConfig
 
+
 def setup_args_parser() -> argparse.ArgumentParser:
     """设置命令行参数解析器"""
     parser = argparse.ArgumentParser(description='基于LLM的文件管理Agent')
-    
+
     parser.add_argument('--base-dir', type=str, default='./data',
                         help='基础目录，所有文件操作将在此目录下执行 (默认: ./data)')
-    
-    parser.add_argument('--api-key', type=str, default=None,
-                        help='LLM API密钥，如不提供将尝试从环境变量获取')
-    
-    parser.add_argument('--model', type=str, default='deepseek-chat',
-                        help='使用的LLM模型 (默认: deepseek-chat)')
-    
+
     parser.add_argument('--command', type=str,
                         help='要执行的单条命令')
-    
+
     parser.add_argument('--demo', action='store_true',
                         help='运行演示模式 (默认)')
-    
+
     return parser
+
 
 def process_single_command(app: FileManagerApp, command: str) -> dict:
     """处理单条命令"""
     result = app.process_command(command)
     return result
+
 
 def run_demo(app: FileManagerApp) -> None:
     """运行演示程序"""
@@ -55,10 +41,10 @@ def run_demo(app: FileManagerApp) -> None:
         "在documents目录下创建一个名为report.md的文件",
         "将'# 演示报告\n\n这是一个演示报告'写入documents/report.md文件"
     ]
-    
+
     # 确保数据目录存在
     os.makedirs("./data", exist_ok=True)
-    
+
     # 执行命令
     print("=== 文件管理Agent演示 ===\n")
     for cmd in commands:
@@ -66,33 +52,26 @@ def run_demo(app: FileManagerApp) -> None:
         result = app.process_command(cmd)
         print(f"结果: {json.dumps(result, ensure_ascii=False, indent=2)}")
         print("-" * 50)
-    
+
     print("\n演示完成，请检查 './data' 目录查看结果")
+
 
 def main():
     """主函数"""
     parser = setup_args_parser()
     args = parser.parse_args()
-    
-    # 按优先级获取API密钥: 命令行参数 > 环境变量DEEPSEEK_API_KEY > 环境变量LLM_API_KEY
-    api_key = args.api_key or os.environ.get('DEEPSEEK_API_KEY') or os.environ.get('LLM_API_KEY')
-    
+
     # 确保基础目录存在
     base_dir = args.base_dir or os.environ.get('BASE_DIR', './data')
     os.makedirs(base_dir, exist_ok=True)
     # 创建配置，确保base_dir是绝对路径
-    abs_base_dir = os.path.abspath(base_dir) 
+    abs_base_dir = os.path.abspath(base_dir)
 
-    config = AgentConfig(
-        llm_api_key=api_key,
-        llm_model=args.model,
-        llm_api_base=os.environ.get('DEEPSEEK_API_BASE'),
-        base_dir=abs_base_dir
-    )
-    
+    config = AgentConfig(base_dir=abs_base_dir)
+
     # 创建应用
     app = FileManagerApp(config)
-    
+
     # 根据命令行参数决定执行模式
     if args.command:
         # 单条命令模式
@@ -102,5 +81,7 @@ def main():
         # 默认使用演示模式
         run_demo(app)
 
+
 if __name__ == "__main__":
+    load_dotenv()
     main()
