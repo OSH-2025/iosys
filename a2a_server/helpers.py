@@ -30,13 +30,11 @@ def create_task_obj(message_send_params: MessageSendParams) -> Task:
     )
 
 
-def update_task_with_agent_response(
-    task: Task, agent_response: dict[str, Any]
-) -> None:
+def update_task_with_agent_response(task: Task, agent_response: dict[str, Any]) -> None:
     """Updates the provided task with the agent response."""
     task.status.timestamp = datetime.now().isoformat()
-    parts: list[Part] = [Part(root=TextPart(text=agent_response['content']))]
-    if agent_response['require_user_input']:
+    parts: list[Part] = [Part(root=TextPart(text=agent_response["content"]))]
+    if agent_response["require_user_input"]:
         task.status.state = TaskState.input_required
         task.status.message = Message(
             messageId=str(uuid4()),
@@ -57,9 +55,9 @@ def process_streaming_agent_response(
     agent_response: dict[str, Any],
 ) -> tuple[TaskArtifactUpdateEvent | None, TaskStatusUpdateEvent]:
     """Processes the streaming agent responses and returns TaskArtifactUpdateEvent and TaskStatusUpdateEvent."""
-    is_task_complete = agent_response['is_task_complete']
-    require_user_input = agent_response['require_user_input']
-    parts: list[Part] = [Part(root=TextPart(text=agent_response['content']))]
+    is_task_complete = agent_response["is_task_complete"]
+    require_user_input = agent_response["require_user_input"]
+    parts: list[Part] = [Part(root=TextPart(text=agent_response["content"]))]
 
     end_stream = False
     artifact = None

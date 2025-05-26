@@ -47,9 +47,7 @@ class CurrencyAgentExecutor(AgentExecutor):
             await self.task_store.save(task)
 
         # invoke the underlying agent
-        agent_response: dict[str, Any] = self.agent.invoke(
-            query, task.contextId
-        )
+        agent_response: dict[str, Any] = self.agent.invoke(query, task.contextId)
 
         update_task_with_agent_response(task, agent_response)
         return SendMessageResponse(
@@ -91,9 +89,7 @@ class CurrencyAgentExecutor(AgentExecutor):
     ) -> CancelTaskResponse:
         """Handler for 'tasks/cancel' requests."""
         return CancelTaskResponse(
-            root=JSONRPCErrorResponse(
-                id=request.id, error=TaskNotCancelableError()
-            )
+            root=JSONRPCErrorResponse(id=request.id, error=TaskNotCancelableError())
         )
 
     async def on_resubscribe(  # type: ignore
@@ -101,14 +97,12 @@ class CurrencyAgentExecutor(AgentExecutor):
     ) -> AsyncGenerator[SendMessageStreamingResponse, None]:
         """Handler for 'tasks/resubscribe' requests."""
         yield SendMessageStreamingResponse(
-            root=JSONRPCErrorResponse(
-                id=request.id, error=UnsupportedOperationError()
-            )
+            root=JSONRPCErrorResponse(id=request.id, error=UnsupportedOperationError())
         )
 
     def _get_user_query(self, task_send_params: MessageSendParams) -> str:
         """Helper to get user query from task send params."""
         part = task_send_params.message.parts[0].root
         if not isinstance(part, TextPart):
-            raise ValueError('Only text parts are supported')
+            raise ValueError("Only text parts are supported")
         return part.text

@@ -1,0 +1,55 @@
+name: Auto Format with Ruff
+
+on:
+  push:
+    branches:
+      - 'main'
+  pull_request:
+    branches:
+      - 'main'
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      # Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ github.head_ref }}
+
+      # Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v5
+
+      # Install ruff
+      - name: Install ruff
+        run: pip install ruff
+
+      # Run ruff
+      - name: Run ruff
+        run: |
+          ruff check --fix
+          ruff format
+
+      # Check for changes and push with sufficient permissions
+      - name: Check for changes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global user.name "$(git log -1 --pretty=format:%an)"
+          git config --global user.email "$(git log -1 --pretty=format:%ae)"
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}
+          if [ -n "$(git status --porcelain)" ]; then
+            git add .
+            git commit -m "chore: lint and format code"
+            git push origin HEAD:${{ github.head_ref }}
+          else
+            echo "No changes to commit."
+          fi
