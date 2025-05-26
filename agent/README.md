@@ -11,9 +11,7 @@
 ```
 agent/
 ├── README.md           # 项目说明文档
-├── USAGE_GUIDE.md      # 使用指南
 ├── requirements.txt    # 依赖项列表
-├── run_agent.ps1       # 快速启动脚本
 ├── run_demo.py         # 演示和交互式入口
 ├── src/                # 源代码目录
 │   ├── file_agent.py   # 文件管理Agent核心实现
@@ -56,24 +54,15 @@ export LLM_API_KEY=your_api_key_here
 
 ### 运行程序
 ```bash
-# 使用PowerShell脚本（推荐，Windows）
-.\run_agent.ps1
-
-# 或直接使用Python
-# 交互模式
-python run_demo.py --interactive
-
 # 执行单条命令
 python run_demo.py --command "创建一个名为test.txt的文件"
 
 # 演示模式
 python run_demo.py --demo
 ```
-python src/main.py --command "创建一个名为test.txt的文件"
+
 
 # 从文件执行命令
-python src/main.py --test-file test_commands.txt
-```
 
 ## 使用示例
 以下是一些常见的使用示例：
