@@ -5,3 +5,7 @@ dist
 **/.DS_Store
 __pycache__
 .env
+jfs/cache
+jfs/juicefs
+jfs/storage
+jfs/jfs.db

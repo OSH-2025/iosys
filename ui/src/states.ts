@@ -1,6 +1,5 @@
 import { reactive, ref, shallowRef } from "vue";
-import { Network, DataSet } from 'vis-network/standalone/esm/vis-network';
-import type { Node, Edge, Options } from 'vis-network/standalone/esm/vis-network';
+import type { Node, Edge } from 'vis-network/standalone/esm/vis-network';
 
 interface Message {
   fromUser: boolean;

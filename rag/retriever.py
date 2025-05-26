@@ -11,8 +11,23 @@ class IOSYSQuery:
     max_results: int = 10
 
 class IOSYSResponse:
-    file_list: dict[str, float] = {}
+    file_list: list[str] = []
+    weights: list[float] = []
+    description: list[str] = []
 
 class IOSYSRetriever:
+    def check_diff(self) -> bool:
+        # 检查新的 virtual FS 和缓存的 virtual FS 之间的差异，指示是否需要更新
+        # 可用于检查 RAG 状态确定是否更新
+        return False
+
+    def update(self):
+        # 检查新的 virtual FS 和缓存的 virtual FS 之间的差异，并对图数据做出更新
+        # 在做完所有需求的增删改后执行
+        if not self.check_diff():
+            return
+        raise NotImplementedError("This method is not implemented yet.")
+
     def retrieve(self, query: IOSYSQuery) -> IOSYSResponse:
+        # 根据 query 信息返回带权重和描述（可选）的文件列表
         raise NotImplementedError("This method is not implemented yet.")
