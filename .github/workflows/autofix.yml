@@ -16,8 +16,6 @@ jobs:
       # Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
 
       # Set up Python
       - name: Set up Python
