@@ -5,7 +5,8 @@ from typing import Dict, Any
 from enum import Enum
 
 from openai import Client
-from src.config import AgentConfig
+
+from agent.src.config import AgentConfig
 
 
 class OperationType(str, Enum):

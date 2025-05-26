@@ -3,8 +3,8 @@ from typing import Dict, Any, Optional
 import json
 import openai
 
-from src.file_agent import FileAgent
-from src.config import AgentConfig
+from agent.src.file_agent import FileAgent
+from agent.src.config import AgentConfig
 
 logger = logging.getLogger(__name__)
 
