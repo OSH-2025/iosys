@@ -4,6 +4,7 @@ import subprocess
 import sys
 import os
 
+
 def start_main_server():
     print("Starting main server...")
     uvicorn.run(
@@ -13,9 +14,11 @@ def start_main_server():
         reload=True,
     )
 
+
 def start_a2a_server():
     print("Starting A2A server...")
     subprocess.Popen([sys.executable, "./a2a_server/main.py"], shell=True)
+
 
 if __name__ == "__main__":
     load_dotenv()

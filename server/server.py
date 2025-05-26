@@ -23,6 +23,7 @@ client = OpenAI(
     api_key=os.environ.get("LLM_API_KEY"),
 )
 
+
 @app.post("/status")
 async def status_endpoint():
     return {
@@ -32,8 +33,10 @@ async def status_endpoint():
         "fs": "ready",
     }
 
+
 class ChatRequest(BaseModel):
     input: str
+
 
 @app.post("/chat")
 async def chat_endpoint(request: ChatRequest):
@@ -62,13 +65,15 @@ async def chat_endpoint(request: ChatRequest):
 class PreviewRequest(BaseModel):
     id: str
 
+
 @app.post("/preview")
 async def preview_endpoint(request: PreviewRequest):
     return {
         "url": f"http://localhost:8000/raw?filepath={request.id}",
     }
 
+
 # GET /raw?filepath={filepath}
 @app.get("/raw")
 async def raw_endpoint(filepath: str):
-    return FileResponse(filepath, media_type='image/png')
+    return FileResponse(filepath, media_type="image/png")

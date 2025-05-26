@@ -17,13 +17,11 @@ class FileManagerApp:
         初始化文件管理应用
 
         Args:
-            config: 配置对象, 如果为None则使用默认配置       
+            config: 配置对象, 如果为None则使用默认配置
         """
         self.config = config or AgentConfig()
         self.llm_client = self._init_llm_client()
-        self.agent = FileAgent(
-            config=self.config,
-            llm_client=self.llm_client)
+        self.agent = FileAgent(config=self.config, llm_client=self.llm_client)
         logger.info(f"文件管理应用初始化完成，基础目录: {self.config.base_dir}")
 
     def _init_llm_client(self):
@@ -33,9 +31,7 @@ class FileManagerApp:
         Returns:
             LLM 客户端实例
         """
-        client_args = {
-            "api_key": self.config.llm_api_key
-        }
+        client_args = {"api_key": self.config.llm_api_key}
         # 如果提供了自定义API基础URL，则使用它
         if self.config.llm_api_base:
             client_args["base_url"] = self.config.llm_api_base
@@ -62,7 +58,4 @@ class FileManagerApp:
         except Exception as e:
             error_msg = f"处理命令时出错: {str(e)}"
             logger.error(f"{error_msg}")
-            return {
-                "status": "error",
-                "message": error_msg
-            }
+            return {"status": "error", "message": error_msg}

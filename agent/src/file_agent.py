@@ -10,6 +10,7 @@ from src.config import AgentConfig
 
 class OperationType(str, Enum):
     """支持的文件操作类型枚举"""
+
     CREATE_FILE = "create_file"
     CREATE_DIRECTORY = "create_directory"
     DELETE_FILE = "delete_file"
@@ -41,11 +42,7 @@ class FunctionResult:
 
     def to_dict(self) -> Dict[str, Any]:
         """将结果转换为字典格式"""
-        return {
-            "status": self.status,
-            "message": self.message,
-            "data": self.data
-        }
+        return {"status": self.status, "message": self.message, "data": self.data}
 
 
 class FileAgent:
@@ -103,15 +100,11 @@ class FileAgent:
 
             # 验证解析结果
             if not self._validate_parsed_data(parsed_data):
-                return {
-                    "error": "无法理解请求, 请提供更明确的文件操作指令"
-                }
+                return {"error": "无法理解请求, 请提供更明确的文件操作指令"}
 
             return parsed_data
         except Exception as e:
-            return {
-                "error": f"解析输入时出错: {str(e)}"
-            }
+            return {"error": f"解析输入时出错: {str(e)}"}
 
     def _create_parse_prompt(self, user_input: str) -> str:
         """
@@ -160,15 +153,19 @@ class FileAgent:
             response = self.llm_client.chat.completions.create(
                 model=self.config.llm_model,
                 messages=[
-                    {"role": "system", "content": "你是一个专业的文件操作解析助手, 擅长将自然语言指令转换为结构化JSON。"},
-                    {"role": "user", "content": prompt}
+                    {
+                        "role": "system",
+                        "content": "你是一个专业的文件操作解析助手, 擅长将自然语言指令转换为结构化JSON。",
+                    },
+                    {"role": "user", "content": prompt},
                 ],
-                response_format={"type": "json_object"}
+                response_format={"type": "json_object"},
             )
             # 处理不同API可能返回的不同响应格式
             content = self._extract_content_from_response(response)
             # 记录原始响应内容, 用于调试
             import logging
+
             logger = logging.getLogger(__name__)
             logger.info(f"LLM响应原始内容: {content}")
             return content
@@ -176,6 +173,7 @@ class FileAgent:
             # 如果API调用失败, 返回错误JSON
             error_msg = str(e)
             import logging
+
             logger = logging.getLogger(__name__)
             logger.error(f"LLM API调用异常: {error_msg}")
             return json.dumps({"error": f"LLM API调用失败: {error_msg}"})
@@ -193,24 +191,24 @@ class FileAgent:
         # 尝试不同的响应格式
         try:
             # OpenAI格式
-            if hasattr(response, 'choices') and hasattr(response.choices[0], 'message'):
+            if hasattr(response, "choices") and hasattr(response.choices[0], "message"):
                 return response.choices[0].message.content
             # 兼容format 1: 可能有message.content
-            elif hasattr(response, 'message') and hasattr(response.message, 'content'):
+            elif hasattr(response, "message") and hasattr(response.message, "content"):
                 return response.message.content
             # 兼容format 2: 可能直接有content属性
-            elif hasattr(response, 'content'):
+            elif hasattr(response, "content"):
                 return response.content
             # 兼容format 3: 可能是字典类型
             elif isinstance(response, dict):
-                if 'choices' in response and len(response['choices']) > 0:
-                    choice = response['choices'][0]
-                    if 'message' in choice and 'content' in choice['message']:
-                        return choice['message']['content']
-                    elif 'text' in choice:
-                        return choice['text']
-                elif 'content' in response:
-                    return response['content']
+                if "choices" in response and len(response["choices"]) > 0:
+                    choice = response["choices"][0]
+                    if "message" in choice and "content" in choice["message"]:
+                        return choice["message"]["content"]
+                    elif "text" in choice:
+                        return choice["text"]
+                elif "content" in response:
+                    return response["content"]
             # 兼容format 4: 如果是字符串, 直接返回
             elif isinstance(response, str):
                 return response
@@ -274,9 +272,7 @@ class FileAgent:
 
         if operation not in handlers:
             result = FunctionResult(
-                status="error",
-                message=f"不支持的操作类型: {operation}",
-                data={}
+                status="error", message=f"不支持的操作类型: {operation}", data={}
             )
             return result.to_dict()
 
@@ -289,9 +285,7 @@ class FileAgent:
             return handlers[operation](parameters)
         except Exception as e:
             result = FunctionResult(
-                status="error",
-                message=f"执行操作时出错: {str(e)}",
-                data={}
+                status="error", message=f"执行操作时出错: {str(e)}", data={}
             )
 
             return result.to_dict()
@@ -321,7 +315,8 @@ class FileAgent:
 
         try:
             file_path = self._normalize_path(
-                os.path.join(params["path"], params["file_name"]))
+                os.path.join(params["path"], params["file_name"])
+            )
             content = params.get("content", "")
 
             # 确保目录存在
@@ -329,18 +324,19 @@ class FileAgent:
 
             # 检查文件是否已存在
             if os.path.exists(file_path):
-                return {"status": "error", "message": f"文件已存在: {params['file_name']}"}
+                return {
+                    "status": "error",
+                    "message": f"文件已存在: {params['file_name']}",
+                }
 
             # 创建文件
-            with open(file_path, 'w', encoding='utf-8') as f:
+            with open(file_path, "w", encoding="utf-8") as f:
                 f.write(content)
 
             result = FunctionResult(
                 status="success",
                 message=f"文件创建成功: {params['file_name']}",
-                data={
-                    "path": os.path.relpath(file_path, self.base_dir)
-                }
+                data={"path": os.path.relpath(file_path, self.base_dir)},
             )
 
             return result.to_dict()
@@ -350,11 +346,7 @@ class FileAgent:
             #     "path": os.path.relpath(file_path, self.base_dir)
             # }
         except Exception as e:
-            result = FunctionResult(
-                status="error",
-                message=str(e),
-                data={}
-            )
+            result = FunctionResult(status="error", message=str(e), data={})
 
             return result.to_dict()
             # return {"status": "error", "message": str(e)}
@@ -369,12 +361,16 @@ class FileAgent:
             # return {"status": "error", "message": "缺少必要参数: directory_name 或 path"}
 
         try:
-            dir_path = self._normalize_path(os.path.join(
-                params["path"], params["directory_name"]))
+            dir_path = self._normalize_path(
+                os.path.join(params["path"], params["directory_name"])
+            )
 
             # 检查目录是否已存在
             if os.path.exists(dir_path):
-                return {"status": "error", "message": f"目录已存在: {params['directory_name']}"}
+                return {
+                    "status": "error",
+                    "message": f"目录已存在: {params['directory_name']}",
+                }
 
             # 创建目录
             os.makedirs(dir_path, exist_ok=True)
@@ -382,9 +378,7 @@ class FileAgent:
             result = FunctionResult(
                 status="success",
                 message=f"目录创建成功: {params['directory_name']}",
-                data={
-                    "path": os.path.relpath(dir_path, self.base_dir)
-                }
+                data={"path": os.path.relpath(dir_path, self.base_dir)},
             )
 
             return result.to_dict()
@@ -394,11 +388,7 @@ class FileAgent:
             #     "path": os.path.relpath(dir_path, self.base_dir)
             # }
         except Exception as e:
-            result = FunctionResult(
-                status="error",
-                message=str(e),
-                data={}
-            )
+            result = FunctionResult(status="error", message=str(e), data={})
             return result.to_dict()
             # return {"status": "error", "message": str(e)}
 
@@ -414,14 +404,17 @@ class FileAgent:
 
             # 检查文件是否存在
             if not os.path.exists(file_path) or not os.path.isfile(file_path):
-                return {"status": "error", "message": f"文件不存在: {params['file_path']}"}
+                return {
+                    "status": "error",
+                    "message": f"文件不存在: {params['file_path']}",
+                }
 
             # 删除文件
             os.remove(file_path)
 
             return {
                 "status": "success",
-                "message": f"文件删除成功: {params['file_path']}"
+                "message": f"文件删除成功: {params['file_path']}",
             }
         except Exception as e:
             return {"status": "error", "message": str(e)}
@@ -436,14 +429,17 @@ class FileAgent:
 
             # 检查目录是否存在
             if not os.path.exists(dir_path) or not os.path.isdir(dir_path):
-                return {"status": "error", "message": f"目录不存在: {params['directory_path']}"}
+                return {
+                    "status": "error",
+                    "message": f"目录不存在: {params['directory_path']}",
+                }
 
             # 删除目录
             shutil.rmtree(dir_path)
 
             return {
                 "status": "success",
-                "message": f"目录删除成功: {params['directory_path']}"
+                "message": f"目录删除成功: {params['directory_path']}",
             }
         except Exception as e:
             return {"status": "error", "message": str(e)}
@@ -451,7 +447,10 @@ class FileAgent:
     def _move_file(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """移动文件"""
         if "source_path" not in params or "destination_path" not in params:
-            return {"status": "error", "message": "缺少必要参数: source_path 或 destination_path"}
+            return {
+                "status": "error",
+                "message": "缺少必要参数: source_path 或 destination_path",
+            }
 
         try:
             src_path = self._normalize_path(params["source_path"])
@@ -459,14 +458,20 @@ class FileAgent:
 
             # 检查源文件是否存在
             if not os.path.exists(src_path) or not os.path.isfile(src_path):
-                return {"status": "error", "message": f"源文件不存在: {params['source_path']}"}
+                return {
+                    "status": "error",
+                    "message": f"源文件不存在: {params['source_path']}",
+                }
 
             # 确保目标目录存在
             os.makedirs(os.path.dirname(dst_path), exist_ok=True)
 
             # 检查目标文件是否已存在
             if os.path.exists(dst_path):
-                return {"status": "error", "message": f"目标文件已存在: {params['destination_path']}"}
+                return {
+                    "status": "error",
+                    "message": f"目标文件已存在: {params['destination_path']}",
+                }
 
             # 移动文件
             shutil.move(src_path, dst_path)
@@ -474,7 +479,7 @@ class FileAgent:
             return {
                 "status": "success",
                 "message": f"文件移动成功: {params['source_path']} -> {params['destination_path']}",
-                "new_path": os.path.relpath(dst_path, self.base_dir)
+                "new_path": os.path.relpath(dst_path, self.base_dir),
             }
         except Exception as e:
             return {"status": "error", "message": str(e)}
@@ -482,7 +487,10 @@ class FileAgent:
     def _move_directory(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """移动目录"""
         if "source_path" not in params or "destination_path" not in params:
-            return {"status": "error", "message": "缺少必要参数: source_path 或 destination_path"}
+            return {
+                "status": "error",
+                "message": "缺少必要参数: source_path 或 destination_path",
+            }
 
         try:
             src_path = self._normalize_path(params["source_path"])
@@ -490,11 +498,17 @@ class FileAgent:
 
             # 检查源目录是否存在
             if not os.path.exists(src_path) or not os.path.isdir(src_path):
-                return {"status": "error", "message": f"源目录不存在: {params['source_path']}"}
+                return {
+                    "status": "error",
+                    "message": f"源目录不存在: {params['source_path']}",
+                }
 
             # 检查目标目录是否已存在
             if os.path.exists(dst_path):
-                return {"status": "error", "message": f"目标目录已存在: {params['destination_path']}"}
+                return {
+                    "status": "error",
+                    "message": f"目标目录已存在: {params['destination_path']}",
+                }
 
             # 确保目标父目录存在
             os.makedirs(os.path.dirname(dst_path), exist_ok=True)
@@ -505,7 +519,7 @@ class FileAgent:
             return {
                 "status": "success",
                 "message": f"目录移动成功: {params['source_path']} -> {params['destination_path']}",
-                "new_path": os.path.relpath(dst_path, self.base_dir)
+                "new_path": os.path.relpath(dst_path, self.base_dir),
             }
         except Exception as e:
             return {"status": "error", "message": str(e)}
@@ -526,11 +540,17 @@ class FileAgent:
 
             # 检查源文件是否存在
             if not os.path.exists(file_path) or not os.path.isfile(file_path):
-                return {"status": "error", "message": f"文件不存在: {params['file_path']}"}
+                return {
+                    "status": "error",
+                    "message": f"文件不存在: {params['file_path']}",
+                }
 
             # 检查新文件名是否已存在
             if os.path.exists(new_path):
-                return {"status": "error", "message": f"文件已存在: {params['new_name']}"}
+                return {
+                    "status": "error",
+                    "message": f"文件已存在: {params['new_name']}",
+                }
 
             # 重命名文件
             os.rename(file_path, new_path)
@@ -538,7 +558,7 @@ class FileAgent:
             return {
                 "status": "success",
                 "message": f"文件重命名成功: {params['file_path']} -> {params['new_name']}",
-                "new_path": os.path.relpath(new_path, self.base_dir)
+                "new_path": os.path.relpath(new_path, self.base_dir),
             }
         except Exception as e:
             return {"status": "error", "message": str(e)}
@@ -559,11 +579,17 @@ class FileAgent:
 
             # 检查源目录是否存在
             if not os.path.exists(dir_path) or not os.path.isdir(dir_path):
-                return {"status": "error", "message": f"目录不存在: {params['directory_path']}"}
+                return {
+                    "status": "error",
+                    "message": f"目录不存在: {params['directory_path']}",
+                }
 
             # 检查新目录名是否已存在
             if os.path.exists(new_path):
-                return {"status": "error", "message": f"目录已存在: {params['new_name']}"}
+                return {
+                    "status": "error",
+                    "message": f"目录已存在: {params['new_name']}",
+                }
 
             # 重命名目录
             os.rename(dir_path, new_path)
@@ -571,7 +597,7 @@ class FileAgent:
             return {
                 "status": "success",
                 "message": f"目录重命名成功: {params['directory_path']} -> {params['new_name']}",
-                "new_path": os.path.relpath(new_path, self.base_dir)
+                "new_path": os.path.relpath(new_path, self.base_dir),
             }
         except Exception as e:
             return {"status": "error", "message": str(e)}
@@ -588,7 +614,10 @@ class FileAgent:
 
             # 检查目录是否存在
             if not os.path.exists(dir_path) or not os.path.isdir(dir_path):
-                return {"status": "error", "message": f"目录不存在: {params['directory_path']}"}
+                return {
+                    "status": "error",
+                    "message": f"目录不存在: {params['directory_path']}",
+                }
 
             # 列出目录内容
             items = os.listdir(dir_path)
@@ -605,10 +634,7 @@ class FileAgent:
             return {
                 "status": "success",
                 "message": f"成功列出目录内容: {params['directory_path']}",
-                "contents": {
-                    "files": files,
-                    "directories": directories
-                }
+                "contents": {"files": files, "directories": directories},
             }
         except Exception as e:
             return {"status": "error", "message": str(e)}
@@ -625,16 +651,19 @@ class FileAgent:
 
             # 检查文件是否存在
             if not os.path.exists(file_path) or not os.path.isfile(file_path):
-                return {"status": "error", "message": f"文件不存在: {params['file_path']}"}
+                return {
+                    "status": "error",
+                    "message": f"文件不存在: {params['file_path']}",
+                }
 
             # 读取文件内容
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 content = f.read()
 
             return {
                 "status": "success",
                 "message": f"成功读取文件: {params['file_path']}",
-                "content": content
+                "content": content,
             }
         except Exception as e:
             return {"status": "error", "message": str(e)}
@@ -661,14 +690,14 @@ class FileAgent:
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
             # 写入文件
-            mode = 'a' if append else 'w'
-            with open(file_path, mode, encoding='utf-8') as f:
+            mode = "a" if append else "w"
+            with open(file_path, mode, encoding="utf-8") as f:
                 f.write(content)
 
             return {
                 "status": "success",
                 "message": f"成功{'追加' if append else '写入'}文件: {params['file_path']}",
-                "path": os.path.relpath(file_path, self.base_dir)
+                "path": os.path.relpath(file_path, self.base_dir),
             }
         except Exception as e:
             return {"status": "error", "message": str(e)}

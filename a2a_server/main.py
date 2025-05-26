@@ -10,6 +10,7 @@ from a2a.types import (
 from dotenv import load_dotenv
 import os
 
+
 def start_a2a(host: str, port: int):
     task_store = InMemoryTaskStore()
 
@@ -23,27 +24,29 @@ def start_a2a(host: str, port: int):
     )
     server.start(host=host, port=port)
 
+
 def get_agent_card(host: str, port: int):
     """Returns the Agent Card for the Currency Agent."""
     capabilities = AgentCapabilities(streaming=True, pushNotifications=True)
     skill = AgentSkill(
-        id='convert_currency',
-        name='Currency Exchange Rates Tool',
-        description='Helps with exchange values between various currencies',
-        tags=['currency conversion', 'currency exchange'],
-        examples=['What is exchange rate between USD and GBP?'],
+        id="convert_currency",
+        name="Currency Exchange Rates Tool",
+        description="Helps with exchange values between various currencies",
+        tags=["currency conversion", "currency exchange"],
+        examples=["What is exchange rate between USD and GBP?"],
     )
     return AgentCard(
-        name='Currency Agent',
-        description='Helps with exchange rates for currencies',
-        url=f'http://{host}:{port}/',
-        version='1.0.0',
-        defaultInputModes=['text', 'text/plain'],
-        defaultOutputModes=['text', 'text/plain'],
+        name="Currency Agent",
+        description="Helps with exchange rates for currencies",
+        url=f"http://{host}:{port}/",
+        version="1.0.0",
+        defaultInputModes=["text", "text/plain"],
+        defaultOutputModes=["text", "text/plain"],
         capabilities=capabilities,
         skills=[skill],
-        authentication=AgentAuthentication(schemes=['public']),
+        authentication=AgentAuthentication(schemes=["public"]),
     )
+
 
 if __name__ == "__main__":
     load_dotenv()
