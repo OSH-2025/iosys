@@ -27,7 +27,7 @@ client = OpenAI(
 )
 
 # Initialize Agent
-agent_base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'data'))
+agent_base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data"))
 os.makedirs(agent_base_dir, exist_ok=True)
 agent_config = AgentConfig(base_dir=agent_base_dir)
 file_manager = FileManagerApp(agent_config)
@@ -40,7 +40,7 @@ async def status_endpoint():
         "rag": "ready",
         "llm": MODEL,
         "fs": "ready",
-        "agent": "ready"
+        "agent": "ready",
     }
 
 
@@ -93,17 +93,19 @@ async def list_files(path: str = ""):
         target_path = Path(agent_base_dir) / path
         if not target_path.exists() or not str(target_path).startswith(agent_base_dir):
             raise HTTPException(status_code=404, detail="Path not found")
-        
+
         items = []
         for item in target_path.iterdir():
             relative_path = str(item.relative_to(agent_base_dir))
-            items.append({
-                "name": item.name,
-                "path": relative_path,
-                "type": "directory" if item.is_dir() else "file",
-                "size": item.stat().st_size if item.is_file() else None
-            })
-        
+            items.append(
+                {
+                    "name": item.name,
+                    "path": relative_path,
+                    "type": "directory" if item.is_dir() else "file",
+                    "size": item.stat().st_size if item.is_file() else None,
+                }
+            )
+
         return {"items": sorted(items, key=lambda x: (x["type"] == "file", x["name"]))}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -120,7 +122,7 @@ async def preview_endpoint(request: PreviewRequest):
         filepath = request.id
     else:
         filepath = os.path.join(agent_base_dir, request.id)
-    
+
     return {
         "url": f"http://localhost:8000/raw?filepath={filepath}",
     }
@@ -130,10 +132,13 @@ async def preview_endpoint(request: PreviewRequest):
 async def raw_endpoint(filepath: str):
     # Security check: ensure file is within allowed directories
     abs_filepath = os.path.abspath(filepath)
-    if not (abs_filepath.startswith(agent_base_dir) or abs_filepath.startswith(os.path.abspath("."))):
+    if not (
+        abs_filepath.startswith(agent_base_dir)
+        or abs_filepath.startswith(os.path.abspath("."))
+    ):
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     if not os.path.exists(abs_filepath):
         raise HTTPException(status_code=404, detail="File not found")
-    
+
     return FileResponse(abs_filepath)
