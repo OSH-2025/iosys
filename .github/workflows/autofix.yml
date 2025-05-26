@@ -12,10 +12,16 @@ jobs:
   format:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: write
+
     steps:
       # Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0 
 
       # Set up Python
       - name: Set up Python
@@ -31,22 +37,20 @@ jobs:
           ruff check --fix
           ruff format
 
+      # Get author email
+      - name: Get Author Email
+        id: get_author_email
+        run: echo "::set-output name=email::$(git log -1 --pretty=format:%ae || echo 'actions@github.com')"
+
+      # Get author name
+      - name: Get Author Name
+        id: get_author_name
+        run: echo "::set-output name=name::$(git log -1 --pretty=format:%an || echo 'GitHub Actions')"
+
       # Check for changes and push with sufficient permissions
-      - name: Check for changes
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git config --global user.name "$(git log -1 --pretty=format:%an)"
-          git config --global user.email "$(git log -1 --pretty=format:%ae)"
-          current_branch=$(git rev-parse --abbrev-ref HEAD)
-          if [ "$current_branch" = "HEAD" ]; then
-            current_branch="main"
-            git checkout $current_branch
-          fi
-          if [ -n "$(git status --porcelain)" ]; then
-            git add .
-            git commit -m "chore: lint and format code"
-            git push origin $current_branch
-          else
-            echo "No changes to commit."
-          fi
+      - name: Commit & Push changes
+        uses: actions-js/push@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          author_email: ${{ steps.get_author_email.outputs.email }}
+          author_name: ${{ steps.get_author_name.outputs.name }}
