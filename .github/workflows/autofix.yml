@@ -38,10 +38,15 @@ jobs:
         run: |
           git config --global user.name "$(git log -1 --pretty=format:%an)"
           git config --global user.email "$(git log -1 --pretty=format:%ae)"
+          current_branch=$(git rev-parse --abbrev-ref HEAD)
+          if [ "$current_branch" = "HEAD" ]; then
+            current_branch="main"
+            git checkout $current_branch
+          fi
           if [ -n "$(git status --porcelain)" ]; then
             git add .
             git commit -m "chore: lint and format code"
-            git push
+            git push origin $current_branch
           else
             echo "No changes to commit."
           fi
