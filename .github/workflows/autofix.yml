@@ -33,16 +33,11 @@ jobs:
           ruff check --fix
           ruff format
 
-      # Debugging step to print the author name
-      - name: Debug git author name
-        run: |
-          echo "Author Name: $(git log -1 --pretty=format:%an)"
-          echo "Author Email: $(git log -1 --pretty=format:%ae)"
-
       # Check for changes and push with sufficient permissions
       - name: Check for changes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
         run: |
           git config --global user.name "$(git log -1 --pretty=format:%an)"
           git config --global user.email "$(git log -1 --pretty=format:%ae)"
