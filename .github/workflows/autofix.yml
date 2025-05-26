@@ -45,10 +45,11 @@ jobs:
         run: |
           git config --global user.name "$(git log -1 --pretty=format:%an)"
           git config --global user.email "$(git log -1 --pretty=format:%ae)"
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}
           if [ -n "$(git status --porcelain)" ]; then
             git add .
             git commit -m "chore: lint and format code"
-            git push
+            git push origin HEAD:${{ github.head_ref }}
           else
             echo "No changes to commit."
           fi
