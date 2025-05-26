@@ -18,6 +18,31 @@ class OperationType(str, Enum):
     READ_FILE = "read_file"
     WRITE_FILE = "write_file"
 
+# functino_result 类
+class FunctionResult:
+    """函数执行结果类"""
+    
+    def __init__(self, status: str, message: str, data: Dict[str, Any] = None):
+        """
+        初始化函数执行结果
+        
+        Args:
+            status: 执行状态, "success" 或 "error"
+            message: 执行结果消息
+            data: 附加数据, 默认为None
+        """
+        self.status = status
+        self.message = message
+        self.data = data or {}
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """将结果转换为字典格式"""
+        return {
+            "status": self.status,
+            "message": self.message,
+            "data": self.data
+        }
+
 class FileAgent:
     """基于LLM的文件管理Agent"""
     
@@ -242,18 +267,32 @@ class FileAgent:
         }
         
         if operation not in handlers:
-            return {
-                "status": "error",
-                "message": f"不支持的操作类型: {operation}"
-            }
+            result = FunctionResult(
+                status="error",
+                message=f"不支持的操作类型: {operation}",
+                data={}
+            )
+            return result.to_dict()
+
+            # return {
+            #     "status": "error",
+            #     "message": f"不支持的操作类型: {operation}"
+            # }
         
         try:
             return handlers[operation](parameters)
         except Exception as e:
-            return {
-                "status": "error",
-                "message": f"执行操作时出错: {str(e)}"
-            }
+            result = FunctionResult(
+                status="error",
+                message=f"执行操作时出错: {str(e)}",
+                data={}
+            )
+
+            return result.to_dict()
+            # return {
+            #     "status": "error",
+            #     "message": f"执行操作时出错: {str(e)}"
+            # }
     
     def _normalize_path(self, path: str) -> str:
         """标准化路径, 确保在基础目录下操作"""
@@ -288,14 +327,30 @@ class FileAgent:
             # 创建文件
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(content)
-                
-            return {
-                "status": "success",
-                "message": f"文件创建成功: {params['file_name']}",
-                "path": os.path.relpath(file_path, self.base_dir)
-            }
+
+            result = FunctionResult(
+                status="success",
+                message=f"文件创建成功: {params['file_name']}",
+                data={
+                    "path": os.path.relpath(file_path, self.base_dir)
+                }
+            ) 
+
+            return result.to_dict()
+            # return {
+            #     "status": "success",
+            #     "message": f"文件创建成功: {params['file_name']}",
+            #     "path": os.path.relpath(file_path, self.base_dir)
+            # }
         except Exception as e:
-            return {"status": "error", "message": str(e)}
+            result = FunctionResult(
+                status="error",
+                message=str(e),
+                data={}
+            )
+
+            return result.to_dict()
+            # return {"status": "error", "message": str(e)}
     
     def _create_directory(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """创建目录"""
@@ -315,14 +370,29 @@ class FileAgent:
             
             # 创建目录
             os.makedirs(dir_path, exist_ok=True)
-                
-            return {
-                "status": "success",
-                "message": f"目录创建成功: {params['directory_name']}",
-                "path": os.path.relpath(dir_path, self.base_dir)
-            }
+
+            result = FunctionResult(
+                status="success",
+                message=f"目录创建成功: {params['directory_name']}",
+                data={
+                    "path": os.path.relpath(dir_path, self.base_dir)
+                }
+            )
+
+            return result.to_dict()                
+            # return {
+            #     "status": "success",
+            #     "message": f"目录创建成功: {params['directory_name']}",
+            #     "path": os.path.relpath(dir_path, self.base_dir)
+            # }
         except Exception as e:
-            return {"status": "error", "message": str(e)}
+            result = FunctionResult(
+                status="error",
+                message=str(e),
+                data={}
+            )
+            return result.to_dict()
+            # return {"status": "error", "message": str(e)}
     
     def _delete_file(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """删除文件"""
