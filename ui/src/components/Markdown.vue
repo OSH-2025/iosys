@@ -13,8 +13,8 @@ const md = new MarkdownIt({
 </script>
 
 <script setup lang="ts">
-import "github-markdown-css/github-markdown-light.css"
-import { computed, ref, watchEffect } from 'vue';
+import "github-markdown-css/github-markdown-light.css";
+import { computed, watchEffect } from 'vue';
 
 const props = defineProps<{
   content: string

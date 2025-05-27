@@ -1,13 +1,9 @@
 <template>
-  <div class="messages-container flex flex-col gap-3 overflow-y-auto p-4">
-    <div 
-      v-for="(message, index) in messages" 
-      :key="index" 
-      :class="[
-        'message p-3 rounded-lg max-w-[85%]', 
-        message.fromUser ? 'self-end bg-black text-white' : 'self-start bg-gray-100 text-black'
-      ]"
-    >
+  <div ref="messagesContainer" class="messages-container flex flex-col gap-3 overflow-y-auto p-4">
+    <div v-for="(message, index) in messages" :key="index" :class="[
+      'message p-3 rounded-lg max-w-[85%]',
+      message.fromUser ? 'self-end bg-black text-white' : 'self-start bg-gray-100 text-black'
+    ]">
       <Markdown :content="message.content" />
     </div>
   </div>
@@ -16,6 +12,18 @@
 <script setup lang="ts">
 import { messages } from '../states';
 import Markdown from './Markdown.vue';
+import { watch, nextTick, useTemplateRef } from 'vue';
+
+const messagesContainer = useTemplateRef('messagesContainer');
+
+// Watch for new messages and auto-scroll to bottom
+watch(messages, async () => {
+  if (messagesContainer.value) {
+    await nextTick();
+    console.log('New message added, scrolling to bottom');
+    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+  }
+}, { deep: true });
 </script>
 
 <style scoped>
@@ -40,7 +48,14 @@ import Markdown from './Markdown.vue';
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(5px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>
