@@ -283,7 +283,7 @@ class FileAgent:
             OperationType.LIST_FILES.value: self._list_files,
             OperationType.READ_FILE.value: self._read_file,
             OperationType.WRITE_FILE.value: self._write_file,
-            OperationType.SEARCH_FILE.value: self._search_file_workflow
+            OperationType.SEARCH_FILE.value: self._search_file_workflow,
         }
 
         if operation not in handlers:
@@ -717,8 +717,8 @@ class FileAgent:
             }
         except Exception as e:
             return {"status": "error", "message": str(e)}
-        
-    # 这里只返回大模型解析出的.json格式数据, 其中需要包含: 
+
+    # 这里只返回大模型解析出的.json格式数据, 其中需要包含:
     # 特征词序列(例如要求查询和某些关键词有关的文件),
     # 限制序列(例如明确的文件名),
     # 搜索地址(也就是在哪一个文件夹下搜素)
@@ -730,17 +730,14 @@ class FileAgent:
             key_words = params.get("key_words", [])
             constraint = params.get("constraint", [])
             search_path = params.get("search_path", ".")
-            
+
             # 标准化搜索路径
             normalized_search_path = self._normalize_path(search_path)
-            
+
             # 检查路径是否存在
             if not os.path.exists(normalized_search_path):
-                return {
-                    "status": "error",
-                    "message": f"搜索路径不存在: {search_path}"
-                }
-            
+                return {"status": "error", "message": f"搜索路径不存在: {search_path}"}
+
             # 手动添加file_name到限制序列
             if "file_name" in params:
                 constraint.append(params["file_name"])
@@ -748,24 +745,22 @@ class FileAgent:
             # 构建发送给 GRAPH RAG 的数据结构
             search_data = {
                 "key_words": key_words,  # 特征词序列
-                "constraint": constraint,      # 限制序列
+                "constraint": constraint,  # 限制序列
                 # "search_path": os.path.relpath(normalized_search_path, self.base_dir)  # 搜索地址
-                "search_path": normalized_search_path  # 搜索地址
+                "search_path": normalized_search_path,  # 搜索地址
             }
-            
+
             # 将搜索结果包装在标准响应格式中
             result = FunctionResult(
                 status="success",
                 message="搜索参数已准备完成，等待发送到 GRAPH RAG",
-                data=search_data
+                data=search_data,
             )
-            
+
             return result.to_dict()
         except Exception as e:
             result = FunctionResult(
-                status="error",
-                message=f"准备搜索参数时出错: {str(e)}",
-                data={}
+                status="error", message=f"准备搜索参数时出错: {str(e)}", data={}
             )
             return result.to_dict()
 
@@ -776,57 +771,48 @@ class FileAgent:
             file_list = search_results.get("file_list", [])
             weights = search_results.get("weights", [])
             # description = search_results.get("description", [])
-            
+
             if not file_list:
-                return {
-                    "status": "success",
-                    "message": "未找到相关文件"
-                }
-            
+                return {"status": "success", "message": "未找到相关文件"}
+
             return {
                 "status": "success",
                 "message": f"找到 {len(file_list)} 个相关文件",
                 "data": {
                     "file_list": file_list,
-                    "weights": weights
+                    "weights": weights,
                     # "description": description
-                }
+                },
             }
         except Exception as e:
-            return {
-                "status": "error",
-                "message": f"处理搜索结果时出错: {str(e)}"
-            }
-        
+            return {"status": "error", "message": f"处理搜索结果时出错: {str(e)}"}
+
     # class IOSYSResponse:
-        # file_list: list[str] = []
-        # weights: list[float] = []
-        # description: list[str] = []    
+    # file_list: list[str] = []
+    # weights: list[float] = []
+    # description: list[str] = []
     def _search_file_workflow(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """搜索文件工作流，协调发送请求和接收结果"""
         try:
             # 1. 发送搜索请求到 GRAPH RAG
             send_result = self._search_file_send(params)
-            
+
             # 检查发送是否成功
             if send_result["status"] == "error":
                 return send_result
-                
+
             # 2. 这里应该调用 GRAPH RAG 进行搜索
             # 注意：这部分需要您实际集成 GRAPH RAG 系统
             # 以下是一个模拟的 GRAPH RAG 调用示例
             # 实际使用时请替换为真正的接口调用
-            
+
             # 模拟 GRAPH RAG 的搜索结果
             # 在实际应用中，应该使用 GRAPH RAG 系统的返回结果
             # search_results = call_graph_rag(search_data)
-            
+
             # 3. 接收并处理搜索结果
             # 处理 GRAPH RAG 返回的结果
             # return self._search_file_receive(search_results)
             return send_result
         except Exception as e:
-            return {
-                "status": "error",
-                "message": f"搜索文件工作流执行出错: {str(e)}"
-            }
+            return {"status": "error", "message": f"搜索文件工作流执行出错: {str(e)}"}
