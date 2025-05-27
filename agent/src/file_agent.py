@@ -26,27 +26,6 @@ class OperationType(str, Enum):
     WRITE_FILE = "write_file"
 
 
-class FunctionResult:
-    """函数执行结果类"""
-
-    def __init__(self, status: str, message: str, data: Dict[str, Any] = None):
-        """
-        初始化函数执行结果
-
-        Args:
-            status: 执行状态, "success" 或 "error"
-            message: 执行结果消息
-            data: 附加数据, 默认为None
-        """
-        self.status = status
-        self.message = message
-        self.data = data or {}
-
-    def to_dict(self) -> Dict[str, Any]:
-        """将结果转换为字典格式"""
-        return {"status": self.status, "message": self.message, "data": self.data}
-
-
 def tool(name: str, description: str, parameters: Dict[str, Any]):
     """
     工具装饰器，用于注册文件操作工具
@@ -215,7 +194,6 @@ class FileAgent:
             params["file_name"] = "new_file.txt"
             # 默认路径为当前目录
             params["path"] = "."
-            # return {"status": "error", "message": "缺少必要参数: file_name 或 path"}
 
         try:
             file_path = self._normalize_path(
@@ -231,29 +209,23 @@ class FileAgent:
                 return {
                     "status": "error",
                     "message": f"文件已存在: {params['file_name']}",
+                    "data": {}
                 }
 
             # 创建文件
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(content)
 
-            result = FunctionResult(
-                status="success",
-                message=f"文件创建成功: {params['file_name']}",
-                data={"path": os.path.relpath(file_path, self.base_dir)},
-            )
-
-            return result.to_dict()
-            # return {
-            #     "status": "success",
-            #     "message": f"文件创建成功: {params['file_name']}",
-            #     "path": os.path.relpath(file_path, self.base_dir)
-            # }
+            return {
+                "status": "success",
+                "message": f"文件创建成功: {params['file_name']}",
+                "data": {"path": os.path.relpath(file_path, self.base_dir)}
+            }
         except Exception as e:
-            result = FunctionResult(status="error", message=str(e), data={})
-
-            return result.to_dict()
-            # return {"status": "error", "message": str(e)}
+            return {
+                "status": "error", 
+                "message": str(e)
+            }
 
     @tool(
         name="create_directory",
@@ -274,7 +246,6 @@ class FileAgent:
             params["directory_name"] = "new_directory"
             # 默认路径为当前目录
             params["path"] = "."
-            # return {"status": "error", "message": "缺少必要参数: directory_name 或 path"}
 
         try:
             dir_path = self._normalize_path(
@@ -286,27 +257,22 @@ class FileAgent:
                 return {
                     "status": "error",
                     "message": f"目录已存在: {params['directory_name']}",
+                    "data": {}
                 }
 
             # 创建目录
             os.makedirs(dir_path, exist_ok=True)
 
-            result = FunctionResult(
-                status="success",
-                message=f"目录创建成功: {params['directory_name']}",
-                data={"path": os.path.relpath(dir_path, self.base_dir)},
-            )
-
-            return result.to_dict()
-            # return {
-            #     "status": "success",
-            #     "message": f"目录创建成功: {params['directory_name']}",
-            #     "path": os.path.relpath(dir_path, self.base_dir)
-            # }
+            return {
+                "status": "success",
+                "message": f"目录创建成功: {params['directory_name']}",
+                "data": {"path": os.path.relpath(dir_path, self.base_dir)}
+            }
         except Exception as e:
-            result = FunctionResult(status="error", message=str(e), data={})
-            return result.to_dict()
-            # return {"status": "error", "message": str(e)}
+            return {
+                "status": "error",
+                "message": str(e)
+            }
 
     @tool(
         name="delete_file",
@@ -322,9 +288,7 @@ class FileAgent:
     def _delete_file(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """删除文件"""
         if "file_path" not in params:
-            # 默认路径为当前目录
             params["file_path"] = "."
-            # return {"status": "error", "message": "缺少必要参数: file_path"}
 
         try:
             file_path = self._normalize_path(params["file_path"])
@@ -334,6 +298,7 @@ class FileAgent:
                 return {
                     "status": "error",
                     "message": f"文件不存在: {params['file_path']}",
+                    "data": {}
                 }
 
             # 删除文件
@@ -341,10 +306,13 @@ class FileAgent:
 
             return {
                 "status": "success",
-                "message": f"文件删除成功: {params['file_path']}",
+                "message": f"文件删除成功: {params['file_path']}"
             }
         except Exception as e:
-            return {"status": "error", "message": str(e)}
+            return {
+                "status": "error",
+                "message": str(e)
+            }
 
     @tool(
         name="delete_directory",
@@ -370,6 +338,7 @@ class FileAgent:
                 return {
                     "status": "error",
                     "message": f"目录不存在: {params['directory_path']}",
+                    "data": {}
                 }
 
             # 删除目录
@@ -377,10 +346,13 @@ class FileAgent:
 
             return {
                 "status": "success",
-                "message": f"目录删除成功: {params['directory_path']}",
+                "message": f"目录删除成功: {params['directory_path']}"
             }
         except Exception as e:
-            return {"status": "error", "message": str(e)}
+            return {
+                "status": "error",
+                "message": str(e)
+            }
 
     @tool(
         name="move_file",
@@ -399,7 +371,7 @@ class FileAgent:
         if "source_path" not in params or "destination_path" not in params:
             return {
                 "status": "error",
-                "message": "缺少必要参数: source_path 或 destination_path",
+                "message": "缺少必要参数: source_path 或 destination_path"
             }
 
         try:
@@ -411,6 +383,7 @@ class FileAgent:
                 return {
                     "status": "error",
                     "message": f"源文件不存在: {params['source_path']}",
+                    "data": {}
                 }
 
             # 确保目标目录存在
@@ -421,6 +394,7 @@ class FileAgent:
                 return {
                     "status": "error",
                     "message": f"目标文件已存在: {params['destination_path']}",
+                    "data": {}
                 }
 
             # 移动文件
@@ -429,10 +403,13 @@ class FileAgent:
             return {
                 "status": "success",
                 "message": f"文件移动成功: {params['source_path']} -> {params['destination_path']}",
-                "new_path": os.path.relpath(dst_path, self.base_dir),
+                "data": {"new_path": os.path.relpath(dst_path, self.base_dir)}
             }
         except Exception as e:
-            return {"status": "error", "message": str(e)}
+            return {
+                "status": "error",
+                "message": str(e)
+            }
 
     @tool(
         name="move_directory",
@@ -451,7 +428,7 @@ class FileAgent:
         if "source_path" not in params or "destination_path" not in params:
             return {
                 "status": "error",
-                "message": "缺少必要参数: source_path 或 destination_path",
+                "message": "缺少必要参数: source_path 或 destination_path"
             }
 
         try:
@@ -463,6 +440,7 @@ class FileAgent:
                 return {
                     "status": "error",
                     "message": f"源目录不存在: {params['source_path']}",
+                    "data": {}
                 }
 
             # 检查目标目录是否已存在
@@ -470,6 +448,7 @@ class FileAgent:
                 return {
                     "status": "error",
                     "message": f"目标目录已存在: {params['destination_path']}",
+                    "data": {}
                 }
 
             # 确保目标父目录存在
@@ -481,10 +460,13 @@ class FileAgent:
             return {
                 "status": "success",
                 "message": f"目录移动成功: {params['source_path']} -> {params['destination_path']}",
-                "new_path": os.path.relpath(dst_path, self.base_dir),
+                "data": {"new_path": os.path.relpath(dst_path, self.base_dir)}
             }
         except Exception as e:
-            return {"status": "error", "message": str(e)}
+            return {
+                "status": "error",
+                "message": str(e)
+            }
 
     @tool(
         name="rename_file",
@@ -501,11 +483,8 @@ class FileAgent:
     def _rename_file(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """重命名文件"""
         if "file_path" not in params or "new_name" not in params:
-            # 设置默认新文件名为 new_file.txt
             params["new_name"] = "rename_file.txt"
-            # 默认路径为当前目录
             params["file_path"] = "."
-            # return {"status": "error", "message": "缺少必要参数: file_path 或 new_name"}
 
         try:
             file_path = self._normalize_path(params["file_path"])
@@ -517,6 +496,7 @@ class FileAgent:
                 return {
                     "status": "error",
                     "message": f"文件不存在: {params['file_path']}",
+                    "data": {}
                 }
 
             # 检查新文件名是否已存在
@@ -524,6 +504,7 @@ class FileAgent:
                 return {
                     "status": "error",
                     "message": f"文件已存在: {params['new_name']}",
+                    "data": {}
                 }
 
             # 重命名文件
@@ -532,10 +513,13 @@ class FileAgent:
             return {
                 "status": "success",
                 "message": f"文件重命名成功: {params['file_path']} -> {params['new_name']}",
-                "new_path": os.path.relpath(new_path, self.base_dir),
+                "data": {"new_path": os.path.relpath(new_path, self.base_dir)}
             }
         except Exception as e:
-            return {"status": "error", "message": str(e)}
+            return {
+                "status": "error",
+                "message": str(e)
+            }
 
     @tool(
         name="rename_directory",
@@ -552,11 +536,8 @@ class FileAgent:
     def _rename_directory(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """重命名目录"""
         if "directory_path" not in params or "new_name" not in params:
-            # 设置默认新文件名为 new_file.txt
             params["new_name"] = "rename_dir"
-            # 默认路径为当前目录
             params["directory_path"] = "."
-            # return {"status": "error", "message": "缺少必要参数: directory_path 或 new_name"}
 
         try:
             dir_path = self._normalize_path(params["directory_path"])
@@ -568,6 +549,7 @@ class FileAgent:
                 return {
                     "status": "error",
                     "message": f"目录不存在: {params['directory_path']}",
+                    "data": {}
                 }
 
             # 检查新目录名是否已存在
@@ -575,6 +557,7 @@ class FileAgent:
                 return {
                     "status": "error",
                     "message": f"目录已存在: {params['new_name']}",
+                    "data": {}
                 }
 
             # 重命名目录
@@ -583,10 +566,13 @@ class FileAgent:
             return {
                 "status": "success",
                 "message": f"目录重命名成功: {params['directory_path']} -> {params['new_name']}",
-                "new_path": os.path.relpath(new_path, self.base_dir),
+                "data": {"new_path": os.path.relpath(new_path, self.base_dir)}
             }
         except Exception as e:
-            return {"status": "error", "message": str(e)}
+            return {
+                "status": "error",
+                "message": str(e)
+            }
 
     @tool(
         name="list_files",
@@ -601,9 +587,7 @@ class FileAgent:
     def _list_files(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """列出目录内容"""
         if "directory_path" not in params:
-            # 默认路径为当前目录
             params["directory_path"] = "."
-            # return {"status": "error", "message": "缺少必要参数: directory_path"}
 
         try:
             dir_path = self._normalize_path(params["directory_path"])
@@ -613,6 +597,7 @@ class FileAgent:
                 return {
                     "status": "error",
                     "message": f"目录不存在: {params['directory_path']}",
+                    "data": {}
                 }
 
             # 列出目录内容
@@ -630,10 +615,13 @@ class FileAgent:
             return {
                 "status": "success",
                 "message": f"成功列出目录内容: {params['directory_path']}",
-                "contents": {"files": files, "directories": directories},
+                "data": {"contents": {"files": files, "directories": directories}}
             }
         except Exception as e:
-            return {"status": "error", "message": str(e)}
+            return {
+                "status": "error",
+                "message": str(e)
+            }
 
     @tool(
         name="read_file",
@@ -649,9 +637,7 @@ class FileAgent:
     def _read_file(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """读取文件内容"""
         if "file_path" not in params:
-            # 默认路径为当前目录
             params["file_path"] = "."
-            # return {"status": "error", "message": "缺少必要参数: file_path"}
 
         try:
             file_path = self._normalize_path(params["file_path"])
@@ -661,6 +647,7 @@ class FileAgent:
                 return {
                     "status": "error",
                     "message": f"文件不存在: {params['file_path']}",
+                    "data": {}
                 }
 
             # 读取文件内容
@@ -670,10 +657,13 @@ class FileAgent:
             return {
                 "status": "success",
                 "message": f"成功读取文件: {params['file_path']}",
-                "content": content,
+                "data": {"content": content}
             }
         except Exception as e:
-            return {"status": "error", "message": str(e)}
+            return {
+                "status": "error",
+                "message": str(e)
+            }
 
     @tool(
         name="write_file",
@@ -691,11 +681,9 @@ class FileAgent:
     def _write_file(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """写入文件内容"""
         if "file_path" not in params and "content" in params:
-            # 如果提供了file_name但没有file_path, 将file_name作为file_path使用
             if "file_name" in params:
                 params["file_path"] = params["file_name"]
             else:
-                # 默认路径为当前目录
                 params["file_path"] = "."
 
         if "content" not in params:
@@ -717,10 +705,13 @@ class FileAgent:
             return {
                 "status": "success",
                 "message": f"成功{'追加' if append else '写入'}文件: {params['file_path']}",
-                "path": os.path.relpath(file_path, self.base_dir),
+                "data": {"path": os.path.relpath(file_path, self.base_dir)}
             }
         except Exception as e:
-            return {"status": "error", "message": str(e)}
+            return {
+                "status": "error",
+                "message": str(e)
+            }
 
     def _normalize_path(self, path: str) -> str:
         """标准化路径, 确保在基础目录下操作"""

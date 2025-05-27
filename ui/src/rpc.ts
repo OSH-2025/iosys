@@ -9,7 +9,7 @@ const apis = {
   status: defineApi<{}, { server: string, rag: string, llm: string, fs: string }>("/status"),
   chat: defineApi<{ input: string }, { response: string }>("/chat"),
   preview: defineApi<{ id: string }, { url: string }>("/preview"),
-  agent: defineApi<{ command: string }, { status: string, message?: string, result?: any, [key: string]: any }>("/agent"),
+  agent: defineApi<{ command: string }, { status: string, message?: string, data: any }>("/agent"),
   files: defineApi<{ path?: string }, { items: Array<{ name: string, path: string, type: string, size?: number }> }>("/files"),
 };
 

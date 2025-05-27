@@ -74,7 +74,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { useIntervalFn } from '@vueuse/core';
+import { useIntervalFn, useLocalStorage } from '@vueuse/core';
 import Messages from './components/Messages.vue';
 import GraphView from './components/GraphView.vue';
 import rpc, { ApiResponse } from './rpc';
@@ -82,7 +82,7 @@ import { errorMessage, messages } from './states';
 import FilePreview from './components/FilePreview.vue';
 
 const inputText = ref('');
-const chatMode = ref<'chat' | 'agent'>('chat');
+const chatMode = useLocalStorage<'chat' | 'agent'>('iosys.mode', 'chat');
 
 const handleSubmit = async () => {
   const input = inputText.value.trim();
@@ -107,8 +107,8 @@ const handleSubmit = async () => {
       let responseText = '';
       if (result.status === 'success') {
         responseText = `✅ ${result.message || 'Command executed successfully'}`;
-        if (result.result) {
-          responseText += `\n\nResult:\n${JSON.stringify(result.result, null, 2)}`;
+        if (result.data) {
+          responseText += `\n\nResult:\n\n<pre>\n${JSON.stringify(result.data, null, 2)}\n</pre>`;
         }
       } else {
         responseText = `❌ ${result.message || 'Command failed'}`;

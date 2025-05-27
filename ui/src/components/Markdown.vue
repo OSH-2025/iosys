@@ -2,25 +2,28 @@
   <article v-html="renderedContent" class="markdown-body"></article>
 </template>
 
+<script lang="ts">
+import MarkdownIt from 'markdown-it';
+
+const md = new MarkdownIt({
+  html: true,
+  breaks: true,
+  linkify: true,
+});
+</script>
+
 <script setup lang="ts">
 import "github-markdown-css/github-markdown-light.css"
-import { ref, watchEffect } from 'vue';
-import MarkdownIt from 'markdown-it';
+import { computed, ref, watchEffect } from 'vue';
 
 const props = defineProps<{
   content: string
 }>();
 
-const md = new MarkdownIt({
-  html: false,
-  breaks: true,
-  linkify: true,
-});
-
-const renderedContent = ref('');
+const renderedContent = computed(() => md.render(props.content || ''));
 
 watchEffect(() => {
-  renderedContent.value = md.render(props.content || '');
+  console.log('Rendered content:', renderedContent.value);
 });
 </script>
 
