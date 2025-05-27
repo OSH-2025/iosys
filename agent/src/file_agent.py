@@ -60,6 +60,174 @@ class FileAgent:
         self.config = config
         self.base_dir = os.path.abspath(config.base_dir)
         self.llm_client = llm_client
+        self.tools = self._define_tools()
+
+    def _define_tools(self) -> list:
+        """定义可用的文件操作工具"""
+        return [
+            {
+                "type": "function",
+                "function": {
+                    "name": "create_file",
+                    "description": "创建新文件",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "file_name": {"type": "string", "description": "文件名"},
+                            "path": {"type": "string", "description": "文件路径", "default": "."},
+                            "content": {"type": "string", "description": "文件内容", "default": ""}
+                        },
+                        "required": ["file_name"]
+                    }
+                }
+            },
+            {
+                "type": "function", 
+                "function": {
+                    "name": "create_directory",
+                    "description": "创建新目录",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "directory_name": {"type": "string", "description": "目录名"},
+                            "path": {"type": "string", "description": "父目录路径", "default": "."}
+                        },
+                        "required": ["directory_name"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "delete_file", 
+                    "description": "删除文件",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "file_path": {"type": "string", "description": "要删除的文件路径"}
+                        },
+                        "required": ["file_path"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "delete_directory",
+                    "description": "删除目录",
+                    "parameters": {
+                        "type": "object", 
+                        "properties": {
+                            "directory_path": {"type": "string", "description": "要删除的目录路径"}
+                        },
+                        "required": ["directory_path"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "move_file",
+                    "description": "移动文件",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "source_path": {"type": "string", "description": "源文件路径"},
+                            "destination_path": {"type": "string", "description": "目标文件路径"}
+                        },
+                        "required": ["source_path", "destination_path"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "move_directory", 
+                    "description": "移动目录",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "source_path": {"type": "string", "description": "源目录路径"},
+                            "destination_path": {"type": "string", "description": "目标目录路径"}
+                        },
+                        "required": ["source_path", "destination_path"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "rename_file",
+                    "description": "重命名文件",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "file_path": {"type": "string", "description": "要重命名的文件路径"},
+                            "new_name": {"type": "string", "description": "新文件名"}
+                        },
+                        "required": ["file_path", "new_name"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "rename_directory",
+                    "description": "重命名目录", 
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "directory_path": {"type": "string", "description": "要重命名的目录路径"},
+                            "new_name": {"type": "string", "description": "新目录名"}
+                        },
+                        "required": ["directory_path", "new_name"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "list_files",
+                    "description": "列出目录内容",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "directory_path": {"type": "string", "description": "目录路径", "default": "."}
+                        }
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "read_file",
+                    "description": "读取文件内容",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "file_path": {"type": "string", "description": "文件路径"}
+                        },
+                        "required": ["file_path"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "write_file",
+                    "description": "写入文件内容",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "file_path": {"type": "string", "description": "文件路径"},
+                            "content": {"type": "string", "description": "要写入的内容"},
+                            "append": {"type": "boolean", "description": "是否追加模式", "default": False}
+                        },
+                        "required": ["file_path", "content"]
+                    }
+                }
+            }
+        ]
 
     def process(self, user_input: str) -> Dict[str, Any]:
         """
@@ -71,84 +239,26 @@ class FileAgent:
         Returns:
             Dict: 包含操作结果的字典
         """
-        # 1. 解析层: 将自然语言转换为JSON结构
-        parsed_data = self._parse_input(user_input)
-
-        # 2. 执行层: 根据解析结果执行操作
-        if "error" in parsed_data:
-            return parsed_data
-
-        result = self._execute_operation(parsed_data)
-        return result
-
-    def _parse_input(self, user_input: str) -> Dict[str, Any]:
-        """
-        解析层: 将用户自然语言输入解析为结构化JSON
-
-        Args:
-            user_input: 用户的自然语言输入
-
-        Returns:
-            Dict: 结构化的JSON数据
-        """
-        # 构建LLM提示
-        prompt = self._create_parse_prompt(user_input)
-
         try:
-            # 调用LLM解析用户输入
-            response = self._call_llm_with_prompt(prompt)
-            parsed_data = json.loads(response)
-
-            # 验证解析结果
-            if not self._validate_parsed_data(parsed_data):
-                return {"error": "无法理解请求, 请提供更明确的文件操作指令"}
-
-            return parsed_data
+            # 调用LLM获取function call
+            response = self._call_llm_with_tools(user_input)
+            
+            # 执行function call
+            result = self._execute_function_call(response)
+            return result
+            
         except Exception as e:
-            return {"error": f"解析输入时出错: {str(e)}"}
+            return {"status": "error", "message": f"处理请求时出错: {str(e)}"}
 
-    def _create_parse_prompt(self, user_input: str) -> str:
+    def _call_llm_with_tools(self, user_input: str) -> Any:
         """
-        创建用于解析用户输入的提示模板
+        调用LLM并获取function call响应
 
         Args:
-            user_input: 用户的自然语言输入
+            user_input: 用户输入
 
         Returns:
-            str: 格式化的提示
-        """
-        return f"""
-        你是一个文件管理助手, 需要将用户的自然语言指令解析为结构化的JSON格式。
-
-        支持的操作类型包括:
-        - create_file: 创建文件
-        - create_directory: 创建目录
-        - delete_file: 删除文件
-        - delete_directory: 删除目录
-        - move_file: 移动文件
-        - move_directory: 移动目录
-        - rename_file: 重命名文件
-        - rename_directory: 重命名目录
-        - list_files: 列出文件夹内容
-        - read_file: 读取文件内容
-        - write_file: 写入文件内容
-
-        请分析以下用户输入, 并将其转换为包含operation和parameters字段的JSON结构:
-
-        用户输入: "{user_input}"
-
-        只返回JSON, 不要包含任何额外的文本或解释。如果无法确定操作类型或参数, 请在JSON中包含error字段说明原因。
-        """
-
-    def _call_llm_with_prompt(self, prompt: str) -> str:
-        """
-        调用LLM处理提示并获取响应
-
-        Args:
-            prompt: 提示内容
-
-        Returns:
-            str: LLM的响应
+            LLM响应对象
         """
         try:
             response = self.llm_client.chat.completions.create(
@@ -156,152 +266,65 @@ class FileAgent:
                 messages=[
                     {
                         "role": "system",
-                        "content": "你是一个专业的文件操作解析助手, 擅长将自然语言指令转换为结构化JSON。",
+                        "content": "你是一个文件管理助手，可以帮助用户进行各种文件操作。根据用户的需求，选择合适的工具来完成任务。"
                     },
-                    {"role": "user", "content": prompt},
+                    {"role": "user", "content": user_input}
                 ],
-                response_format={"type": "json_object"},
+                tools=self.tools,
+                tool_choice="auto"
             )
-            # 处理不同API可能返回的不同响应格式
-            content = self._extract_content_from_response(response)
-            # 记录原始响应内容, 用于调试
+            return response
+        except Exception as e:
             import logging
-
             logger = logging.getLogger(__name__)
-            logger.info(f"LLM响应原始内容: {content}")
-            return content
-        except Exception as e:
-            # 如果API调用失败, 返回错误JSON
-            error_msg = str(e)
-            import logging
+            logger.error(f"LLM API调用异常: {str(e)}")
+            raise e
 
-            logger = logging.getLogger(__name__)
-            logger.error(f"LLM API调用异常: {error_msg}")
-            return json.dumps({"error": f"LLM API调用失败: {error_msg}"})
-
-    def _extract_content_from_response(self, response):
+    def _execute_function_call(self, response) -> Dict[str, Any]:
         """
-        从不同格式的LLM响应中提取内容
+        执行function call
 
         Args:
-            response: LLM响应对象
+            response: LLM响应
 
         Returns:
-            str: 提取的内容
+            Dict: 执行结果
         """
-        # 尝试不同的响应格式
         try:
-            # OpenAI格式
-            if hasattr(response, "choices") and hasattr(response.choices[0], "message"):
-                return response.choices[0].message.content
-            # 兼容format 1: 可能有message.content
-            elif hasattr(response, "message") and hasattr(response.message, "content"):
-                return response.message.content
-            # 兼容format 2: 可能直接有content属性
-            elif hasattr(response, "content"):
-                return response.content
-            # 兼容format 3: 可能是字典类型
-            elif isinstance(response, dict):
-                if "choices" in response and len(response["choices"]) > 0:
-                    choice = response["choices"][0]
-                    if "message" in choice and "content" in choice["message"]:
-                        return choice["message"]["content"]
-                    elif "text" in choice:
-                        return choice["text"]
-                elif "content" in response:
-                    return response["content"]
-            # 兼容format 4: 如果是字符串, 直接返回
-            elif isinstance(response, str):
-                return response
-
-            # 如果都不匹配, 尝试将整个响应转为字符串
-            return str(response)
+            # 提取function call信息
+            if hasattr(response, 'choices') and response.choices:
+                choice = response.choices[0]
+                if hasattr(choice, 'message') and hasattr(choice.message, 'tool_calls') and choice.message.tool_calls:
+                    tool_call = choice.message.tool_calls[0]
+                    function_name = tool_call.function.name
+                    function_args = json.loads(tool_call.function.arguments)
+                    
+                    # 根据函数名映射到对应的处理方法
+                    handlers = {
+                        "create_file": self._create_file,
+                        "create_directory": self._create_directory, 
+                        "delete_file": self._delete_file,
+                        "delete_directory": self._delete_directory,
+                        "move_file": self._move_file,
+                        "move_directory": self._move_directory,
+                        "rename_file": self._rename_file,
+                        "rename_directory": self._rename_directory,
+                        "list_files": self._list_files,
+                        "read_file": self._read_file,
+                        "write_file": self._write_file,
+                    }
+                    
+                    if function_name in handlers:
+                        return handlers[function_name](function_args)
+                    else:
+                        return {"status": "error", "message": f"不支持的操作: {function_name}"}
+                else:
+                    return {"status": "error", "message": "LLM没有调用任何工具函数"}
+            else:
+                return {"status": "error", "message": "无效的LLM响应格式"}
+                
         except Exception as e:
-            # 出现错误返回错误JSON
-            return json.dumps({"error": f"无法从响应中提取内容: {str(e)}"})
-
-    def _validate_parsed_data(self, data: Dict[str, Any]) -> bool:
-        """
-        验证解析结果是否符合预期格式
-
-        Args:
-            data: 解析后的数据
-
-        Returns:
-            bool: 验证结果
-        """
-        if "error" in data:
-            return True
-
-        if "operation" not in data or "parameters" not in data:
-            return False
-
-        try:
-            # 检查操作类型是否受支持
-            op = data["operation"].lower()
-            return any(op == op_type.value for op_type in OperationType)
-        except Exception:
-            return False
-
-    def _execute_operation(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        执行层: 执行解析后的文件操作
-
-        Args:
-            data: 解析后的结构化数据
-
-        Returns:
-            Dict: 操作结果
-        """
-        operation = data["operation"].lower()
-        parameters = data["parameters"]
-
-        # 根据操作类型分发到相应的处理函数
-        handlers = {
-            OperationType.CREATE_FILE.value: self._create_file,
-            OperationType.CREATE_DIRECTORY.value: self._create_directory,
-            OperationType.DELETE_FILE.value: self._delete_file,
-            OperationType.DELETE_DIRECTORY.value: self._delete_directory,
-            OperationType.MOVE_FILE.value: self._move_file,
-            OperationType.MOVE_DIRECTORY.value: self._move_directory,
-            OperationType.RENAME_FILE.value: self._rename_file,
-            OperationType.RENAME_DIRECTORY.value: self._rename_directory,
-            OperationType.LIST_FILES.value: self._list_files,
-            OperationType.READ_FILE.value: self._read_file,
-            OperationType.WRITE_FILE.value: self._write_file,
-        }
-
-        if operation not in handlers:
-            result = FunctionResult(
-                status="error", message=f"不支持的操作类型: {operation}", data={}
-            )
-            return result.to_dict()
-
-            # return {
-            #     "status": "error",
-            #     "message": f"不支持的操作类型: {operation}"
-            # }
-
-        try:
-            return handlers[operation](parameters)
-        except Exception as e:
-            result = FunctionResult(
-                status="error", message=f"执行操作时出错: {str(e)}", data={}
-            )
-
-            return result.to_dict()
-            # return {
-            #     "status": "error",
-            #     "message": f"执行操作时出错: {str(e)}"
-            # }
-
-    def _normalize_path(self, path: str) -> str:
-        """标准化路径, 确保在基础目录下操作"""
-        norm_path = os.path.normpath(os.path.join(self.base_dir, path))
-        # 安全检查, 确保路径不超出基础目录
-        if not norm_path.startswith(self.base_dir):
-            raise ValueError(f"安全限制: 路径必须在 {self.base_dir} 内")
-        return norm_path
+            return {"status": "error", "message": f"执行function call时出错: {str(e)}"}
 
     # ------------------------------------ 以下是各种文件操作的具体实现------------------------------------#
 
@@ -702,3 +725,11 @@ class FileAgent:
             }
         except Exception as e:
             return {"status": "error", "message": str(e)}
+
+    def _normalize_path(self, path: str) -> str:
+        """标准化路径, 确保在基础目录下操作"""
+        norm_path = os.path.normpath(os.path.join(self.base_dir, path))
+        # 安全检查, 确保路径不超出基础目录
+        if not norm_path.startswith(self.base_dir):
+            raise ValueError(f"安全限制: 路径必须在 {self.base_dir} 内")
+        return norm_path
