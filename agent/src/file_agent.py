@@ -1,8 +1,9 @@
 import os
 import shutil
 import json
-from typing import Dict, Any
+from typing import Dict, Any, Callable, List
 from enum import Enum
+from functools import wraps
 
 from openai import Client
 
@@ -46,6 +47,34 @@ class FunctionResult:
         return {"status": self.status, "message": self.message, "data": self.data}
 
 
+def tool(name: str, description: str, parameters: Dict[str, Any]):
+    """
+    工具装饰器，用于注册文件操作工具
+    
+    Args:
+        name: 工具名称
+        description: 工具描述
+        parameters: 工具参数配置
+    """
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+        
+        # 将工具配置信息附加到函数上
+        wrapper._tool_config = {
+            "type": "function",
+            "function": {
+                "name": name,
+                "description": description,
+                "parameters": parameters
+            }
+        }
+        wrapper._tool_name = name
+        return wrapper
+    return decorator
+
+
 class FileAgent:
     """基于LLM的文件管理Agent"""
 
@@ -54,180 +83,32 @@ class FileAgent:
         初始化文件管理Agent
 
         Args:
+            config: Agent配置
             llm_client: LLM客户端(例如OpenAI API客户端)
-            base_dir: 基础目录, 所有操作将在此目录下执行
         """
         self.config = config
         self.base_dir = os.path.abspath(config.base_dir)
         self.llm_client = llm_client
-        self.tools = self._define_tools()
+        self.tools = self._collect_tools()
+        self.tool_handlers = self._collect_tool_handlers()
 
-    def _define_tools(self) -> list:
-        """定义可用的文件操作工具"""
-        return [
-            {
-                "type": "function",
-                "function": {
-                    "name": "create_file",
-                    "description": "创建新文件",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "file_name": {"type": "string", "description": "文件名"},
-                            "path": {"type": "string", "description": "文件路径", "default": "."},
-                            "content": {"type": "string", "description": "文件内容", "default": ""}
-                        },
-                        "required": ["file_name"]
-                    }
-                }
-            },
-            {
-                "type": "function", 
-                "function": {
-                    "name": "create_directory",
-                    "description": "创建新目录",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "directory_name": {"type": "string", "description": "目录名"},
-                            "path": {"type": "string", "description": "父目录路径", "default": "."}
-                        },
-                        "required": ["directory_name"]
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "delete_file", 
-                    "description": "删除文件",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "file_path": {"type": "string", "description": "要删除的文件路径"}
-                        },
-                        "required": ["file_path"]
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "delete_directory",
-                    "description": "删除目录",
-                    "parameters": {
-                        "type": "object", 
-                        "properties": {
-                            "directory_path": {"type": "string", "description": "要删除的目录路径"}
-                        },
-                        "required": ["directory_path"]
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "move_file",
-                    "description": "移动文件",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "source_path": {"type": "string", "description": "源文件路径"},
-                            "destination_path": {"type": "string", "description": "目标文件路径"}
-                        },
-                        "required": ["source_path", "destination_path"]
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "move_directory", 
-                    "description": "移动目录",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "source_path": {"type": "string", "description": "源目录路径"},
-                            "destination_path": {"type": "string", "description": "目标目录路径"}
-                        },
-                        "required": ["source_path", "destination_path"]
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "rename_file",
-                    "description": "重命名文件",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "file_path": {"type": "string", "description": "要重命名的文件路径"},
-                            "new_name": {"type": "string", "description": "新文件名"}
-                        },
-                        "required": ["file_path", "new_name"]
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "rename_directory",
-                    "description": "重命名目录", 
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "directory_path": {"type": "string", "description": "要重命名的目录路径"},
-                            "new_name": {"type": "string", "description": "新目录名"}
-                        },
-                        "required": ["directory_path", "new_name"]
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "list_files",
-                    "description": "列出目录内容",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "directory_path": {"type": "string", "description": "目录路径", "default": "."}
-                        }
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "read_file",
-                    "description": "读取文件内容",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "file_path": {"type": "string", "description": "文件路径"}
-                        },
-                        "required": ["file_path"]
-                    }
-                }
-            },
-            {
-                "type": "function",
-                "function": {
-                    "name": "write_file",
-                    "description": "写入文件内容",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "file_path": {"type": "string", "description": "文件路径"},
-                            "content": {"type": "string", "description": "要写入的内容"},
-                            "append": {"type": "boolean", "description": "是否追加模式", "default": False}
-                        },
-                        "required": ["file_path", "content"]
-                    }
-                }
-            }
-        ]
+    def _collect_tools(self) -> List[Dict[str, Any]]:
+        """自动收集所有注册的工具配置"""
+        tools = []
+        for attr_name in dir(self):
+            attr = getattr(self, attr_name)
+            if hasattr(attr, '_tool_config'):
+                tools.append(attr._tool_config)
+        return tools
+
+    def _collect_tool_handlers(self) -> Dict[str, Callable]:
+        """自动收集所有工具处理函数"""
+        handlers = {}
+        for attr_name in dir(self):
+            attr = getattr(self, attr_name)
+            if hasattr(attr, '_tool_name'):
+                handlers[attr._tool_name] = attr
+        return handlers
 
     def process(self, user_input: str) -> Dict[str, Any]:
         """
@@ -299,23 +180,9 @@ class FileAgent:
                     function_name = tool_call.function.name
                     function_args = json.loads(tool_call.function.arguments)
                     
-                    # 根据函数名映射到对应的处理方法
-                    handlers = {
-                        "create_file": self._create_file,
-                        "create_directory": self._create_directory, 
-                        "delete_file": self._delete_file,
-                        "delete_directory": self._delete_directory,
-                        "move_file": self._move_file,
-                        "move_directory": self._move_directory,
-                        "rename_file": self._rename_file,
-                        "rename_directory": self._rename_directory,
-                        "list_files": self._list_files,
-                        "read_file": self._read_file,
-                        "write_file": self._write_file,
-                    }
-                    
-                    if function_name in handlers:
-                        return handlers[function_name](function_args)
+                    # 使用自动收集的处理函数
+                    if function_name in self.tool_handlers:
+                        return self.tool_handlers[function_name](function_args)
                     else:
                         return {"status": "error", "message": f"不支持的操作: {function_name}"}
                 else:
@@ -326,8 +193,21 @@ class FileAgent:
         except Exception as e:
             return {"status": "error", "message": f"执行function call时出错: {str(e)}"}
 
-    # ------------------------------------ 以下是各种文件操作的具体实现------------------------------------#
+    # ------------------------------------ 工具函数定义 ------------------------------------
 
+    @tool(
+        name="create_file",
+        description="创建新文件",
+        parameters={
+            "type": "object",
+            "properties": {
+                "file_name": {"type": "string", "description": "文件名"},
+                "path": {"type": "string", "description": "文件路径", "default": "."},
+                "content": {"type": "string", "description": "文件内容", "default": ""}
+            },
+            "required": ["file_name"]
+        }
+    )
     def _create_file(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """创建文件"""
         if "file_name" not in params or "path" not in params:
@@ -375,6 +255,18 @@ class FileAgent:
             return result.to_dict()
             # return {"status": "error", "message": str(e)}
 
+    @tool(
+        name="create_directory",
+        description="创建新目录",
+        parameters={
+            "type": "object",
+            "properties": {
+                "directory_name": {"type": "string", "description": "目录名"},
+                "path": {"type": "string", "description": "父目录路径", "default": "."}
+            },
+            "required": ["directory_name"]
+        }
+    )
     def _create_directory(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """创建目录"""
         if "directory_name" not in params or "path" not in params:
@@ -416,6 +308,17 @@ class FileAgent:
             return result.to_dict()
             # return {"status": "error", "message": str(e)}
 
+    @tool(
+        name="delete_file",
+        description="删除文件",
+        parameters={
+            "type": "object",
+            "properties": {
+                "file_path": {"type": "string", "description": "要删除的文件路径"}
+            },
+            "required": ["file_path"]
+        }
+    )
     def _delete_file(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """删除文件"""
         if "file_path" not in params:
@@ -443,6 +346,17 @@ class FileAgent:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
+    @tool(
+        name="delete_directory",
+        description="删除目录",
+        parameters={
+            "type": "object",
+            "properties": {
+                "directory_path": {"type": "string", "description": "要删除的目录路径"}
+            },
+            "required": ["directory_path"]
+        }
+    )
     def _delete_directory(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """删除目录"""
         if "directory_path" not in params:
@@ -468,6 +382,18 @@ class FileAgent:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
+    @tool(
+        name="move_file",
+        description="移动文件",
+        parameters={
+            "type": "object",
+            "properties": {
+                "source_path": {"type": "string", "description": "源文件路径"},
+                "destination_path": {"type": "string", "description": "目标文件路径"}
+            },
+            "required": ["source_path", "destination_path"]
+        }
+    )
     def _move_file(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """移动文件"""
         if "source_path" not in params or "destination_path" not in params:
@@ -508,6 +434,18 @@ class FileAgent:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
+    @tool(
+        name="move_directory",
+        description="移动目录",
+        parameters={
+            "type": "object",
+            "properties": {
+                "source_path": {"type": "string", "description": "源目录路径"},
+                "destination_path": {"type": "string", "description": "目标目录路径"}
+            },
+            "required": ["source_path", "destination_path"]
+        }
+    )
     def _move_directory(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """移动目录"""
         if "source_path" not in params or "destination_path" not in params:
@@ -548,6 +486,18 @@ class FileAgent:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
+    @tool(
+        name="rename_file",
+        description="重命名文件",
+        parameters={
+            "type": "object",
+            "properties": {
+                "file_path": {"type": "string", "description": "要重命名的文件路径"},
+                "new_name": {"type": "string", "description": "新文件名"}
+            },
+            "required": ["file_path", "new_name"]
+        }
+    )
     def _rename_file(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """重命名文件"""
         if "file_path" not in params or "new_name" not in params:
@@ -587,6 +537,18 @@ class FileAgent:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
+    @tool(
+        name="rename_directory",
+        description="重命名目录",
+        parameters={
+            "type": "object",
+            "properties": {
+                "directory_path": {"type": "string", "description": "要重命名的目录路径"},
+                "new_name": {"type": "string", "description": "新目录名"}
+            },
+            "required": ["directory_path", "new_name"]
+        }
+    )
     def _rename_directory(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """重命名目录"""
         if "directory_path" not in params or "new_name" not in params:
@@ -626,6 +588,16 @@ class FileAgent:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
+    @tool(
+        name="list_files",
+        description="列出目录内容",
+        parameters={
+            "type": "object",
+            "properties": {
+                "directory_path": {"type": "string", "description": "目录路径", "default": "."}
+            }
+        }
+    )
     def _list_files(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """列出目录内容"""
         if "directory_path" not in params:
@@ -663,6 +635,17 @@ class FileAgent:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
+    @tool(
+        name="read_file",
+        description="读取文件内容",
+        parameters={
+            "type": "object",
+            "properties": {
+                "file_path": {"type": "string", "description": "文件路径"}
+            },
+            "required": ["file_path"]
+        }
+    )
     def _read_file(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """读取文件内容"""
         if "file_path" not in params:
@@ -692,6 +675,19 @@ class FileAgent:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
+    @tool(
+        name="write_file",
+        description="写入文件内容",
+        parameters={
+            "type": "object",
+            "properties": {
+                "file_path": {"type": "string", "description": "文件路径"},
+                "content": {"type": "string", "description": "要写入的内容"},
+                "append": {"type": "boolean", "description": "是否追加模式", "default": False}
+            },
+            "required": ["file_path", "content"]
+        }
+    )
     def _write_file(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """写入文件内容"""
         if "file_path" not in params and "content" in params:
