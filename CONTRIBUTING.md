@@ -11,9 +11,9 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 
 2. Configure `.env` file
 
-Copy `.env.example` to `.env` and modify it as needed.
+- Copy `.env.example` to `.env` and modify it as needed.
 
-2. Start the backend server
+3. Start the backend server
 
 ```powershell
 uv run ./main.py
