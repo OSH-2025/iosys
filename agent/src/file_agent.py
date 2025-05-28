@@ -29,7 +29,7 @@ class OperationType(str, Enum):
 def tool(name: str, description: str, parameters: Dict[str, Any]):
     """
     工具装饰器，用于注册文件操作工具
-    
+
     Args:
         name: 工具名称
         description: 工具描述
@@ -39,7 +39,7 @@ def tool(name: str, description: str, parameters: Dict[str, Any]):
         @wraps(func)
         def wrapper(*args, **kwargs):
             return func(*args, **kwargs)
-        
+
         # 将工具配置信息附加到函数上
         wrapper._tool_config = {
             "type": "function",
@@ -102,11 +102,11 @@ class FileAgent:
         try:
             # 调用LLM获取function call
             response = self._call_llm_with_tools(user_input)
-            
+
             # 执行function call
             result = self._execute_function_call(response)
             return result
-            
+
         except Exception as e:
             return {"status": "error", "message": f"处理请求时出错: {str(e)}"}
 
@@ -158,7 +158,7 @@ class FileAgent:
                     tool_call = choice.message.tool_calls[0]
                     function_name = tool_call.function.name
                     function_args = json.loads(tool_call.function.arguments)
-                    
+
                     # 使用自动收集的处理函数
                     if function_name in self.tool_handlers:
                         return self.tool_handlers[function_name](function_args)
@@ -168,7 +168,7 @@ class FileAgent:
                     return {"status": "error", "message": "LLM没有调用任何工具函数"}
             else:
                 return {"status": "error", "message": "无效的LLM响应格式"}
-                
+
         except Exception as e:
             return {"status": "error", "message": f"执行function call时出错: {str(e)}"}
 
@@ -223,7 +223,7 @@ class FileAgent:
             }
         except Exception as e:
             return {
-                "status": "error", 
+                "status": "error",
                 "message": str(e)
             }
 
@@ -711,6 +711,139 @@ class FileAgent:
             return {
                 "status": "error",
                 "message": str(e)
+            }
+
+    # 这里只返回大模型解析出的.json格式数据, 其中需要包含:
+    # 特征词序列(例如要求查询和某些关键词有关的文件),
+    # 限制序列(例如明确的文件名),
+    # 搜索地址(也就是在哪一个文件夹下搜素)
+    # 发给 GRAPH RAG 部分
+    def _search_file_send(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """搜索文件"""
+        try:
+            # 提取搜索参数
+            key_words = params.get("key_words", [])
+            constraint = params.get("constraint", [])
+            search_path = params.get("search_path", ".")
+
+            # 标准化搜索路径
+            normalized_search_path = self._normalize_path(search_path)
+
+            # 检查路径是否存在
+            if not os.path.exists(normalized_search_path):
+                return {
+                    "status": "error",
+                    "message": f"搜索路径不存在: {search_path}"
+                }
+
+            # 手动添加file_name到限制序列
+            if "file_name" in params:
+                constraint.append(params["file_name"])
+
+            # 构建发送给 GRAPH RAG 的数据结构
+            search_data = {
+                "key_words": key_words,  # 特征词序列
+                "constraint": constraint,      # 限制序列
+                # "search_path": os.path.relpath(normalized_search_path, self.base_dir)  # 搜索地址
+                "search_path": normalized_search_path  # 搜索地址
+            }
+
+            return {
+                "status": "success",
+                "message": "搜索参数已准备完成，等待发送到 GRAPH RAG",
+                "data": search_data
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"准备搜索参数时出错: {str(e)}"
+            }
+
+    def _search_file_receive(self, search_results: Dict[str, Any]) -> Dict[str, Any]:
+        """接收搜索结果"""
+        try:
+            # 处理搜索结果
+            file_list = search_results.get("file_list", [])
+            weights = search_results.get("weights", [])
+            # description = search_results.get("description", [])
+
+            if not file_list:
+                return {
+                    "status": "success",
+                    "message": "未找到相关文件"
+                }
+
+            return {
+                "status": "success",
+                "message": f"找到 {len(file_list)} 个相关文件",
+                "data": {
+                    "file_list": file_list,
+                    "weights": weights
+                    # "description": description
+                }
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"处理搜索结果时出错: {str(e)}"
+            }
+
+    @tool(
+        name="search_file",
+        description="搜索文件工作流",
+        parameters={
+            "type": "object",
+            "properties": {
+                "key_words": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "特征词序列"
+                },
+                "constraint": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "限制序列"
+                },
+                "search_path": {
+                    "type": "string",
+                    "description": "搜索地址",
+                    "default": "."
+                },
+                "file_name": {
+                    "type": "string",
+                    "description": "文件名限制"
+                }
+            },
+            "required": ["key_words"]
+        }
+    )
+    def _search_file_workflow(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """搜索文件工作流，协调发送请求和接收结果"""
+        try:
+            # 1. 发送搜索请求到 GRAPH RAG
+            send_result = self._search_file_send(params)
+
+            # 检查发送是否成功
+            if send_result["status"] == "error":
+                return send_result
+
+            # 2. 这里应该调用 GRAPH RAG 进行搜索
+            # 注意：这部分需要您实际集成 GRAPH RAG 系统
+            # 以下是一个模拟的 GRAPH RAG 调用示例
+            # 实际使用时请替换为真正的接口调用
+
+            # 模拟 GRAPH RAG 的搜索结果
+            # 在实际应用中，应该使用 GRAPH RAG 系统的返回结果
+            # search_results = call_graph_rag(search_data)
+
+            # 3. 接收并处理搜索结果
+            # 处理 GRAPH RAG 返回的结果
+            # return self._search_file_receive(search_results)
+            return send_result
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"搜索文件工作流执行出错: {str(e)}"
             }
 
     def _normalize_path(self, path: str) -> str:
