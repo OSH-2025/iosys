@@ -1,5 +1,8 @@
 {
   "python.analysis.extraPaths": [
     "./.venv/Lib/site-packages"
-  ]
+  ],
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff"
+  },
 }
