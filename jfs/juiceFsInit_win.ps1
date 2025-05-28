@@ -11,15 +11,15 @@ $ErrorActionPreference = 'Stop'
 # JuiceFS version to use (must match Windows binary release tag)
 $JuiceVersion = '1.2.3'
 # Local mount point (directory to mount to)
-$MountPoint = "Z:\\juicefs_mount"
+$MountPoint = ".\juicefs_mount"
 # Directory to store the juicefs.exe binary
-$BinDir = ".\\jfs\\juicefs"
+$BinDir = ".\jfs\juicefs"
 # Directory for local cache
-$CacheDir = ".\\jfs\\juicefs_cache"
+$CacheDir = ".\jfs\juicefs_cache"
 # Path to local metadata DB (absolute path)
-$LocalMeta = "${PWD.Path}\\jfs\\meta\\jfs.db"
+$LocalMeta = "$($PWD.Path)\jfs\meta\jfs.db"
 # Path to storage directory (absolute path)
-$LocalStorage = "${PWD.Path}\\jfs\\storage"
+$LocalStorage = "$($PWD.Path)\jfs\storage"
 # File system name (must be DNS-compatible)
 $FsName = 'myjfs'
 
@@ -68,14 +68,16 @@ foreach ($d in $dirs) {
 }
 
 # 4. Initialize standalone file system
-Write-Host "Initializing standalone JuiceFS file system..."\& "$BinDir\\juicefs.exe" format `
+Write-Host "Initializing standalone JuiceFS file system..."
+& "$BinDir\juicefs.exe" format `
     --storage "file" `
     --bucket "$LocalStorage" `
     "sqlite:///$LocalMeta?mode=rwc" `
     $FsName
 
 # 5. Mount the file system
-Write-Host "Mounting JuiceFS to $MountPoint..."\& "$BinDir\\juicefs.exe" mount `
+Write-Host "Mounting JuiceFS to $MountPoint..."
+& "$BinDir\juicefs.exe" mount `
     --cache-dir "$CacheDir" `
     --cache-size 1024 `
     --background `

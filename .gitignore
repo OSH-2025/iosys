@@ -10,3 +10,4 @@ jfs/juicefs
 jfs/storage
 jfs/jfs.db
 /data
+*.egg-info
