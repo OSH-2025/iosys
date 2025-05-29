@@ -33,3 +33,8 @@ exclude = [
     "markitdown",
     "a2a_server/a2a-python-sdk",
 ]
+
+[dependency-groups]
+dev = [
+    "uv>=0.7.8",
+]
