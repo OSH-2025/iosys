@@ -3,11 +3,12 @@ import pandas as pd
 from llama_index.core import Document
 
 # 加载示例新闻数据，这些数据将被分块成更小的部分，以便于处理
-news = pd.read_csv("https://raw.githubusercontent.com/tomasonjo/blog-datasets/main/news_articles.csv")[:50]
+news = pd.read_csv(
+    "https://raw.githubusercontent.com/tomasonjo/blog-datasets/main/news_articles.csv"
+)[:50]
 
 documents = [
-    Document(text=f"{row['title']}: {row['text']}")
-    for _, row in news.iterrows()
+    Document(text=f"{row['title']}: {row['text']}") for _, row in news.iterrows()
 ]
 
 # 使用 SentenceSplitter 将文档分解为可管理的块。
@@ -22,23 +23,29 @@ nodes = splitter.get_nodes_from_documents(documents)
 # 配置 LLM、Prompt 和 GraphRAG 提取器
 from llama_index.llms.openai import OpenAI
 
-os.environ["OPENAI_API_KEY"] = "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"  #换成群里API-key和模型
+os.environ["OPENAI_API_KEY"] = (
+    "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"  # 换成群里API-key和模型
+)
 llm = OpenAI(model="google/gemini-2.0-flash-001")
 
-entity_pattern = r'entity_name:\s*(.+?)\s*entity_type:\s*(.+?)\s*entity_description:\s*(.+?)\s*'
-relationship_pattern = r'source_entity:\s*(.+?)\s*target_entity:\s*(.+?)\s*relation:\s*(.+?)\s*relationship_description:\s*(.+?)\s*'
+entity_pattern = (
+    r"entity_name:\s*(.+?)\s*entity_type:\s*(.+?)\s*entity_description:\s*(.+?)\s*"
+)
+relationship_pattern = r"source_entity:\s*(.+?)\s*target_entity:\s*(.+?)\s*relation:\s*(.+?)\s*relationship_description:\s*(.+?)\s*"
+
 
 def parse_fn(response_str: str) -> Any:
     entities = re.findall(entity_pattern, response_str)
     relationships = re.findall(relationship_pattern, response_str)
     return entities, relationships
 
+
 import asyncio
 import nest_asyncio
 
 nest_asyncio.apply()
 
-from typing import Any, List, Callable, Optional, Union, Dict
+from typing import Any, List, Callable, Optional, Union
 from IPython.display import Markdown, display  # 有问题
 
 from llama_index.core.async_utils import run_jobs
@@ -57,7 +64,8 @@ from llama_index.core.prompts.default_prompts import (
     DEFAULT_KG_TRIPLET_EXTRACT_PROMPT,
 )
 from llama_index.core.schema import TransformComponent, BaseNode
-from llama_index.core.bridge.pydantic import BaseModel, Field
+
+
 class GraphRAGExtractor(TransformComponent):
     """Extract triples from a graph.
 
@@ -112,9 +120,7 @@ class GraphRAGExtractor(TransformComponent):
         self, nodes: List[BaseNode], show_progress: bool = False, **kwargs: Any
     ) -> List[BaseNode]:
         """Extract triples from nodes."""
-        return asyncio.run(
-            self.acall(nodes, show_progress=show_progress, **kwargs)
-        )
+        return asyncio.run(self.acall(nodes, show_progress=show_progress, **kwargs))
 
     async def _aextract(self, node: BaseNode) -> BaseNode:
         """Extract triples from a node."""
@@ -136,9 +142,9 @@ class GraphRAGExtractor(TransformComponent):
         existing_relations = node.metadata.pop(KG_RELATIONS_KEY, [])
         metadata = node.metadata.copy()
         for entity, entity_type, description in entities:
-            metadata[
-                "entity_description"
-            ] = description  # Not used in the current implementation. But will be useful in future work.
+            metadata["entity_description"] = (
+                description  # Not used in the current implementation. But will be useful in future work.
+            )
             entity_node = EntityNode(
                 name=entity, label=entity_type, properties=metadata
             )
@@ -178,10 +184,11 @@ class GraphRAGExtractor(TransformComponent):
             show_progress=show_progress,
             desc="Extracting paths from text",
         )
-    
+
+
 kg_extractor = GraphRAGExtractor(
     llm=llm,
-    extract_prompt=KG_TRIPLET_EXTRACT_TMPL, #有问题
+    extract_prompt=KG_TRIPLET_EXTRACT_TMPL,  # 有问题
     max_paths_per_chunk=2,
     parse_fn=parse_fn,
 )
@@ -193,6 +200,8 @@ import networkx as nx
 from graspologic.partition import hierarchical_leiden
 
 from llama_index.core.llms import ChatMessage
+
+
 class GraphRAGStore(SimplePropertyGraphStore):
     community_summary = {}
     max_cluster_size = 5
@@ -263,19 +272,18 @@ class GraphRAGStore(SimplePropertyGraphStore):
     def _summarize_communities(self, community_info):
         """Generate and store summaries for each community."""
         for community_id, details in community_info.items():
-            details_text = (
-                "\n".join(details) + "."
-            )  # Ensure it ends with a period
-            self.community_summary[
-                community_id
-            ] = self.generate_community_summary(details_text)
+            details_text = "\n".join(details) + "."  # Ensure it ends with a period
+            self.community_summary[community_id] = self.generate_community_summary(
+                details_text
+            )
 
     def get_community_summaries(self):
         """Returns the community summaries, building them if not already done."""
         if not self.community_summary:
             self.build_communities()
         return self.community_summary
-    
+
+
 from llama_index.core import PropertyGraphIndex
 
 index = PropertyGraphIndex(
@@ -290,6 +298,8 @@ index = PropertyGraphIndex(
 # 然后使用 aggregate_answers 方法将这些部分答案合成为连贯的最终答案，其中 LLM 将多个观点组合成一个简洁的输出。
 from llama_index.core.query_engine import CustomQueryEngine
 from llama_index.core.llms import LLM
+
+
 class GraphRAGQueryEngine(CustomQueryEngine):
     graph_store: GraphRAGStore
     llm: LLM
@@ -325,7 +335,9 @@ class GraphRAGQueryEngine(CustomQueryEngine):
     def aggregate_answers(self, community_answers):
         """Aggregate individual community answers into a final, coherent response."""
         # intermediate_text = " ".join(community_answers)
-        prompt = "Combine the following intermediate answers into a final, concise response."
+        prompt = (
+            "Combine the following intermediate answers into a final, concise response."
+        )
         messages = [
             ChatMessage(role="system", content=prompt),
             ChatMessage(
@@ -338,9 +350,8 @@ class GraphRAGQueryEngine(CustomQueryEngine):
             r"^assistant:\s*", "", str(final_response)
         ).strip()
         return cleaned_final_response
-    
-query_engine = GraphRAGQueryEngine(
-    graph_store=index.property_graph_store, llm=llm
-)
+
+
+query_engine = GraphRAGQueryEngine(graph_store=index.property_graph_store, llm=llm)
 response = query_engine.query("What are news related to financial sector?")
 display(Markdown(f"{response.response}"))
