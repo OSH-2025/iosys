@@ -1,10 +1,8 @@
-import juicefs
+import juicefs, os
+#print("JuiceFS version:", juicefs.__version__)
+print("Shared lib :", os.path.exists(os.path.join(os.path.dirname(juicefs.__file__),"libjfs.so")))
 from juicefs import Client
+print("Client OK →", Client(name="myjfs", meta="sqlite3://./jfs/jfs.db").listdir("/"))
 
-# 创建 JuiceFS 客户端
-jfs = Client(name="", meta="sqlite3://./jfs/jfs.db")
 
-# 列出目录中的文件
-jfs.listdir("/")
-
-help(juicefs.Client)
+#help(juicefs.Client)
