@@ -1,6 +1,12 @@
 
 ---
-在项目根目录下运行脚本。
+## JuiceFs 脚本使用
+
+在项目根目录下(iosys)运行脚本。
+可能需要以管理员的身份运行。
+```ps1
+jfs\juiceFsInit_win.ps1 # 在终端中输入脚本所在路径即可运行
+```
 
 ## JuiceFs py SDK
 
