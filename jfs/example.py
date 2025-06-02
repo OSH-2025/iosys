@@ -1,5 +1,6 @@
 import juicefs
 from juicefs import Client
+
 # 创建 JuiceFS 客户端
 jfs = Client(name="", meta="sqlite3://./jfs/jfs.db")
 
