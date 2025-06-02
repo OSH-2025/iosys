@@ -4,11 +4,28 @@
 
 在项目根目录下(iosys)运行脚本。
 可能需要以管理员的身份运行。
+
+在 windows 下：
+
 ```ps1
 jfs\juiceFsInit_win.ps1 # 在终端中输入脚本所在路径即可运行
 ```
 
+在 linux 下：
+
+```bash
+source jfs/juiceFsInit_linux.sh
+```
+
 ## JuiceFs py SDK
+
+使用python SDK需要：
+
+```bash
+sudo apt install git-lfs
+git lfs install --local
+git lfs pull
+```
 
 ```python
 check_quota(self, path, repair=False, strict=False)
