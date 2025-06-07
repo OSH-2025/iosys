@@ -53,9 +53,30 @@ class OSDirNode(DirNode):
         self.name = os.path.basename(id.rstrip("/"))
         self.meta = {}
 
-    def insert(self, node: FileNode | DirNode):
-        # Implementation for creating files/dirs
-        pass
+    def insert_file(self, name: str) -> FileNode:
+        """Create a new file in this directory"""
+        file_path = os.path.join(self.id, name)
+        if os.path.exists(file_path):
+            raise FileExistsError(f"File {file_path} already exists.")
+
+        # Create empty file
+        with open(file_path, "wb") as _:
+            pass
+
+        node = OSFileNode(self.fs, file_path)
+        self.fs.call_file_update(node)
+        return node
+
+    def insert_dir(self, name: str) -> "OSDirNode":
+        """Create a new directory in this directory"""
+        dir_path = os.path.join(self.id, name)
+        if os.path.exists(dir_path):
+            raise FileExistsError(f"Directory {dir_path} already exists.")
+
+        os.makedirs(dir_path)
+        node = OSDirNode(self.fs, dir_path)
+        self.fs.call_dir_update(node)
+        return node
 
     def remove(self):
         """Remove the directory"""

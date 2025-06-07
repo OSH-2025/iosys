@@ -189,7 +189,7 @@ class FileAgent:
         elif path == ".":
             path = ""
         # 使用路径作为ID，可以根据实际需要调整
-        return path if path else "root"
+        return "/" + path
 
     def _id_to_relative_path(self, node_id: str) -> str:
         """将节点ID转换为相对路径显示"""
@@ -236,29 +236,19 @@ class FileAgent:
                 }
 
             # 确保父目录存在
-            if "/" in file_id:
-                parent_path = "/".join(file_id.split("/")[:-1])
-                parent_id = self._path_to_id(parent_path)
-                if not self.fs.exists(parent_id):
-                    return {
-                        "status": "error",
-                        "message": f"父目录不存在: {parent_path}",
-                        "data": {},
-                    }
-
-            # 创建文件节点并写入内容
-            raise NotImplementedError()
-            # 这里需要根据实际的FileNode实现来创建文件
-            # 暂时使用write方法来创建文件
-            try:
-                self.fs.write(file_id, content.encode("utf-8"))
-            except FileNotFoundError:
-                # 如果文件不存在，需要先创建
+            parent_path = "/".join(file_id.split("/")[:-1])
+            parent_id = self._path_to_id(parent_path)
+            parent_node = self.fs.get_dir_node(parent_id)
+            if not parent_node:
                 return {
                     "status": "error",
-                    "message": f"无法创建文件，请确保父目录存在: {params['file_name']}",
+                    "message": f"父目录不存在: {parent_path}",
                     "data": {},
                 }
+
+            # 创建文件节点并写入内容
+            node = parent_node.insert_file(params["file_name"])
+            node.write(content.encode("utf-8"))
 
             return {
                 "status": "success",
@@ -304,13 +294,22 @@ class FileAgent:
                     "data": {},
                 }
 
-            # 创建目录 - 这里需要根据具体的文件系统实现
-            # 由于IOSYSFileSystem接口中没有直接的创建目录方法，
-            # 可能需要通过父目录的insert方法来创建
+            # 确保父目录存在
+            parent_id = self._path_to_id(params["path"])
+            parent_node = self.fs.get_dir_node(parent_id)
+            if not parent_node:
+                return {
+                    "status": "error",
+                    "message": f"父目录不存在: {params['path']}",
+                    "data": {},
+                }
+            
+            # 创建目录节点
+            parent_node.insert_dir(params["directory_name"])
             return {
-                "status": "error",
-                "message": "目录创建功能需要文件系统支持",
-                "data": {},
+                "status": "success",
+                "message": f"目录创建成功: {params['directory_name']}",
+                "data": {"path": self._id_to_relative_path(dir_id)},
             }
         except Exception as e:
             return {"status": "error", "message": str(e)}
