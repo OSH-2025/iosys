@@ -25,7 +25,7 @@ class IOSYSGraphEngine:
         self.graph_store = SimplePropertyGraphStore.from_dict(dumped)
 
     def dump(self):
-        dumped = self.graph_store.graph.model_dump()
+        dumped = self.graph_store.graph.model_dump(mode="json")
         dumped["revision"] = self.revision
         return dumped
 

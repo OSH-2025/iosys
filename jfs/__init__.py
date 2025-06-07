@@ -1,4 +1,5 @@
-from typing import Literal, Union, Callable
+import asyncio
+from typing import Awaitable, Literal, Union, Callable
 import abc
 import os
 import io
@@ -78,10 +79,10 @@ class DirNode(abc.ABC):
 
 
 class IOSYSFileSystem(abc.ABC):
-    on_file_update: list[Callable[[FileNode], None]] = []
-    on_file_delete: list[Callable[[FileNode], None]] = []
-    on_dir_update: list[Callable[[DirNode], None]] = []
-    on_dir_delete: list[Callable[[DirNode], None]] = []
+    on_file_update: list[Callable[[FileNode], Awaitable[None]]] = []
+    on_file_delete: list[Callable[[FileNode], Awaitable[None]]] = []
+    on_dir_update: list[Callable[[DirNode], Awaitable[None]]] = []
+    on_dir_delete: list[Callable[[DirNode], Awaitable[None]]] = []
 
     @abc.abstractmethod
     def is_running(self) -> bool: ...
@@ -123,20 +124,16 @@ class IOSYSFileSystem(abc.ABC):
         node.remove()
 
     def call_file_update(self, node: FileNode):
-        for callback in self.on_file_update:
-            callback(node)
+        asyncio.gather(callback(node) for callback in self.on_file_update)
 
     def call_file_delete(self, node: FileNode):
-        for callback in self.on_file_delete:
-            callback(node)
+        asyncio.gather(callback(node) for callback in self.on_file_delete)
 
     def call_dir_update(self, node: DirNode):
-        for callback in self.on_dir_update:
-            callback(node)
+        asyncio.gather(callback(node) for callback in self.on_dir_update)
 
     def call_dir_delete(self, node: DirNode):
-        for callback in self.on_dir_delete:
-            callback(node)
+        asyncio.gather(callback(node) for callback in self.on_dir_delete)
 
 
 def new_fs() -> IOSYSFileSystem:

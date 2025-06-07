@@ -60,7 +60,7 @@ onMounted(() => {
 <template>
   <div relative w-full h-full>
     <div ref="container" style="width: 100%; height: 100%; border: 1px solid lightgray;"></div>
-    <div v-if="nodes.length === 0"
+    <div v-if="graphNodes.length === 0"
       class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-gray-500">
       No nodes available
     </div>

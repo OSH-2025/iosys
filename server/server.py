@@ -30,6 +30,7 @@ llm = OpenAI(
 fs = new_fs()
 
 rag = IOSYSRAG(fs=fs)
+rag.load()
 
 agent_config = AgentConfig(fs=fs)
 file_manager = FileManagerApp(agent_config)
