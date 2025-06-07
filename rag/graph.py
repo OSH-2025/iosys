@@ -1,7 +1,7 @@
 import os
 from dataclasses import asdict
 
-from llama_index.core.graph_stores import SimplePropertyGraphStore, EntityNode
+from llama_index.core.graph_stores import SimplePropertyGraphStore, EntityNode, Relation
 from llama_index.core.llms.llm import LLM
 from llama_index.llms.openai import OpenAI
 
@@ -38,10 +38,15 @@ class IOSYSGraphEngine:
             )
         )
         if parsed.parent_id:
-            self.graph_store.graph.add_triplet(
-                subject=parsed.parent_id,
-                predicate="contains",
-                object=id,
+            print(parsed.parent_id,
+                   "contains",
+                    id,)
+            self.graph_store.graph.add_relation(
+                Relation(
+                    source_id=parsed.parent_id,
+                    label="contains",
+                    target_id=id,
+                )
             )
         self.revision += 1
 

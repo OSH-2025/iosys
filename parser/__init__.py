@@ -139,7 +139,7 @@ class IOSYSParser:
             name=node.name,
             created_at=1141514,
             updated_at=1919810,
-            parent_id=node.parent(),
+            parent_id=node.parent().id,
             brief_text=self._generate_basic(node),
             verbose_text=self._generate_verbose(node),
             embedded_files=[],
