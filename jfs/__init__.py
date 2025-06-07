@@ -65,7 +65,7 @@ class FileNode:
         if parent_id == "":
             parent_id = "/"
         return DirNode(self.fs, parent_id)
-    
+
     def to_dict(self) -> dict:
         return {
             "id": self.id,
