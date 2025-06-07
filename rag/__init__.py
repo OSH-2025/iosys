@@ -1,4 +1,4 @@
-from ..jfs import FileSystemNode, IOSYSFileSystem
+from ..jfs import FileNode, IOSYSFileSystem
 from ..parser import IOSYSParser
 from .engine import IOSYSQueryEngine
 
@@ -21,9 +21,9 @@ class IOSYSRAG:
             dumped = self.filesystem.read("__graph__.json")
             self.engine.load(dumped)
 
-    def update_file(self, node: FileSystemNode, content: str):
-        parsed = self.parser.parse(node, content)
+    def update_file(self, node: FileNode):
+        parsed = self.parser.parse(node)
         self.engine.update_file(node.id, parsed)
 
-    def delete_file(self, node: FileSystemNode):
+    def delete_file(self, node: FileNode):
         self.engine.delete_file(node.id)
