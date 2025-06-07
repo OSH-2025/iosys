@@ -1,5 +1,3 @@
-import os
-import shutil
 import json
 from typing import Dict, Any, Callable, List
 from enum import Enum
@@ -8,6 +6,7 @@ from functools import wraps
 from openai import Client
 
 from .config import AgentConfig
+from jfs import FileNode
 
 
 class OperationType(str, Enum):
@@ -68,7 +67,8 @@ class FileAgent:
             llm_client: LLM客户端(例如OpenAI API客户端)
         """
         self.config = config
-        self.base_dir = os.path.abspath(config.base_dir)
+        self.fs = config.fs
+        self.base_dir = config.base_dir
         self.llm_client = llm_client
         self.tools = self._collect_tools()
         self.tool_handlers = self._collect_tool_handlers()
@@ -182,6 +182,20 @@ class FileAgent:
         except Exception as e:
             return {"status": "error", "message": f"执行function call时出错: {str(e)}"}
 
+    def _path_to_id(self, path: str) -> str:
+        """将路径转换为文件系统节点ID"""
+        # 移除前导的"./"或"."
+        if path.startswith("./"):
+            path = path[2:]
+        elif path == ".":
+            path = ""
+        # 使用路径作为ID，可以根据实际需要调整
+        return path if path else "root"
+
+    def _id_to_relative_path(self, node_id: str) -> str:
+        """将节点ID转换为相对路径显示"""
+        return node_id if node_id != "root" else "."
+
     # ------------------------------------ 工具函数定义 ------------------------------------
 
     @tool(
@@ -199,37 +213,58 @@ class FileAgent:
     )
     def _create_file(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """创建文件"""
-        if "file_name" not in params or "path" not in params:
-            # 设置默认文件名为 new_file.txt
+        if "file_name" not in params:
             params["file_name"] = "new_file.txt"
-            # 默认路径为当前目录
+        if "path" not in params:
             params["path"] = "."
 
         try:
-            file_path = self._normalize_path(
-                os.path.join(params["path"], params["file_name"])
-            )
+            # 构造文件路径
+            if params["path"] == ".":
+                file_path = params["file_name"]
+            else:
+                file_path = f"{params['path']}/{params['file_name']}"
+
+            file_id = self._path_to_id(file_path)
             content = params.get("content", "")
 
-            # 确保目录存在
-            os.makedirs(os.path.dirname(file_path), exist_ok=True)
-
             # 检查文件是否已存在
-            if os.path.exists(file_path):
+            if self.fs.exists(file_id):
                 return {
                     "status": "error",
                     "message": f"文件已存在: {params['file_name']}",
                     "data": {},
                 }
 
-            # 创建文件
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(content)
+            # 确保父目录存在
+            if "/" in file_id:
+                parent_path = "/".join(file_id.split("/")[:-1])
+                parent_id = self._path_to_id(parent_path)
+                if not self.fs.exists(parent_id):
+                    return {
+                        "status": "error",
+                        "message": f"父目录不存在: {parent_path}",
+                        "data": {},
+                    }
+
+            # 创建文件节点并写入内容
+            raise NotImplementedError()
+            # 这里需要根据实际的FileNode实现来创建文件
+            # 暂时使用write方法来创建文件
+            try:
+                self.fs.write(file_id, content.encode("utf-8"))
+            except FileNotFoundError:
+                # 如果文件不存在，需要先创建
+                return {
+                    "status": "error",
+                    "message": f"无法创建文件，请确保父目录存在: {params['file_name']}",
+                    "data": {},
+                }
 
             return {
                 "status": "success",
                 "message": f"文件创建成功: {params['file_name']}",
-                "data": {"path": os.path.relpath(file_path, self.base_dir)},
+                "data": {"path": self._id_to_relative_path(file_id)},
             }
         except Exception as e:
             return {"status": "error", "message": str(e)}
@@ -248,32 +283,35 @@ class FileAgent:
     )
     def _create_directory(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """创建目录"""
-        if "directory_name" not in params or "path" not in params:
-            # 设置默认目录名为 new_directory
+        if "directory_name" not in params:
             params["directory_name"] = "new_directory"
-            # 默认路径为当前目录
+        if "path" not in params:
             params["path"] = "."
 
         try:
-            dir_path = self._normalize_path(
-                os.path.join(params["path"], params["directory_name"])
-            )
+            # 构造目录路径
+            if params["path"] == ".":
+                dir_path = params["directory_name"]
+            else:
+                dir_path = f"{params['path']}/{params['directory_name']}"
+
+            dir_id = self._path_to_id(dir_path)
 
             # 检查目录是否已存在
-            if os.path.exists(dir_path):
+            if self.fs.exists(dir_id):
                 return {
                     "status": "error",
                     "message": f"目录已存在: {params['directory_name']}",
                     "data": {},
                 }
 
-            # 创建目录
-            os.makedirs(dir_path, exist_ok=True)
-
+            # 创建目录 - 这里需要根据具体的文件系统实现
+            # 由于IOSYSFileSystem接口中没有直接的创建目录方法，
+            # 可能需要通过父目录的insert方法来创建
             return {
-                "status": "success",
-                "message": f"目录创建成功: {params['directory_name']}",
-                "data": {"path": os.path.relpath(dir_path, self.base_dir)},
+                "status": "error",
+                "message": "目录创建功能需要文件系统支持",
+                "data": {},
             }
         except Exception as e:
             return {"status": "error", "message": str(e)}
@@ -292,13 +330,14 @@ class FileAgent:
     def _delete_file(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """删除文件"""
         if "file_path" not in params:
-            params["file_path"] = "."
+            return {"status": "error", "message": "缺少必要参数: file_path"}
 
         try:
-            file_path = self._normalize_path(params["file_path"])
+            file_id = self._path_to_id(params["file_path"])
 
             # 检查文件是否存在
-            if not os.path.exists(file_path) or not os.path.isfile(file_path):
+            file_node = self.fs.get_file_node(file_id)
+            if not file_node:
                 return {
                     "status": "error",
                     "message": f"文件不存在: {params['file_path']}",
@@ -306,7 +345,7 @@ class FileAgent:
                 }
 
             # 删除文件
-            os.remove(file_path)
+            self.fs.remove(file_id)
 
             return {
                 "status": "success",
@@ -332,10 +371,11 @@ class FileAgent:
             return {"status": "error", "message": "缺少必要参数: directory_path"}
 
         try:
-            dir_path = self._normalize_path(params["directory_path"])
+            dir_id = self._path_to_id(params["directory_path"])
 
             # 检查目录是否存在
-            if not os.path.exists(dir_path) or not os.path.isdir(dir_path):
+            dir_node = self.fs.get_dir_node(dir_id)
+            if not dir_node:
                 return {
                     "status": "error",
                     "message": f"目录不存在: {params['directory_path']}",
@@ -343,7 +383,7 @@ class FileAgent:
                 }
 
             # 删除目录
-            shutil.rmtree(dir_path)
+            self.fs.remove(dir_id)
 
             return {
                 "status": "success",
@@ -373,35 +413,46 @@ class FileAgent:
             }
 
         try:
-            src_path = self._normalize_path(params["source_path"])
-            dst_path = self._normalize_path(params["destination_path"])
+            src_id = self._path_to_id(params["source_path"])
+            dst_id = self._path_to_id(params["destination_path"])
 
             # 检查源文件是否存在
-            if not os.path.exists(src_path) or not os.path.isfile(src_path):
+            src_node = self.fs.get_file_node(src_id)
+            if not src_node:
                 return {
                     "status": "error",
                     "message": f"源文件不存在: {params['source_path']}",
                     "data": {},
                 }
 
-            # 确保目标目录存在
-            os.makedirs(os.path.dirname(dst_path), exist_ok=True)
-
             # 检查目标文件是否已存在
-            if os.path.exists(dst_path):
+            if self.fs.exists(dst_id):
                 return {
                     "status": "error",
                     "message": f"目标文件已存在: {params['destination_path']}",
                     "data": {},
                 }
 
-            # 移动文件
-            shutil.move(src_path, dst_path)
+            # 读取源文件内容
+            content = self.fs.read(src_id)
+
+            # 写入目标文件
+            try:
+                self.fs.write(dst_id, content)
+            except FileNotFoundError:
+                return {
+                    "status": "error",
+                    "message": f"无法创建目标文件，请确保目标目录存在: {params['destination_path']}",
+                    "data": {},
+                }
+
+            # 删除源文件
+            self.fs.remove(src_id)
 
             return {
                 "status": "success",
                 "message": f"文件移动成功: {params['source_path']} -> {params['destination_path']}",
-                "data": {"new_path": os.path.relpath(dst_path, self.base_dir)},
+                "data": {"new_path": self._id_to_relative_path(dst_id)},
             }
         except Exception as e:
             return {"status": "error", "message": str(e)}
@@ -427,11 +478,12 @@ class FileAgent:
             }
 
         try:
-            src_path = self._normalize_path(params["source_path"])
-            dst_path = self._normalize_path(params["destination_path"])
+            src_id = self._path_to_id(params["source_path"])
+            dst_id = self._path_to_id(params["destination_path"])
 
             # 检查源目录是否存在
-            if not os.path.exists(src_path) or not os.path.isdir(src_path):
+            src_node = self.fs.get_dir_node(src_id)
+            if not src_node:
                 return {
                     "status": "error",
                     "message": f"源目录不存在: {params['source_path']}",
@@ -439,23 +491,18 @@ class FileAgent:
                 }
 
             # 检查目标目录是否已存在
-            if os.path.exists(dst_path):
+            if self.fs.exists(dst_id):
                 return {
                     "status": "error",
                     "message": f"目标目录已存在: {params['destination_path']}",
                     "data": {},
                 }
 
-            # 确保目标父目录存在
-            os.makedirs(os.path.dirname(dst_path), exist_ok=True)
-
-            # 移动目录
-            shutil.move(src_path, dst_path)
-
+            # 目录移动功能需要文件系统的具体支持
             return {
-                "status": "success",
-                "message": f"目录移动成功: {params['source_path']} -> {params['destination_path']}",
-                "data": {"new_path": os.path.relpath(dst_path, self.base_dir)},
+                "status": "error",
+                "message": "目录移动功能需要文件系统支持",
+                "data": {},
             }
         except Exception as e:
             return {"status": "error", "message": str(e)}
@@ -475,16 +522,26 @@ class FileAgent:
     def _rename_file(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """重命名文件"""
         if "file_path" not in params or "new_name" not in params:
-            params["new_name"] = "rename_file.txt"
-            params["file_path"] = "."
+            return {
+                "status": "error",
+                "message": "缺少必要参数: file_path 或 new_name",
+            }
 
         try:
-            file_path = self._normalize_path(params["file_path"])
-            dir_path = os.path.dirname(file_path)
-            new_path = os.path.join(dir_path, params["new_name"])
+            file_id = self._path_to_id(params["file_path"])
+
+            # 构造新路径
+            if "/" in file_id:
+                dir_path = "/".join(file_id.split("/")[:-1])
+                new_path = f"{dir_path}/{params['new_name']}"
+            else:
+                new_path = params["new_name"]
+
+            new_id = self._path_to_id(new_path)
 
             # 检查源文件是否存在
-            if not os.path.exists(file_path) or not os.path.isfile(file_path):
+            file_node = self.fs.get_file_node(file_id)
+            if not file_node:
                 return {
                     "status": "error",
                     "message": f"文件不存在: {params['file_path']}",
@@ -492,20 +549,26 @@ class FileAgent:
                 }
 
             # 检查新文件名是否已存在
-            if os.path.exists(new_path):
+            if self.fs.exists(new_id):
                 return {
                     "status": "error",
                     "message": f"文件已存在: {params['new_name']}",
                     "data": {},
                 }
 
-            # 重命名文件
-            os.rename(file_path, new_path)
+            # 读取文件内容
+            content = self.fs.read(file_id)
+
+            # 写入新文件
+            self.fs.write(new_id, content)
+
+            # 删除原文件
+            self.fs.remove(file_id)
 
             return {
                 "status": "success",
                 "message": f"文件重命名成功: {params['file_path']} -> {params['new_name']}",
-                "data": {"new_path": os.path.relpath(new_path, self.base_dir)},
+                "data": {"new_path": self._id_to_relative_path(new_id)},
             }
         except Exception as e:
             return {"status": "error", "message": str(e)}
@@ -528,16 +591,26 @@ class FileAgent:
     def _rename_directory(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """重命名目录"""
         if "directory_path" not in params or "new_name" not in params:
-            params["new_name"] = "rename_dir"
-            params["directory_path"] = "."
+            return {
+                "status": "error",
+                "message": "缺少必要参数: directory_path 或 new_name",
+            }
 
         try:
-            dir_path = self._normalize_path(params["directory_path"])
-            parent_dir = os.path.dirname(dir_path)
-            new_path = os.path.join(parent_dir, params["new_name"])
+            dir_id = self._path_to_id(params["directory_path"])
+
+            # 构造新路径
+            if "/" in dir_id:
+                parent_path = "/".join(dir_id.split("/")[:-1])
+                new_path = f"{parent_path}/{params['new_name']}"
+            else:
+                new_path = params["new_name"]
+
+            new_id = self._path_to_id(new_path)
 
             # 检查源目录是否存在
-            if not os.path.exists(dir_path) or not os.path.isdir(dir_path):
+            dir_node = self.fs.get_dir_node(dir_id)
+            if not dir_node:
                 return {
                     "status": "error",
                     "message": f"目录不存在: {params['directory_path']}",
@@ -545,20 +618,18 @@ class FileAgent:
                 }
 
             # 检查新目录名是否已存在
-            if os.path.exists(new_path):
+            if self.fs.exists(new_id):
                 return {
                     "status": "error",
                     "message": f"目录已存在: {params['new_name']}",
                     "data": {},
                 }
 
-            # 重命名目录
-            os.rename(dir_path, new_path)
-
+            # 目录重命名功能需要文件系统的具体支持
             return {
-                "status": "success",
-                "message": f"目录重命名成功: {params['directory_path']} -> {params['new_name']}",
-                "data": {"new_path": os.path.relpath(new_path, self.base_dir)},
+                "status": "error",
+                "message": "目录重命名功能需要文件系统支持",
+                "data": {},
             }
         except Exception as e:
             return {"status": "error", "message": str(e)}
@@ -583,10 +654,11 @@ class FileAgent:
             params["directory_path"] = "."
 
         try:
-            dir_path = self._normalize_path(params["directory_path"])
+            dir_id = self._path_to_id(params["directory_path"])
 
             # 检查目录是否存在
-            if not os.path.exists(dir_path) or not os.path.isdir(dir_path):
+            dir_node = self.fs.get_dir_node(dir_id)
+            if not dir_node:
                 return {
                     "status": "error",
                     "message": f"目录不存在: {params['directory_path']}",
@@ -594,16 +666,15 @@ class FileAgent:
                 }
 
             # 列出目录内容
-            items = os.listdir(dir_path)
+            children = dir_node.children()
             files = []
             directories = []
 
-            for item in items:
-                item_path = os.path.join(dir_path, item)
-                if os.path.isfile(item_path):
-                    files.append(item)
-                elif os.path.isdir(item_path):
-                    directories.append(item)
+            for child in children:
+                if child.type == "file":
+                    files.append(child.name)
+                elif child.type == "dir":
+                    directories.append(child.name)
 
             return {
                 "status": "success",
@@ -625,13 +696,14 @@ class FileAgent:
     def _read_file(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """读取文件内容"""
         if "file_path" not in params:
-            params["file_path"] = "."
+            return {"status": "error", "message": "缺少必要参数: file_path"}
 
         try:
-            file_path = self._normalize_path(params["file_path"])
+            file_id = self._path_to_id(params["file_path"])
 
             # 检查文件是否存在
-            if not os.path.exists(file_path) or not os.path.isfile(file_path):
+            file_node = self.fs.get_file_node(file_id)
+            if not file_node:
                 return {
                     "status": "error",
                     "message": f"文件不存在: {params['file_path']}",
@@ -639,8 +711,8 @@ class FileAgent:
                 }
 
             # 读取文件内容
-            with open(file_path, "r", encoding="utf-8") as f:
-                content = f.read()
+            content_bytes = self.fs.read(file_id)
+            content = content_bytes.decode("utf-8")
 
             return {
                 "status": "success",
@@ -669,32 +741,32 @@ class FileAgent:
     )
     def _write_file(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """写入文件内容"""
-        if "file_path" not in params and "content" in params:
-            if "file_name" in params:
-                params["file_path"] = params["file_name"]
-            else:
-                params["file_path"] = "."
-
         if "content" not in params:
             return {"status": "error", "message": "缺少必要参数: content"}
 
+        if "file_path" not in params:
+            if "file_name" in params:
+                params["file_path"] = params["file_name"]
+            else:
+                return {"status": "error", "message": "缺少必要参数: file_path"}
+
         try:
-            file_path = self._normalize_path(params["file_path"])
+            file_id = self._path_to_id(params["file_path"])
             content = params["content"]
             append = params.get("append", False)
 
-            # 确保目录存在
-            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            if append and self.fs.exists(file_id):
+                # 追加模式：先读取现有内容，然后追加
+                existing_content = self.fs.read(file_id).decode("utf-8")
+                content = existing_content + content
 
             # 写入文件
-            mode = "a" if append else "w"
-            with open(file_path, mode, encoding="utf-8") as f:
-                f.write(content)
+            self.fs.write(file_id, content.encode("utf-8"))
 
             return {
                 "status": "success",
                 "message": f"成功{'追加' if append else '写入'}文件: {params['file_path']}",
-                "data": {"path": os.path.relpath(file_path, self.base_dir)},
+                "data": {"path": self._id_to_relative_path(file_id)},
             }
         except Exception as e:
             return {"status": "error", "message": str(e)}
@@ -712,11 +784,11 @@ class FileAgent:
             constraint = params.get("constraint", [])
             search_path = params.get("search_path", ".")
 
-            # 标准化搜索路径
-            normalized_search_path = self._normalize_path(search_path)
+            # 转换为文件系统ID
+            search_id = self._path_to_id(search_path)
 
             # 检查路径是否存在
-            if not os.path.exists(normalized_search_path):
+            if not self.fs.exists(search_id):
                 return {"status": "error", "message": f"搜索路径不存在: {search_path}"}
 
             # 手动添加file_name到限制序列
@@ -727,8 +799,7 @@ class FileAgent:
             search_data = {
                 "key_words": key_words,  # 特征词序列
                 "constraint": constraint,  # 限制序列
-                # "search_path": os.path.relpath(normalized_search_path, self.base_dir)  # 搜索地址
-                "search_path": normalized_search_path,  # 搜索地址
+                "search_path": search_id,  # 搜索地址
             }
 
             return {
@@ -813,11 +884,3 @@ class FileAgent:
             return send_result
         except Exception as e:
             return {"status": "error", "message": f"搜索文件工作流执行出错: {str(e)}"}
-
-    def _normalize_path(self, path: str) -> str:
-        """标准化路径, 确保在基础目录下操作"""
-        norm_path = os.path.normpath(os.path.join(self.base_dir, path))
-        # 安全检查, 确保路径不超出基础目录
-        if not norm_path.startswith(self.base_dir):
-            raise ValueError(f"安全限制: 路径必须在 {self.base_dir} 内")
-        return norm_path
