@@ -21,7 +21,7 @@ def init_jfs_environment():
 class JuiceFSService:
     def __init__(self):
         self.process = None
-        self.pid_file = os.environ.get('JFS_PID_FILE')
+        self.pid_file = os.environ.get("JFS_PID_FILE")
         atexit.register(self.stop)
         self._recover_process()
 
@@ -30,7 +30,7 @@ class JuiceFSService:
         if not self.pid_file or not os.path.exists(self.pid_file):
             return None
         try:
-            with open(self.pid_file, 'r') as f:
+            with open(self.pid_file, "r") as f:
                 return int(f.read().strip())
         except (ValueError, IOError):
             return None
@@ -40,7 +40,7 @@ class JuiceFSService:
         if self.pid_file:
             try:
                 os.makedirs(os.path.dirname(self.pid_file), exist_ok=True)
-                with open(self.pid_file, 'w') as f:
+                with open(self.pid_file, "w") as f:
                     f.write(str(pid))
             except IOError:
                 pass
@@ -59,7 +59,7 @@ class JuiceFSService:
         if pid:
             try:
                 process = psutil.Process(pid)
-                if process.is_running() and 'juicefs' in process.name().lower():
+                if process.is_running() and "juicefs" in process.name().lower():
                     # Don't set self.process as we didn't start it directly
                     pass
             except (psutil.NoSuchProcess, psutil.AccessDenied):
@@ -70,17 +70,17 @@ class JuiceFSService:
         # Check our own process first
         if self.process is not None and self.process.poll() is None:
             return True
-        
+
         # Check PID file for external process
         pid = self._read_pid()
         if pid:
             try:
                 process = psutil.Process(pid)
-                return process.is_running() and 'juicefs' in process.name().lower()
+                return process.is_running() and "juicefs" in process.name().lower()
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 self._delete_pid()
                 return False
-        
+
         return False
 
     def start(self):
@@ -109,13 +109,13 @@ class JuiceFSService:
 
         # Write PID to file for persistence
         self._write_pid(self.process.pid)
-        
+
         return self.process
 
     def stop(self):
         """Stop JuiceFS service"""
         stopped = False
-        
+
         # Stop our own process first
         if self.is_running() and self.process is not None:
             self.process.terminate()
@@ -127,13 +127,13 @@ class JuiceFSService:
                 self.process.wait()
                 stopped = True
             self.process = None
-        
+
         # Handle external process from PID file
         pid = self._read_pid()
         if pid:
             try:
                 process = psutil.Process(pid)
-                if process.is_running() and 'juicefs' in process.name().lower():
+                if process.is_running() and "juicefs" in process.name().lower():
                     process.terminate()
                     try:
                         process.wait(timeout=5)
@@ -143,10 +143,10 @@ class JuiceFSService:
                         stopped = True
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 pass
-        
+
         # Clean up PID file
         self._delete_pid()
-        
+
         return stopped
 
     def restart(self):

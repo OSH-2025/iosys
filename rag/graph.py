@@ -38,9 +38,11 @@ class IOSYSGraphEngine:
             )
         )
         if parsed.parent_id:
-            print(parsed.parent_id,
-                   "contains",
-                    id,)
+            print(
+                parsed.parent_id,
+                "contains",
+                id,
+            )
             self.graph_store.graph.add_relation(
                 Relation(
                     source_id=parsed.parent_id,
