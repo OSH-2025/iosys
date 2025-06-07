@@ -2,6 +2,7 @@ import json
 from typing import Dict, Any, Callable, List
 from enum import Enum
 from functools import wraps
+from openai.types.chat import ChatCompletion
 
 from openai import Client
 
@@ -111,7 +112,7 @@ class FileAgent:
         except Exception as e:
             return {"status": "error", "message": f"处理请求时出错: {str(e)}"}
 
-    def _call_llm_with_tools(self, user_input: str) -> Any:
+    def _call_llm_with_tools(self, user_input: str):
         """
         调用LLM并获取function call响应
 
@@ -142,7 +143,7 @@ class FileAgent:
             logger.error(f"LLM API调用异常: {str(e)}")
             raise e
 
-    def _execute_function_call(self, response) -> Dict[str, Any]:
+    def _execute_function_call(self, response: ChatCompletion) -> Dict[str, Any]:
         """
         执行function call
 
@@ -153,6 +154,8 @@ class FileAgent:
             Dict: 执行结果
         """
         try:
+            message = response.choices[0].message.content if response.choices else None
+            message = message + "\n\n---\n\n" if message else ""
             # 提取function call信息
             if hasattr(response, "choices") and response.choices:
                 choice = response.choices[0]
@@ -167,16 +170,27 @@ class FileAgent:
 
                     # 使用自动收集的处理函数
                     if function_name in self.tool_handlers:
-                        return self.tool_handlers[function_name](function_args)
+                        result = self.tool_handlers[function_name](function_args)
+                        if result["status"] != "success":
+                            return {
+                                "status": "error",
+                                "message": message + result.get("message", "工具调用失败"),
+                            }
+                        else:
+                            return {
+                                "status": "success",
+                                "message": message + result.get("message", ""),
+                                "data": result.get("data", {}),
+                            }
                     else:
                         return {
                             "status": "error",
-                            "message": f"不支持的操作: {function_name}",
+                            "message": message + f"工具调用失败：不支持的操作: {function_name}",
                         }
                 else:
-                    return {"status": "error", "message": "LLM没有调用任何工具函数"}
+                    return {"status": "success", "message": message + "LLM 没有调用任何工具函数"}
             else:
-                return {"status": "error", "message": "无效的LLM响应格式"}
+                return {"status": "error", "message": message + "无效的 LLM 响应格式"}
 
         except Exception as e:
             return {"status": "error", "message": f"执行function call时出错: {str(e)}"}
@@ -232,7 +246,6 @@ class FileAgent:
                 return {
                     "status": "error",
                     "message": f"文件已存在: {params['file_name']}",
-                    "data": {},
                 }
 
             # 确保父目录存在
@@ -243,7 +256,6 @@ class FileAgent:
                 return {
                     "status": "error",
                     "message": f"父目录不存在: {parent_path}",
-                    "data": {},
                 }
 
             # 创建文件节点并写入内容
@@ -291,7 +303,6 @@ class FileAgent:
                 return {
                     "status": "error",
                     "message": f"目录已存在: {params['directory_name']}",
-                    "data": {},
                 }
 
             # 确保父目录存在
@@ -301,7 +312,6 @@ class FileAgent:
                 return {
                     "status": "error",
                     "message": f"父目录不存在: {params['path']}",
-                    "data": {},
                 }
             
             # 创建目录节点
@@ -339,7 +349,6 @@ class FileAgent:
                 return {
                     "status": "error",
                     "message": f"文件不存在: {params['file_path']}",
-                    "data": {},
                 }
 
             # 删除文件
@@ -377,7 +386,6 @@ class FileAgent:
                 return {
                     "status": "error",
                     "message": f"目录不存在: {params['directory_path']}",
-                    "data": {},
                 }
 
             # 删除目录
@@ -420,7 +428,6 @@ class FileAgent:
                 return {
                     "status": "error",
                     "message": f"源文件不存在: {params['source_path']}",
-                    "data": {},
                 }
 
             # 检查目标文件是否已存在
@@ -428,7 +435,6 @@ class FileAgent:
                 return {
                     "status": "error",
                     "message": f"目标文件已存在: {params['destination_path']}",
-                    "data": {},
                 }
 
             # 读取源文件内容
@@ -441,7 +447,6 @@ class FileAgent:
                 return {
                     "status": "error",
                     "message": f"无法创建目标文件，请确保目标目录存在: {params['destination_path']}",
-                    "data": {},
                 }
 
             # 删除源文件
@@ -485,7 +490,6 @@ class FileAgent:
                 return {
                     "status": "error",
                     "message": f"源目录不存在: {params['source_path']}",
-                    "data": {},
                 }
 
             # 检查目标目录是否已存在
@@ -493,14 +497,12 @@ class FileAgent:
                 return {
                     "status": "error",
                     "message": f"目标目录已存在: {params['destination_path']}",
-                    "data": {},
                 }
 
             # 目录移动功能需要文件系统的具体支持
             return {
                 "status": "error",
                 "message": "目录移动功能需要文件系统支持",
-                "data": {},
             }
         except Exception as e:
             return {"status": "error", "message": str(e)}
@@ -543,7 +545,6 @@ class FileAgent:
                 return {
                     "status": "error",
                     "message": f"文件不存在: {params['file_path']}",
-                    "data": {},
                 }
 
             # 检查新文件名是否已存在
@@ -551,7 +552,6 @@ class FileAgent:
                 return {
                     "status": "error",
                     "message": f"文件已存在: {params['new_name']}",
-                    "data": {},
                 }
 
             # 读取文件内容
@@ -612,7 +612,6 @@ class FileAgent:
                 return {
                     "status": "error",
                     "message": f"目录不存在: {params['directory_path']}",
-                    "data": {},
                 }
 
             # 检查新目录名是否已存在
@@ -620,14 +619,12 @@ class FileAgent:
                 return {
                     "status": "error",
                     "message": f"目录已存在: {params['new_name']}",
-                    "data": {},
                 }
 
             # 目录重命名功能需要文件系统的具体支持
             return {
                 "status": "error",
                 "message": "目录重命名功能需要文件系统支持",
-                "data": {},
             }
         except Exception as e:
             return {"status": "error", "message": str(e)}
@@ -660,7 +657,6 @@ class FileAgent:
                 return {
                     "status": "error",
                     "message": f"目录不存在: {params['directory_path']}",
-                    "data": {},
                 }
 
             # 列出目录内容
@@ -705,7 +701,6 @@ class FileAgent:
                 return {
                     "status": "error",
                     "message": f"文件不存在: {params['file_path']}",
-                    "data": {},
                 }
 
             # 读取文件内容
