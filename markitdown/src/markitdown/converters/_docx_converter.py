@@ -73,60 +73,18 @@ class DocxConverter(HtmlConverter):
                 _dependency_exc_info[2]
             )
 
-        def image_converter(image):
-            with image.open() as image_bytes:
-                img_data = image_bytes.read()
-                content_type = image.content_type or "image/png"
-            
-            llm_client = kwargs.get("llm_client")
-            llm_model = kwargs.get("llm_model")
-            prompt = kwargs.get("llm_prompt", "Write a detailed caption for this image.")
-
-            if not llm_client or not llm_model:
-                b64_data = base64.b64encode(img_data).decode()
-                return {
-                    "src": "data:{0};base64,{1}".format(content_type, b64_data),
-                    "alt": "image"
-                }
-            
-            try:
-                b64_data = base64.b64encode(img_data).decode()
-                data_uri = f"data:{content_type};base64,{b64_data}"
-                
-                messages = [
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": prompt},
-                            {"type": "image_url", "image_url": {"url": data_uri}}
-                        ]
-                    }
-                ]
-                
-                response = llm_client.chat.completions.create(
-                    model=llm_model,
-                    messages=messages
-                )
-                description = response.choices[0].message.content
-                
-                return {
-                    "src": "data:{0};base64,{1}".format(image.content_type, b64_data),
-                    "alt": description
-                }
-                
-            except Exception as e:
-                return {
-                    "src": "data:{0};base64,{1}".format(image.content_type, b64_data),
-                    "alt": "LLM Description failed"
-                }
-
         style_map = kwargs.get("style_map", None)
         pre_process_stream = pre_process_docx(file_stream)
-        
+        image_converter = kwargs.get("image_converter", None)
+        if image_converter is not None:
+            convert_image = mammoth.images.img_element(image_converter)
+        else:
+            convert_image = mammoth.images.data_uri
+
         html_result = mammoth.convert_to_html(
             pre_process_stream,
             style_map=style_map,
-            convert_image=mammoth.images.img_element(image_converter)
+            convert_image=convert_image
         )
         
         return self._html_converter.convert_string(
