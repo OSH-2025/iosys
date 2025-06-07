@@ -2,7 +2,7 @@
 import { onMounted, ref, watchEffect } from 'vue';
 import { Network, DataSet } from 'vis-network/standalone/esm/vis-network';
 import type { Node, Edge, Options } from 'vis-network/standalone/esm/vis-network';
-import { graphEdges, graphNodes } from '../states';
+import { graphEdges, graphNodes } from '../graph';
 
 const options: Options = {
   nodes: {

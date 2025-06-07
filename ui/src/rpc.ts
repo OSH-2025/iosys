@@ -1,16 +1,18 @@
 /// <reference types="vite/client" />
 
+import { RawGraph } from "./graph";
 import { errorMessage } from "./states";
 
 const BASE_URL = import.meta.env.VITE_API_SERVER_URL;
 console.log("BASE_URL", BASE_URL);
 
 const apis = {
-  status: defineApi<{}, { server: string, rag: string, llm: string, fs: string }>("/status"),
+  status: defineApi<{}, { server: string, rag: string, llm: string, fs: string, graph_revision: number }>("/status"),
   chat: defineApi<{ input: string }, { response: string }>("/chat"),
   preview: defineApi<{ id: string }, { url: string }>("/preview"),
   agent: defineApi<{ command: string }, { status: string, message?: string, data: any }>("/agent"),
   files: defineApi<{ path?: string }, { items: Array<{ name: string, path: string, type: string, size?: number }> }>("/files"),
+  graph: defineApi<{}, RawGraph>("/graph"),
 };
 
 export default apis;

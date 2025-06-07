@@ -1,3 +1,5 @@
+import json
+
 from jfs import FileNode, IOSYSFileSystem
 from parser import IOSYSParser
 
@@ -15,8 +17,8 @@ class IOSYSRAG:
         self.fs = fs
         self.fs.on_file_update.append(self.update_file)
         self.fs.on_file_delete.append(self.delete_file)
-        self.fs.on_dir_update.append(self.update_file)
-        self.fs.on_dir_delete.append(self.delete_file)
+        self.fs.on_dir_update.append(self.update_dir)
+        self.fs.on_dir_delete.append(self.delete_dir)
         self.parser = IOSYSParser()
         self.query = IOSYSQueryEngine()
         self.graph = IOSYSGraphEngine()
@@ -24,10 +26,10 @@ class IOSYSRAG:
     def load(self):
         if self.fs.exists("__graph__.json"):
             dumped = self.fs.read("__graph__.json")
-            self.graph.load(dumped.decode("utf-8"))
+            self.graph.load(json.loads(dumped.decode("utf-8")))
 
     def dump(self):
-        dumped = self.graph.dump()
+        dumped = json.dumps(self.graph.dump())
         self.fs.write("__graph__.json", dumped.encode("utf-8"))
 
     def update_file(self, node: FileNode):
@@ -38,3 +40,7 @@ class IOSYSRAG:
     def delete_file(self, node: FileNode):
         self.query.delete_file(node.id)
         self.graph.delete_file(node.id)
+
+    def update_dir(self, node: FileNode): ...
+
+    def delete_dir(self, node: FileNode): ...

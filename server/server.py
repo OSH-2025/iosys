@@ -43,6 +43,7 @@ async def status_endpoint():
         "llm": MODEL,
         "fs": "ready" if fs.is_running() else "error",
         "agent": "ready",
+        "graph_revision": rag.graph.revision,
     }
 
 

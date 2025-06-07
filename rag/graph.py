@@ -1,5 +1,4 @@
 import os
-import json
 
 from llama_index.core.graph_stores import SimplePropertyGraphStore, EntityNode
 from llama_index.core.llms.llm import LLM
@@ -11,6 +10,7 @@ from parser import IOSYSParsedFile
 class IOSYSGraphEngine:
     llm: LLM
     graph_store: SimplePropertyGraphStore
+    revision: int = 0
 
     def __init__(self):
         self.llm = OpenAI(
@@ -21,11 +21,12 @@ class IOSYSGraphEngine:
         self.graph_store = SimplePropertyGraphStore()
 
     def load(self, dumped: str):
-        data = json.loads(dumped)
-        self.graph_store = SimplePropertyGraphStore.from_dict(data)
+        self.graph_store = SimplePropertyGraphStore.from_dict(dumped)
 
     def dump(self):
-        return self.graph_store.graph.model_dump_json()
+        dumped = self.graph_store.graph.model_dump()
+        dumped["revision"] = self.revision
+        return dumped
 
     def update_file(self, id: str, parsed: IOSYSParsedFile):
         self.graph_store.graph.add_node(
@@ -36,6 +37,8 @@ class IOSYSGraphEngine:
             )
         )
         # TODO: Link with parent directory if available
+        self.revision += 1
 
     def delete_file(self, id: str):
         self.graph_store.graph.delete_node(id)
+        self.revision += 1

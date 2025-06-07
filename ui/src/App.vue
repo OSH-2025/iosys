@@ -6,10 +6,13 @@
       <!-- Status Display -->
       <div class="text-sm text-gray-600 flex space-x-4">
         <div v-for="(value, key) in status" :key="key" class="flex items-center space-x-1">
-          <span class="font-medium">{{ key }}:</span>
-          <span :class="{'text-green-600': value === 'ready' || value === 'ok', 'text-red-600': value?.includes('error') || value?.includes('offline')}">
-            {{ value }}
-          </span>
+          <template v-if="typeof value === 'string'">
+            <span class="font-medium">{{ key }}:</span>
+            <span
+              :class="{ 'text-green-600': value === 'ready' || value === 'ok', 'text-red-600': value?.includes('error') || value?.includes('offline') }">
+              {{ value }}
+            </span>
+          </template>
         </div>
       </div>
     </header>
@@ -42,12 +45,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
-import { useIntervalFn } from '@vueuse/core';
+import { watch } from 'vue';
 import Messages from './components/Messages.vue';
 import GraphView from './components/GraphView.vue';
-import rpc, { ApiResponse } from './rpc';
-import { errorMessage } from './states';
+import { errorMessage, status } from './states';
 import FilePreview from './components/FilePreview.vue';
 import ChatBox from './components/ChatBox.vue';
 
@@ -64,20 +65,5 @@ watch(
     }
   },
   { immediate: true }
-);
-
-const status = ref<Partial<ApiResponse<"status">>>({});
-useIntervalFn(
-  async () => {
-    try {
-      status.value = await rpc.status({});
-    } catch (e) {
-      status.value = {
-        server: 'offline',
-      }
-    }
-  },
-  10000,
-  { immediate: true, immediateCallback: true }
 );
 </script>
