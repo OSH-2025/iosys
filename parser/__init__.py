@@ -45,7 +45,7 @@ class IOSYSParser:
         self.model = (os.environ.get("LLM_MODEL_NAME"),)
 
     def _chat(
-        self, 
+        self,
         prompt: str,
         additional: dict,
     ) -> str:
@@ -53,19 +53,19 @@ class IOSYSParser:
             raise Exception("LLM not initialized")
 
         messages = [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt},
-                        additional,
-                    ],
-                }
-            ]
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    additional,
+                ],
+            }
+        ]
 
         response = self.client.chat.completions.create(
             model=self.model, messages=messages
         )
-        
+
         description = response.choices[0].message.content
         return description
 
@@ -73,7 +73,6 @@ class IOSYSParser:
         self,
         file_name: str,
     ) -> str:
-
         def image_converter(image):
             """A function using llm to get a image's description. It serves as an argument for Markitdown."""
 
@@ -97,7 +96,7 @@ class IOSYSParser:
                 return {
                     "src": "data:{0};base64,{1}".format(content_type, b64_data),
                     "alt": "LLM Description failed",
-                }           
+                }
 
         md = MarkItDown(
             llm_client=self.client,
@@ -110,9 +109,9 @@ class IOSYSParser:
     def _generate_abstract(
         self,
         file_name: str,
-    ) -> str:     
+    ) -> str:
         verbose = self._generate_verbose(file_name)
-        prompt = "Generate an abstracted text for the following text" # to be modified
+        prompt = "Generate an abstracted text for the following text"  # to be modified
         additional = {"type": "text", "text": verbose}
 
         try:
