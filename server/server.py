@@ -53,26 +53,22 @@ class ChatRequest(BaseModel):
 
 @app.post("/chat")
 async def chat_endpoint(request: ChatRequest):
-    try:
-        # Use OpenAI SDK to get a response
-        completion = llm.chat.completions.create(
-            extra_body={},
-            model=MODEL,
-            messages=[
-                {
-                    "role": "developer",
-                    "content": "Talk like a pirate.",
-                },
-                {
-                    "role": "user",
-                    "content": request.input,
-                },
-            ],
-        )
-        return {"response": completion.choices[0].message.content}
-    except Exception as e:
-        print(f"Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    # Use OpenAI SDK to get a response
+    completion = llm.chat.completions.create(
+        extra_body={},
+        model=MODEL,
+        messages=[
+            {
+                "role": "developer",
+                "content": "Talk like a pirate.",
+            },
+            {
+                "role": "user",
+                "content": request.input,
+            },
+        ],
+    )
+    return {"response": completion.choices[0].message.content}
 
 
 class AgentRequest(BaseModel):
@@ -82,29 +78,22 @@ class AgentRequest(BaseModel):
 @app.post("/agent")
 async def agent_endpoint(request: AgentRequest):
     """Process natural language file management commands"""
-    try:
-        result = file_manager.process_command(request.command)
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return file_manager.process_command(request.command)
 
 
 @app.get("/files")
 @app.post("/files")
 async def list_files(request: dict = None, id: str = ""):
     """List files and directories in the agent's managed directory"""
-    try:
-        # Handle both GET and POST requests
-        if request and "id" in request:
-            id = request["id"] or ""
+    # Handle both GET and POST requests
+    if request and "id" in request:
+        id = request["id"] or ""
 
-        items = []
-        for item in fs.get_dir_node(id).children():
-            items.append(item.to_dict())
+    items = []
+    for item in fs.get_dir_node(id).children():
+        items.append(item.to_dict())
 
-        return {"items": sorted(items, key=lambda x: (x["type"] == "file", x["name"]))}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return {"items": sorted(items, key=lambda x: (x["type"] == "file", x["name"]))}
 
 
 @app.get("/graph")

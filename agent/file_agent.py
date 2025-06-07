@@ -101,16 +101,11 @@ class FileAgent:
         Returns:
             Dict: 包含操作结果的字典
         """
-        try:
-            # 调用LLM获取function call
-            response = self._call_llm_with_tools(user_input)
+        # 调用LLM获取function call
+        response = self._call_llm_with_tools(user_input)
 
-            # 执行function call
-            result = self._execute_function_call(response)
-            return result
-
-        except Exception as e:
-            return {"status": "error", "message": f"处理请求时出错: {str(e)}"}
+        # 执行function call
+        return self._execute_function_call(response)
 
     def _call_llm_with_tools(self, user_input: str):
         """
@@ -122,26 +117,18 @@ class FileAgent:
         Returns:
             LLM响应对象
         """
-        try:
-            response = self.llm_client.chat.completions.create(
-                model=self.config.llm_model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "你是一个文件管理助手，可以帮助用户进行各种文件操作。根据用户的需求，选择合适的工具来完成任务。",
-                    },
-                    {"role": "user", "content": user_input},
-                ],
-                tools=self.tools,
-                tool_choice="auto",
-            )
-            return response
-        except Exception as e:
-            import logging
-
-            logger = logging.getLogger(__name__)
-            logger.error(f"LLM API调用异常: {str(e)}")
-            raise e
+        return self.llm_client.chat.completions.create(
+            model=self.config.llm_model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "你是一个文件管理助手，可以帮助用户进行各种文件操作。根据用户的需求，选择合适的工具来完成任务。",
+                },
+                {"role": "user", "content": user_input},
+            ],
+            tools=self.tools,
+            tool_choice="auto",
+        )
 
     def _execute_function_call(self, response: ChatCompletion) -> Dict[str, Any]:
         """
@@ -153,52 +140,48 @@ class FileAgent:
         Returns:
             Dict: 执行结果
         """
-        try:
-            message = response.choices[0].message.content if response.choices else None
-            message = message + "\n\n---\n\n" if message else ""
-            # 提取function call信息
-            if hasattr(response, "choices") and response.choices:
-                choice = response.choices[0]
-                if (
-                    hasattr(choice, "message")
-                    and hasattr(choice.message, "tool_calls")
-                    and choice.message.tool_calls
-                ):
-                    tool_call = choice.message.tool_calls[0]
-                    function_name = tool_call.function.name
-                    function_args = json.loads(tool_call.function.arguments)
+        message = response.choices[0].message.content if response.choices else None
+        message = message + "\n\n---\n\n" if message else ""
+        # 提取function call信息
+        if hasattr(response, "choices") and response.choices:
+            choice = response.choices[0]
+            if (
+                hasattr(choice, "message")
+                and hasattr(choice.message, "tool_calls")
+                and choice.message.tool_calls
+            ):
+                tool_call = choice.message.tool_calls[0]
+                function_name = tool_call.function.name
+                function_args = json.loads(tool_call.function.arguments)
 
-                    # 使用自动收集的处理函数
-                    if function_name in self.tool_handlers:
-                        result = self.tool_handlers[function_name](function_args)
-                        if result["status"] != "success":
-                            return {
-                                "status": "error",
-                                "message": message
-                                + result.get("message", "工具调用失败"),
-                            }
-                        else:
-                            return {
-                                "status": "success",
-                                "message": message + result.get("message", ""),
-                                "data": result.get("data", {}),
-                            }
-                    else:
+                # 使用自动收集的处理函数
+                if function_name in self.tool_handlers:
+                    result = self.tool_handlers[function_name](function_args)
+                    if result["status"] != "success":
                         return {
                             "status": "error",
                             "message": message
-                            + f"工具调用失败：不支持的操作: {function_name}",
+                            + result.get("message", "工具调用失败"),
+                        }
+                    else:
+                        return {
+                            "status": "success",
+                            "message": message + result.get("message", ""),
+                            "data": result.get("data", {}),
                         }
                 else:
                     return {
-                        "status": "success",
-                        "message": message + "LLM 没有调用任何工具函数",
+                        "status": "error",
+                        "message": message
+                        + f"工具调用失败：不支持的操作: {function_name}",
                     }
             else:
-                return {"status": "error", "message": message + "无效的 LLM 响应格式"}
-
-        except Exception as e:
-            return {"status": "error", "message": f"执行function call时出错: {str(e)}"}
+                return {
+                    "status": "success",
+                    "message": message + "LLM 没有调用任何工具函数",
+                }
+        else:
+            return {"status": "error", "message": message + "无效的 LLM 响应格式"}
 
     def _path_to_id(self, path: str) -> str:
         """将路径转换为文件系统节点ID"""
@@ -236,44 +219,41 @@ class FileAgent:
         if "path" not in params:
             params["path"] = "."
 
-        try:
-            # 构造文件路径
-            if params["path"] == ".":
-                file_path = params["file_name"]
-            else:
-                file_path = f"{params['path']}/{params['file_name']}"
+        # 构造文件路径
+        if params["path"] == ".":
+            file_path = params["file_name"]
+        else:
+            file_path = f"{params['path']}/{params['file_name']}"
 
-            file_id = self._path_to_id(file_path)
-            content = params.get("content", "")
+        file_id = self._path_to_id(file_path)
+        content = params.get("content", "")
 
-            # 检查文件是否已存在
-            if self.fs.exists(file_id):
-                return {
-                    "status": "error",
-                    "message": f"文件已存在: {params['file_name']}",
-                }
-
-            # 确保父目录存在
-            parent_path = "/".join(file_id.split("/")[:-1])
-            parent_id = self._path_to_id(parent_path)
-            parent_node = self.fs.get_dir_node(parent_id)
-            if not parent_node:
-                return {
-                    "status": "error",
-                    "message": f"父目录不存在: {parent_path}",
-                }
-
-            # 创建文件节点并写入内容
-            node = parent_node.insert_file(params["file_name"])
-            node.write(content.encode("utf-8"))
-
+        # 检查文件是否已存在
+        if self.fs.exists(file_id):
             return {
-                "status": "success",
-                "message": f"文件创建成功: {params['file_name']}",
-                "data": {"path": self._id_to_relative_path(file_id)},
+                "status": "error",
+                "message": f"文件已存在: {params['file_name']}",
             }
-        except Exception as e:
-            return {"status": "error", "message": str(e)}
+
+        # 确保父目录存在
+        parent_path = "/".join(file_id.split("/")[:-1])
+        parent_id = self._path_to_id(parent_path)
+        parent_node = self.fs.get_dir_node(parent_id)
+        if not parent_node:
+            return {
+                "status": "error",
+                "message": f"父目录不存在: {parent_path}",
+            }
+
+        # 创建文件节点并写入内容
+        node = parent_node.insert_file(params["file_name"])
+        node.write(content.encode("utf-8"))
+
+        return {
+            "status": "success",
+            "message": f"文件创建成功: {params['file_name']}",
+            "data": {"path": self._id_to_relative_path(file_id)},
+        }
 
     @tool(
         name="create_directory",
@@ -294,40 +274,37 @@ class FileAgent:
         if "path" not in params:
             params["path"] = "."
 
-        try:
-            # 构造目录路径
-            if params["path"] == ".":
-                dir_path = params["directory_name"]
-            else:
-                dir_path = f"{params['path']}/{params['directory_name']}"
+        # 构造目录路径
+        if params["path"] == ".":
+            dir_path = params["directory_name"]
+        else:
+            dir_path = f"{params['path']}/{params['directory_name']}"
 
-            dir_id = self._path_to_id(dir_path)
+        dir_id = self._path_to_id(dir_path)
 
-            # 检查目录是否已存在
-            if self.fs.exists(dir_id):
-                return {
-                    "status": "error",
-                    "message": f"目录已存在: {params['directory_name']}",
-                }
-
-            # 确保父目录存在
-            parent_id = self._path_to_id(params["path"])
-            parent_node = self.fs.get_dir_node(parent_id)
-            if not parent_node:
-                return {
-                    "status": "error",
-                    "message": f"父目录不存在: {params['path']}",
-                }
-
-            # 创建目录节点
-            parent_node.insert_dir(params["directory_name"])
+        # 检查目录是否已存在
+        if self.fs.exists(dir_id):
             return {
-                "status": "success",
-                "message": f"目录创建成功: {params['directory_name']}",
-                "data": {"path": self._id_to_relative_path(dir_id)},
+                "status": "error",
+                "message": f"目录已存在: {params['directory_name']}",
             }
-        except Exception as e:
-            return {"status": "error", "message": str(e)}
+
+        # 确保父目录存在
+        parent_id = self._path_to_id(params["path"])
+        parent_node = self.fs.get_dir_node(parent_id)
+        if not parent_node:
+            return {
+                "status": "error",
+                "message": f"父目录不存在: {params['path']}",
+            }
+
+        # 创建目录节点
+        parent_node.insert_dir(params["directory_name"])
+        return {
+            "status": "success",
+            "message": f"目录创建成功: {params['directory_name']}",
+            "data": {"path": self._id_to_relative_path(dir_id)},
+        }
 
     @tool(
         name="delete_file",
@@ -345,26 +322,23 @@ class FileAgent:
         if "file_path" not in params:
             return {"status": "error", "message": "缺少必要参数: file_path"}
 
-        try:
-            file_id = self._path_to_id(params["file_path"])
+        file_id = self._path_to_id(params["file_path"])
 
-            # 检查文件是否存在
-            file_node = self.fs.get_file_node(file_id)
-            if not file_node:
-                return {
-                    "status": "error",
-                    "message": f"文件不存在: {params['file_path']}",
-                }
-
-            # 删除文件
-            self.fs.remove(file_id)
-
+        # 检查文件是否存在
+        file_node = self.fs.get_file_node(file_id)
+        if not file_node:
             return {
-                "status": "success",
-                "message": f"文件删除成功: {params['file_path']}",
+                "status": "error",
+                "message": f"文件不存在: {params['file_path']}",
             }
-        except Exception as e:
-            return {"status": "error", "message": str(e)}
+
+        # 删除文件
+        self.fs.remove(file_id)
+
+        return {
+            "status": "success",
+            "message": f"文件删除成功: {params['file_path']}",
+        }
 
     @tool(
         name="delete_directory",
@@ -382,26 +356,23 @@ class FileAgent:
         if "directory_path" not in params:
             return {"status": "error", "message": "缺少必要参数: directory_path"}
 
-        try:
-            dir_id = self._path_to_id(params["directory_path"])
+        dir_id = self._path_to_id(params["directory_path"])
 
-            # 检查目录是否存在
-            dir_node = self.fs.get_dir_node(dir_id)
-            if not dir_node:
-                return {
-                    "status": "error",
-                    "message": f"目录不存在: {params['directory_path']}",
-                }
-
-            # 删除目录
-            self.fs.remove(dir_id)
-
+        # 检查目录是否存在
+        dir_node = self.fs.get_dir_node(dir_id)
+        if not dir_node:
             return {
-                "status": "success",
-                "message": f"目录删除成功: {params['directory_path']}",
+                "status": "error",
+                "message": f"目录不存在: {params['directory_path']}",
             }
-        except Exception as e:
-            return {"status": "error", "message": str(e)}
+
+        # 删除目录
+        self.fs.remove(dir_id)
+
+        return {
+            "status": "success",
+            "message": f"目录删除成功: {params['directory_path']}",
+        }
 
     @tool(
         name="move_file",
@@ -423,47 +394,44 @@ class FileAgent:
                 "message": "缺少必要参数: source_path 或 destination_path",
             }
 
-        try:
-            src_id = self._path_to_id(params["source_path"])
-            dst_id = self._path_to_id(params["destination_path"])
+        src_id = self._path_to_id(params["source_path"])
+        dst_id = self._path_to_id(params["destination_path"])
 
-            # 检查源文件是否存在
-            src_node = self.fs.get_file_node(src_id)
-            if not src_node:
-                return {
-                    "status": "error",
-                    "message": f"源文件不存在: {params['source_path']}",
-                }
-
-            # 检查目标文件是否已存在
-            if self.fs.exists(dst_id):
-                return {
-                    "status": "error",
-                    "message": f"目标文件已存在: {params['destination_path']}",
-                }
-
-            # 读取源文件内容
-            content = self.fs.read(src_id)
-
-            # 写入目标文件
-            try:
-                self.fs.write(dst_id, content)
-            except FileNotFoundError:
-                return {
-                    "status": "error",
-                    "message": f"无法创建目标文件，请确保目标目录存在: {params['destination_path']}",
-                }
-
-            # 删除源文件
-            self.fs.remove(src_id)
-
+        # 检查源文件是否存在
+        src_node = self.fs.get_file_node(src_id)
+        if not src_node:
             return {
-                "status": "success",
-                "message": f"文件移动成功: {params['source_path']} -> {params['destination_path']}",
-                "data": {"new_path": self._id_to_relative_path(dst_id)},
+                "status": "error",
+                "message": f"源文件不存在: {params['source_path']}",
             }
-        except Exception as e:
-            return {"status": "error", "message": str(e)}
+
+        # 检查目标文件是否已存在
+        if self.fs.exists(dst_id):
+            return {
+                "status": "error",
+                "message": f"目标文件已存在: {params['destination_path']}",
+            }
+
+        # 读取源文件内容
+        content = self.fs.read(src_id)
+
+        # 写入目标文件
+        try:
+            self.fs.write(dst_id, content)
+        except FileNotFoundError:
+            return {
+                "status": "error",
+                "message": f"无法创建目标文件，请确保目标目录存在: {params['destination_path']}",
+            }
+
+        # 删除源文件
+        self.fs.remove(src_id)
+
+        return {
+            "status": "success",
+            "message": f"文件移动成功: {params['source_path']} -> {params['destination_path']}",
+            "data": {"new_path": self._id_to_relative_path(dst_id)},
+        }
 
     @tool(
         name="move_directory",
@@ -485,32 +453,29 @@ class FileAgent:
                 "message": "缺少必要参数: source_path 或 destination_path",
             }
 
-        try:
-            src_id = self._path_to_id(params["source_path"])
-            dst_id = self._path_to_id(params["destination_path"])
+        src_id = self._path_to_id(params["source_path"])
+        dst_id = self._path_to_id(params["destination_path"])
 
-            # 检查源目录是否存在
-            src_node = self.fs.get_dir_node(src_id)
-            if not src_node:
-                return {
-                    "status": "error",
-                    "message": f"源目录不存在: {params['source_path']}",
-                }
-
-            # 检查目标目录是否已存在
-            if self.fs.exists(dst_id):
-                return {
-                    "status": "error",
-                    "message": f"目标目录已存在: {params['destination_path']}",
-                }
-
-            # 目录移动功能需要文件系统的具体支持
+        # 检查源目录是否存在
+        src_node = self.fs.get_dir_node(src_id)
+        if not src_node:
             return {
                 "status": "error",
-                "message": "目录移动功能需要文件系统支持",
+                "message": f"源目录不存在: {params['source_path']}",
             }
-        except Exception as e:
-            return {"status": "error", "message": str(e)}
+
+        # 检查目标目录是否已存在
+        if self.fs.exists(dst_id):
+            return {
+                "status": "error",
+                "message": f"目标目录已存在: {params['destination_path']}",
+            }
+
+        # 目录移动功能需要文件系统的具体支持
+        return {
+            "status": "error",
+            "message": "目录移动功能需要文件系统支持",
+        }
 
     @tool(
         name="rename_file",
@@ -532,49 +497,46 @@ class FileAgent:
                 "message": "缺少必要参数: file_path 或 new_name",
             }
 
-        try:
-            file_id = self._path_to_id(params["file_path"])
+        file_id = self._path_to_id(params["file_path"])
 
-            # 构造新路径
-            if "/" in file_id:
-                dir_path = "/".join(file_id.split("/")[:-1])
-                new_path = f"{dir_path}/{params['new_name']}"
-            else:
-                new_path = params["new_name"]
+        # 构造新路径
+        if "/" in file_id:
+            dir_path = "/".join(file_id.split("/")[:-1])
+            new_path = f"{dir_path}/{params['new_name']}"
+        else:
+            new_path = params["new_name"]
 
-            new_id = self._path_to_id(new_path)
+        new_id = self._path_to_id(new_path)
 
-            # 检查源文件是否存在
-            file_node = self.fs.get_file_node(file_id)
-            if not file_node:
-                return {
-                    "status": "error",
-                    "message": f"文件不存在: {params['file_path']}",
-                }
-
-            # 检查新文件名是否已存在
-            if self.fs.exists(new_id):
-                return {
-                    "status": "error",
-                    "message": f"文件已存在: {params['new_name']}",
-                }
-
-            # 读取文件内容
-            content = self.fs.read(file_id)
-
-            # 写入新文件
-            self.fs.write(new_id, content)
-
-            # 删除原文件
-            self.fs.remove(file_id)
-
+        # 检查源文件是否存在
+        file_node = self.fs.get_file_node(file_id)
+        if not file_node:
             return {
-                "status": "success",
-                "message": f"文件重命名成功: {params['file_path']} -> {params['new_name']}",
-                "data": {"new_path": self._id_to_relative_path(new_id)},
+                "status": "error",
+                "message": f"文件不存在: {params['file_path']}",
             }
-        except Exception as e:
-            return {"status": "error", "message": str(e)}
+
+        # 检查新文件名是否已存在
+        if self.fs.exists(new_id):
+            return {
+                "status": "error",
+                "message": f"文件已存在: {params['new_name']}",
+            }
+
+        # 读取文件内容
+        content = self.fs.read(file_id)
+
+        # 写入新文件
+        self.fs.write(new_id, content)
+
+        # 删除原文件
+        self.fs.remove(file_id)
+
+        return {
+            "status": "success",
+            "message": f"文件重命名成功: {params['file_path']} -> {params['new_name']}",
+            "data": {"new_path": self._id_to_relative_path(new_id)},
+        }
 
     @tool(
         name="rename_directory",
@@ -599,40 +561,37 @@ class FileAgent:
                 "message": "缺少必要参数: directory_path 或 new_name",
             }
 
-        try:
-            dir_id = self._path_to_id(params["directory_path"])
+        dir_id = self._path_to_id(params["directory_path"])
 
-            # 构造新路径
-            if "/" in dir_id:
-                parent_path = "/".join(dir_id.split("/")[:-1])
-                new_path = f"{parent_path}/{params['new_name']}"
-            else:
-                new_path = params["new_name"]
+        # 构造新路径
+        if "/" in dir_id:
+            parent_path = "/".join(dir_id.split("/")[:-1])
+            new_path = f"{parent_path}/{params['new_name']}"
+        else:
+            new_path = params["new_name"]
 
-            new_id = self._path_to_id(new_path)
+        new_id = self._path_to_id(new_path)
 
-            # 检查源目录是否存在
-            dir_node = self.fs.get_dir_node(dir_id)
-            if not dir_node:
-                return {
-                    "status": "error",
-                    "message": f"目录不存在: {params['directory_path']}",
-                }
-
-            # 检查新目录名是否已存在
-            if self.fs.exists(new_id):
-                return {
-                    "status": "error",
-                    "message": f"目录已存在: {params['new_name']}",
-                }
-
-            # 目录重命名功能需要文件系统的具体支持
+        # 检查源目录是否存在
+        dir_node = self.fs.get_dir_node(dir_id)
+        if not dir_node:
             return {
                 "status": "error",
-                "message": "目录重命名功能需要文件系统支持",
+                "message": f"目录不存在: {params['directory_path']}",
             }
-        except Exception as e:
-            return {"status": "error", "message": str(e)}
+
+        # 检查新目录名是否已存在
+        if self.fs.exists(new_id):
+            return {
+                "status": "error",
+                "message": f"目录已存在: {params['new_name']}",
+            }
+
+        # 目录重命名功能需要文件系统的具体支持
+        return {
+            "status": "error",
+            "message": "目录重命名功能需要文件系统支持",
+        }
 
     @tool(
         name="list_files",
@@ -653,35 +612,32 @@ class FileAgent:
         if "directory_path" not in params:
             params["directory_path"] = "."
 
-        try:
-            dir_id = self._path_to_id(params["directory_path"])
+        dir_id = self._path_to_id(params["directory_path"])
 
-            # 检查目录是否存在
-            dir_node = self.fs.get_dir_node(dir_id)
-            if not dir_node:
-                return {
-                    "status": "error",
-                    "message": f"目录不存在: {params['directory_path']}",
-                }
-
-            # 列出目录内容
-            children = dir_node.children()
-            files = []
-            directories = []
-
-            for child in children:
-                if child.type == "file":
-                    files.append(child.name)
-                elif child.type == "dir":
-                    directories.append(child.name)
-
+        # 检查目录是否存在
+        dir_node = self.fs.get_dir_node(dir_id)
+        if not dir_node:
             return {
-                "status": "success",
-                "message": f"成功列出目录内容: {params['directory_path']}",
-                "data": {"contents": {"files": files, "directories": directories}},
+                "status": "error",
+                "message": f"目录不存在: {params['directory_path']}",
             }
-        except Exception as e:
-            return {"status": "error", "message": str(e)}
+
+        # 列出目录内容
+        children = dir_node.children()
+        files = []
+        directories = []
+
+        for child in children:
+            if child.type == "file":
+                files.append(child.name)
+            elif child.type == "dir":
+                directories.append(child.name)
+
+        return {
+            "status": "success",
+            "message": f"成功列出目录内容: {params['directory_path']}",
+            "data": {"contents": {"files": files, "directories": directories}},
+        }
 
     @tool(
         name="read_file",
@@ -697,28 +653,25 @@ class FileAgent:
         if "file_path" not in params:
             return {"status": "error", "message": "缺少必要参数: file_path"}
 
-        try:
-            file_id = self._path_to_id(params["file_path"])
+        file_id = self._path_to_id(params["file_path"])
 
-            # 检查文件是否存在
-            file_node = self.fs.get_file_node(file_id)
-            if not file_node:
-                return {
-                    "status": "error",
-                    "message": f"文件不存在: {params['file_path']}",
-                }
-
-            # 读取文件内容
-            content_bytes = self.fs.read(file_id)
-            content = content_bytes.decode("utf-8")
-
+        # 检查文件是否存在
+        file_node = self.fs.get_file_node(file_id)
+        if not file_node:
             return {
-                "status": "success",
-                "message": f"成功读取文件: {params['file_path']}",
-                "data": {"content": content},
+                "status": "error",
+                "message": f"文件不存在: {params['file_path']}",
             }
-        except Exception as e:
-            return {"status": "error", "message": str(e)}
+
+        # 读取文件内容
+        content_bytes = self.fs.read(file_id)
+        content = content_bytes.decode("utf-8")
+
+        return {
+            "status": "success",
+            "message": f"成功读取文件: {params['file_path']}",
+            "data": {"content": content},
+        }
 
     @tool(
         name="write_file",
@@ -748,26 +701,23 @@ class FileAgent:
             else:
                 return {"status": "error", "message": "缺少必要参数: file_path"}
 
-        try:
-            file_id = self._path_to_id(params["file_path"])
-            content = params["content"]
-            append = params.get("append", False)
+        file_id = self._path_to_id(params["file_path"])
+        content = params["content"]
+        append = params.get("append", False)
 
-            if append and self.fs.exists(file_id):
-                # 追加模式：先读取现有内容，然后追加
-                existing_content = self.fs.read(file_id).decode("utf-8")
-                content = existing_content + content
+        if append and self.fs.exists(file_id):
+            # 追加模式：先读取现有内容，然后追加
+            existing_content = self.fs.read(file_id).decode("utf-8")
+            content = existing_content + content
 
-            # 写入文件
-            self.fs.write(file_id, content.encode("utf-8"))
+        # 写入文件
+        self.fs.write(file_id, content.encode("utf-8"))
 
-            return {
-                "status": "success",
-                "message": f"成功{'追加' if append else '写入'}文件: {params['file_path']}",
-                "data": {"path": self._id_to_relative_path(file_id)},
-            }
-        except Exception as e:
-            return {"status": "error", "message": str(e)}
+        return {
+            "status": "success",
+            "message": f"成功{'追加' if append else '写入'}文件: {params['file_path']}",
+            "data": {"path": self._id_to_relative_path(file_id)},
+        }
 
     # 这里只返回大模型解析出的.json格式数据, 其中需要包含:
     # 特征词序列(例如要求查询和某些关键词有关的文件),
@@ -776,60 +726,54 @@ class FileAgent:
     # 发给 GRAPH RAG 部分
     def _search_file_send(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """搜索文件"""
-        try:
-            # 提取搜索参数
-            key_words = params.get("key_words", [])
-            constraint = params.get("constraint", [])
-            search_path = params.get("search_path", ".")
+        # 提取搜索参数
+        key_words = params.get("key_words", [])
+        constraint = params.get("constraint", [])
+        search_path = params.get("search_path", ".")
 
-            # 转换为文件系统ID
-            search_id = self._path_to_id(search_path)
+        # 转换为文件系统ID
+        search_id = self._path_to_id(search_path)
 
-            # 检查路径是否存在
-            if not self.fs.exists(search_id):
-                return {"status": "error", "message": f"搜索路径不存在: {search_path}"}
+        # 检查路径是否存在
+        if not self.fs.exists(search_id):
+            return {"status": "error", "message": f"搜索路径不存在: {search_path}"}
 
-            # 手动添加file_name到限制序列
-            if "file_name" in params:
-                constraint.append(params["file_name"])
+        # 手动添加file_name到限制序列
+        if "file_name" in params:
+            constraint.append(params["file_name"])
 
-            # 构建发送给 GRAPH RAG 的数据结构
-            search_data = {
-                "key_words": key_words,  # 特征词序列
-                "constraint": constraint,  # 限制序列
-                "search_path": search_id,  # 搜索地址
-            }
+        # 构建发送给 GRAPH RAG 的数据结构
+        search_data = {
+            "key_words": key_words,  # 特征词序列
+            "constraint": constraint,  # 限制序列
+            "search_path": search_id,  # 搜索地址
+        }
 
-            return {
-                "status": "success",
-                "message": "搜索参数已准备完成，等待发送到 GRAPH RAG",
-                "data": search_data,
-            }
-        except Exception as e:
-            return {"status": "error", "message": f"准备搜索参数时出错: {str(e)}"}
+        return {
+            "status": "success",
+            "message": "搜索参数已准备完成，等待发送到 GRAPH RAG",
+            "data": search_data,
+        }
 
     def _search_file_receive(self, search_results: Dict[str, Any]) -> Dict[str, Any]:
         """接收搜索结果"""
-        try:
-            # 处理搜索结果
-            file_list = search_results.get("file_list", [])
-            weights = search_results.get("weights", [])
-            # description = search_results.get("description", [])
+        # 处理搜索结果
+        file_list = search_results.get("file_list", [])
+        weights = search_results.get("weights", [])
+        # description = search_results.get("description", [])
 
-            if not file_list:
-                return {"status": "success", "message": "未找到相关文件"}
+        if not file_list:
+            return {"status": "success", "message": "未找到相关文件"}
 
-            return {
-                "status": "success",
-                "message": f"找到 {len(file_list)} 个相关文件",
-                "data": {
-                    "file_list": file_list,
-                    "weights": weights,
-                    # "description": description
-                },
-            }
-        except Exception as e:
-            return {"status": "error", "message": f"处理搜索结果时出错: {str(e)}"}
+        return {
+            "status": "success",
+            "message": f"找到 {len(file_list)} 个相关文件",
+            "data": {
+                "file_list": file_list,
+                "weights": weights,
+                # "description": description
+            },
+        }
 
     @tool(
         name="search_file",
@@ -859,26 +803,23 @@ class FileAgent:
     )
     def _search_file_workflow(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """搜索文件工作流，协调发送请求和接收结果"""
-        try:
-            # 1. 发送搜索请求到 GRAPH RAG
-            send_result = self._search_file_send(params)
+        # 1. 发送搜索请求到 GRAPH RAG
+        send_result = self._search_file_send(params)
 
-            # 检查发送是否成功
-            if send_result["status"] == "error":
-                return send_result
-
-            # 2. 这里应该调用 GRAPH RAG 进行搜索
-            # 注意：这部分需要您实际集成 GRAPH RAG 系统
-            # 以下是一个模拟的 GRAPH RAG 调用示例
-            # 实际使用时请替换为真正的接口调用
-
-            # 模拟 GRAPH RAG 的搜索结果
-            # 在实际应用中，应该使用 GRAPH RAG 系统的返回结果
-            # search_results = call_graph_rag(search_data)
-
-            # 3. 接收并处理搜索结果
-            # 处理 GRAPH RAG 返回的结果
-            # return self._search_file_receive(search_results)
+        # 检查发送是否成功
+        if send_result["status"] == "error":
             return send_result
-        except Exception as e:
-            return {"status": "error", "message": f"搜索文件工作流执行出错: {str(e)}"}
+
+        # 2. 这里应该调用 GRAPH RAG 进行搜索
+        # 注意：这部分需要您实际集成 GRAPH RAG 系统
+        # 以下是一个模拟的 GRAPH RAG 调用示例
+        # 实际使用时请替换为真正的接口调用
+
+        # 模拟 GRAPH RAG 的搜索结果
+        # 在实际应用中，应该使用 GRAPH RAG 系统的返回结果
+        # search_results = call_graph_rag(search_data)
+
+        # 3. 接收并处理搜索结果
+        # 处理 GRAPH RAG 返回的结果
+        # return self._search_file_receive(search_results)
+        return send_result

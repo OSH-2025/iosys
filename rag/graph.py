@@ -1,4 +1,5 @@
 import os
+from dataclasses import asdict
 
 from llama_index.core.graph_stores import SimplePropertyGraphStore, EntityNode
 from llama_index.core.llms.llm import LLM
@@ -33,10 +34,15 @@ class IOSYSGraphEngine:
             EntityNode(
                 name=id,
                 label="file",
-                properties=parsed,
+                properties=asdict(parsed),
             )
         )
-        # TODO: Link with parent directory if available
+        if parsed.parent_id:
+            self.graph_store.graph.add_triplet(
+                subject=parsed.parent_id,
+                predicate="contains",
+                object=id,
+            )
         self.revision += 1
 
     def delete_file(self, id: str):

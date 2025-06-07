@@ -49,12 +49,7 @@ class FileManagerApp:
         Returns:
             Dict: 处理结果
         """
-        try:
-            logger.info(f"接收到用户输入: {user_input}")
-            result = self.agent.process(user_input)
-            logger.info(f"处理结果: {json.dumps(result, ensure_ascii=False)}")
-            return result
-        except Exception as e:
-            error_msg = f"处理命令时出错: {str(e)}"
-            logger.error(f"{error_msg}")
-            return {"status": "error", "message": error_msg}
+        logger.info(f"接收到用户输入: {user_input}")
+        result = self.agent.process(user_input)
+        logger.info(f"处理结果: {json.dumps(result, ensure_ascii=False)}")
+        return result

@@ -1,6 +1,7 @@
 from typing import Literal, Union, Callable
 import abc
 import os
+import io
 
 
 class FileNode(abc.ABC):
@@ -11,9 +12,16 @@ class FileNode(abc.ABC):
     meta: dict[str, str]
 
     @abc.abstractmethod
+    def read_stream(self) -> io.BytesIO:
+        """Open the file and return a stream"""
+        pass
+
     def read(self) -> bytes:
         """Open the file and read bytes"""
-        pass
+        stream = self.read_stream()
+        content = stream.read()
+        stream.close()
+        return content
 
     @abc.abstractmethod
     def write(self, content: bytes):

@@ -1,3 +1,4 @@
+import io
 import os
 import stat as stat_mod
 import juicefs
@@ -15,8 +16,7 @@ class JuiceFSFileNode(FileNode):
         self.name = os.path.basename(id.rstrip("/"))
         self.meta = {}
 
-    def read(self) -> bytes:
-        """Open the file and read bytes"""
+    def read_stream(self) -> io.BytesIO:
         if not self.fs.client.exists(self.id):
             raise FileNotFoundError(f"File {self.id} not found.")
         try:
@@ -25,8 +25,7 @@ class JuiceFSFileNode(FileNode):
                 raise IsADirectoryError(f"{self.id} is a directory.")
         except FileNotFoundError:
             raise
-        with self.fs.client.open(self.id, "rb") as f:
-            return f.read()
+        return self.fs.client.open(self.id, "rb")
 
     def write(self, content: bytes):
         """Write bytes to file (overwrite)"""
