@@ -7,7 +7,7 @@ from functools import wraps
 
 from openai import Client
 
-from agent.src.config import AgentConfig
+from .config import AgentConfig
 
 
 class OperationType(str, Enum):

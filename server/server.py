@@ -3,12 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from openai import OpenAI
 import os
-from fastapi.responses import FileResponse
-from pathlib import Path
+from fastapi.responses import Response
 
 from ..jfs import IOSYSFileSystem
-from ..agent.src.app import FileManagerApp
-from ..agent.src.config import AgentConfig
+from ..agent.app import FileManagerApp
+from ..agent.config import AgentConfig
 from ..rag import IOSYSRAG
 
 app = FastAPI()
@@ -29,10 +28,10 @@ llm = OpenAI(
 )
 
 fs = IOSYSFileSystem()
+
 rag = IOSYSRAG(fs=fs)
-agent_base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data"))
-os.makedirs(agent_base_dir, exist_ok=True)
-agent_config = AgentConfig(base_dir=agent_base_dir)
+
+agent_config = AgentConfig(fs=fs)
 file_manager = FileManagerApp(agent_config)
 
 
@@ -91,28 +90,16 @@ async def agent_endpoint(request: AgentRequest):
 
 @app.get("/files")
 @app.post("/files")
-async def list_files(request: dict = None, path: str = ""):
+async def list_files(request: dict = None, id: str = ""):
     """List files and directories in the agent's managed directory"""
     try:
         # Handle both GET and POST requests
-        if request and "path" in request:
-            path = request["path"] or ""
-
-        target_path = Path(agent_base_dir) / path
-        if not target_path.exists() or not str(target_path).startswith(agent_base_dir):
-            raise HTTPException(status_code=404, detail="Path not found")
+        if request and "id" in request:
+            id = request["id"] or ""
 
         items = []
-        for item in target_path.iterdir():
-            relative_path = str(item.relative_to(agent_base_dir))
-            items.append(
-                {
-                    "name": item.name,
-                    "path": relative_path,
-                    "type": "directory" if item.is_dir() else "file",
-                    "size": item.stat().st_size if item.is_file() else None,
-                }
-            )
+        for item in fs.get_dir_node(id).children():
+            items.append(item.to_dict())
 
         return {"items": sorted(items, key=lambda x: (x["type"] == "file", x["name"]))}
     except Exception as e:
@@ -132,28 +119,18 @@ class PreviewRequest(BaseModel):
 
 @app.post("/preview")
 async def preview_endpoint(request: PreviewRequest):
-    # Support both absolute paths and relative paths from agent directory
-    if os.path.isabs(request.id):
-        filepath = request.id
-    else:
-        filepath = os.path.join(agent_base_dir, request.id)
-
     return {
-        "url": f"http://localhost:8000/raw?filepath={filepath}",
+        "url": f"http://localhost:8000/raw?fileid={request.id}",
     }
 
 
 @app.get("/raw")
-async def raw_endpoint(filepath: str):
-    # Security check: ensure file is within allowed directories
-    abs_filepath = os.path.abspath(filepath)
-    if not (
-        abs_filepath.startswith(agent_base_dir)
-        or abs_filepath.startswith(os.path.abspath("."))
-    ):
-        raise HTTPException(status_code=403, detail="Access denied")
-
-    if not os.path.exists(abs_filepath):
+async def raw_endpoint(fileid: str):
+    node = fs.get_file_node(fileid)
+    if not node:
         raise HTTPException(status_code=404, detail="File not found")
 
-    return FileResponse(abs_filepath)
+    return Response(
+        media_type="application/octet-stream",
+        content=node.read(),
+    )

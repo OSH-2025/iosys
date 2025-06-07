@@ -10,6 +10,7 @@ class FileNode:
     fs: "IOSYSFileSystem"
     type: Literal["file"]
     id: str
+    name: str
     meta: dict[str, str]
 
     def read(self) -> bytes:
@@ -64,12 +65,21 @@ class FileNode:
         if parent_id == "":
             parent_id = "/"
         return DirNode(self.fs, parent_id)
+    
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "type": self.type,
+            "meta": self.meta,
+        }
 
 
 class DirNode:
     fs: "IOSYSFileSystem"
     type: Literal["dir"]
     id: str
+    name: str
     meta: dict[str, str]
 
     def insert(self, node: FileNode | "DirNode"): ...
@@ -78,6 +88,14 @@ class DirNode:
 
     def parent(self) -> "DirNode": ...
     def children(self) -> list[FileNode]: ...
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "type": self.type,
+            "meta": self.meta,
+        }
 
 
 class IOSYSFileSystem:

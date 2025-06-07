@@ -2,16 +2,21 @@ import os
 from typing import Optional
 import logging
 
+from ..jfs import IOSYSFileSystem
+
 
 class AgentConfig:
     """Agent 配置类"""
 
+    fs: IOSYSFileSystem
+
     def __init__(
         self,
+        fs: IOSYSFileSystem,
         llm_api_key: Optional[str] = None,
         llm_model: Optional[str] = None,
         llm_api_base: Optional[str] = None,
-        base_dir: str = "./",
+        base_dir: str = "/",
         log_level: str = "INFO",
     ):
         """
@@ -25,6 +30,7 @@ class AgentConfig:
             log_level: 日志级别
         """
 
+        self.fs = fs
         self.llm_api_key = llm_api_key or os.environ.get("LLM_API_KEY")
         self.llm_model = llm_model or os.environ.get("LLM_MODEL_NAME")
         self.llm_api_base = llm_api_base or os.environ.get("LLM_BASE_URL")

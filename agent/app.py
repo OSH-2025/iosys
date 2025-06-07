@@ -3,8 +3,8 @@ from typing import Dict, Any, Optional
 import json
 import openai
 
-from agent.src.file_agent import FileAgent
-from agent.src.config import AgentConfig
+from .file_agent import FileAgent
+from .config import AgentConfig
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,6 @@ class FileManagerApp:
         self.config = config or AgentConfig()
         self.llm_client = self._init_llm_client()
         self.agent = FileAgent(config=self.config, llm_client=self.llm_client)
-        logger.info(f"文件管理应用初始化完成，基础目录: {self.config.base_dir}")
 
     def _init_llm_client(self):
         """

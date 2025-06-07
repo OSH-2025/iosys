@@ -6,8 +6,8 @@ import argparse
 import json
 from dotenv import load_dotenv
 
-from src.app import FileManagerApp
-from src.config import AgentConfig
+from .app import FileManagerApp
+from .config import AgentConfig
 
 
 def setup_args_parser() -> argparse.ArgumentParser:
