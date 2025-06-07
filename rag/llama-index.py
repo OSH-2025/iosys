@@ -13,7 +13,12 @@ from llama_index.core import Document, PropertyGraphIndex
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.async_utils import run_jobs
 from llama_index.core.indices.property_graph.utils import default_parse_triplets_fn
-from llama_index.core.graph_stores.types import EntityNode, KG_NODES_KEY, KG_RELATIONS_KEY, Relation
+from llama_index.core.graph_stores.types import (
+    EntityNode,
+    KG_NODES_KEY,
+    KG_RELATIONS_KEY,
+    Relation,
+)
 from llama_index.core.graph_stores import SimplePropertyGraphStore
 from llama_index.core.llms.llm import LLM
 from llama_index.core.llms import ChatMessage
@@ -53,7 +58,7 @@ llm = OpenAI(
     model=os.environ.get("LLM_MODEL_NAME"),
 )
 
-# Configure embedding model with explicit base_url  
+# Configure embedding model with explicit base_url
 embed_model = OpenAIEmbedding(
     api_base=os.environ.get("EMBEDDING_BASE_URL"),
     api_key=os.environ.get("EMBEDDING_API_KEY"),
@@ -77,11 +82,13 @@ entity_pattern = (
 )
 relationship_pattern = r"source_entity:\s*(.+?)\s*target_entity:\s*(.+?)\s*relation:\s*(.+?)\s*relationship_description:\s*(.+?)\s*"
 
+
 def parse_fn(response_str: str) -> Any:
     """Parse LLM response to extract entities and relationships."""
     entities = re.findall(entity_pattern, response_str)
     relationships = re.findall(relationship_pattern, response_str)
     return entities, relationships
+
 
 # GraphRAG Extractor Class
 class GraphRAGExtractor(TransformComponent):
@@ -143,7 +150,7 @@ class GraphRAGExtractor(TransformComponent):
 
         existing_nodes = node.metadata.pop(KG_NODES_KEY, [])
         existing_relations = node.metadata.pop(KG_RELATIONS_KEY, [])
-        
+
         # Process entities
         metadata = node.metadata.copy()
         for entity, entity_type, description in entities:
@@ -189,10 +196,11 @@ class GraphRAGExtractor(TransformComponent):
             desc="Extracting paths from text",
         )
 
+
 # GraphRAG Store Class
 class GraphRAGStore(SimplePropertyGraphStore):
     """Enhanced property graph store with community detection and summarization."""
-    
+
     def __init__(self):
         super().__init__()
         self.community_summary = {}
@@ -275,10 +283,11 @@ class GraphRAGStore(SimplePropertyGraphStore):
             self.build_communities()
         return self.community_summary
 
+
 # GraphRAG Query Engine Class
 class GraphRAGQueryEngine(CustomQueryEngine):
     """Custom query engine for GraphRAG."""
-    
+
     graph_store: GraphRAGStore
     llm: LLM
 
@@ -328,6 +337,7 @@ class GraphRAGQueryEngine(CustomQueryEngine):
         ).strip()
         return cleaned_final_response
 
+
 # Initialize components
 kg_extractor = GraphRAGExtractor(
     llm=llm,
@@ -343,7 +353,6 @@ index = PropertyGraphIndex(
     kg_extractors=[kg_extractor],
     embed_model=embed_model,
     show_progress=True,
-    
 )
 
 # Initialize query engine
