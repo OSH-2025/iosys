@@ -1,25 +1,22 @@
+# JuiceFs 脚本使用
 
----
-## JuiceFs 脚本使用
+## Windows
 
-在项目根目录下(iosys)运行脚本。
-可能需要以管理员的身份运行。
+- 下载并安装 https://winfsp.dev/rel/
+- 下载 https://github.com/juicedata/juicefs/releases/download/v1.2.3/juicefs-1.2.3-windows-amd64.tar.gz
+- 将其中的 `juicefs.exe` 放到 PATH 中
 
-在 windows 下：
+## Linux
 
-```ps1
-jfs\juiceFsInit_win.ps1 # 在终端中输入脚本所在路径即可运行
-```
-
-在 linux 下：
+在项目根目录下(iosys)运行脚本：
 
 ```bash
 source jfs/juiceFsInit_linux.sh
 ```
 
-## JuiceFs py SDK
+## JuiceFs Python SDK
 
-使用python SDK需要：
+使用 python SDK 需要：
 
 ```bash
 sudo apt install git-lfs
@@ -138,4 +135,4 @@ chmod(self, path, mode)
  |
  |  __weakref__
  |      list of weak references to the object (if defined)
- ```
+```
