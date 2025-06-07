@@ -21,6 +21,9 @@ class IOSYSRAG:
             dumped = self.filesystem.read("__graph__.json")
             self.engine.load(dumped)
 
-    def update_file(self, file_path: FileSystemNode, content: str):
-        parsed = self.parser.parse(file_path, content)
-        self.engine.update_file(file_path, parsed)
+    def update_file(self, node: FileSystemNode, content: str):
+        parsed = self.parser.parse(node, content)
+        self.engine.update_file(node.id, parsed)
+
+    def delete_file(self, node: FileSystemNode):
+        self.engine.delete_file(node.id)
