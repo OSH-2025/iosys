@@ -11,7 +11,7 @@
 在项目根目录下(iosys)运行脚本：
 
 ```bash
-source jfs/juiceFsInit_linux.sh
+source jfs/scripts/juiceFsInit_linux.sh
 ```
 
 ## JuiceFs Python SDK
