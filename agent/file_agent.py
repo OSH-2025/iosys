@@ -160,8 +160,7 @@ class FileAgent:
                     if result["status"] != "success":
                         return {
                             "status": "error",
-                            "message": message
-                            + result.get("message", "工具调用失败"),
+                            "message": message + result.get("message", "工具调用失败"),
                         }
                     else:
                         return {

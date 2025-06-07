@@ -115,7 +115,7 @@ class IOSYSParser:
                 ),
             )
             return result.text_content
-        except UnsupportedFormatException as e:
+        except UnsupportedFormatException:
             return "ERROR: Unsupported file format"
 
     def _generate_abstract(self, node: FileNode) -> str:
