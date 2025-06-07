@@ -174,7 +174,8 @@ class FileAgent:
                         if result["status"] != "success":
                             return {
                                 "status": "error",
-                                "message": message + result.get("message", "工具调用失败"),
+                                "message": message
+                                + result.get("message", "工具调用失败"),
                             }
                         else:
                             return {
@@ -185,10 +186,14 @@ class FileAgent:
                     else:
                         return {
                             "status": "error",
-                            "message": message + f"工具调用失败：不支持的操作: {function_name}",
+                            "message": message
+                            + f"工具调用失败：不支持的操作: {function_name}",
                         }
                 else:
-                    return {"status": "success", "message": message + "LLM 没有调用任何工具函数"}
+                    return {
+                        "status": "success",
+                        "message": message + "LLM 没有调用任何工具函数",
+                    }
             else:
                 return {"status": "error", "message": message + "无效的 LLM 响应格式"}
 
@@ -313,7 +318,7 @@ class FileAgent:
                     "status": "error",
                     "message": f"父目录不存在: {params['path']}",
                 }
-            
+
             # 创建目录节点
             parent_node.insert_dir(params["directory_name"])
             return {
