@@ -10,10 +10,10 @@ class IOSYSRAG:
 
     def __init__(self):
         self.filesystem = IOSYSFileSystem(
-            on_file_update=self.update_file,
-            on_file_delete=self.delete_file,
-            on_dir_update=self.update_dir,
-            on_dir_delete=self.delete_dir,
+            on_file_update=[self.update_file],
+            on_file_delete=[self.delete_file],
+            on_dir_update=[self.update_dir],
+            on_dir_delete=[self.delete_dir],
         )
         self.parser = IOSYSParser()
         self.engine = IOSYSQueryEngine()
