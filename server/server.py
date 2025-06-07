@@ -5,8 +5,11 @@ from openai import OpenAI
 import os
 from fastapi.responses import FileResponse
 from pathlib import Path
-from agent.src.app import FileManagerApp
-from agent.src.config import AgentConfig
+
+from ..jfs import IOSYSFileSystem
+from ..agent.src.app import FileManagerApp
+from ..agent.src.config import AgentConfig
+from ..rag import IOSYSRAG
 
 app = FastAPI()
 
@@ -20,13 +23,13 @@ app.add_middleware(
 )
 
 MODEL = os.environ.get("LLM_MODEL_NAME")
-
-client = OpenAI(
+llm = OpenAI(
     base_url=os.environ.get("LLM_BASE_URL"),
     api_key=os.environ.get("LLM_API_KEY"),
 )
 
-# Initialize Agent
+fs = IOSYSFileSystem()
+rag = IOSYSRAG(fs=fs)
 agent_base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data"))
 os.makedirs(agent_base_dir, exist_ok=True)
 agent_config = AgentConfig(base_dir=agent_base_dir)
@@ -39,7 +42,7 @@ async def status_endpoint():
         "server": "ready",
         "rag": "ready",
         "llm": MODEL,
-        "fs": "ready",
+        "fs": "ready" if fs.service.is_running() else "error",
         "agent": "ready",
     }
 
@@ -52,7 +55,7 @@ class ChatRequest(BaseModel):
 async def chat_endpoint(request: ChatRequest):
     try:
         # Use OpenAI SDK to get a response
-        completion = client.chat.completions.create(
+        completion = llm.chat.completions.create(
             extra_body={},
             model=MODEL,
             messages=[
@@ -114,6 +117,13 @@ async def list_files(request: dict = None, path: str = ""):
         return {"items": sorted(items, key=lambda x: (x["type"] == "file", x["name"]))}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/graph")
+@app.post("/graph")
+async def graph_endpoint():
+    """Get the current state of the file management graph"""
+    return rag.graph.dump()
 
 
 class PreviewRequest(BaseModel):

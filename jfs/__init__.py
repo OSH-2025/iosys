@@ -84,10 +84,10 @@ class IOSYSFileSystem:
     service: JuiceFSService
     client: juicefs.Client
 
-    on_file_update: list[callable[[FileNode], None]]
-    on_file_delete: list[callable[[FileNode], None]]
-    on_dir_update: list[callable[[DirNode], None]]
-    on_dir_delete: list[callable[[DirNode], None]]
+    on_file_update: list[callable[[FileNode], None]] = []
+    on_file_delete: list[callable[[FileNode], None]] = []
+    on_dir_update: list[callable[[DirNode], None]] = []
+    on_dir_delete: list[callable[[DirNode], None]] = []
 
     def __init__(self):
         self.service = JuiceFSService()

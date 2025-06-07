@@ -10,13 +10,12 @@ class IOSYSRAG:
     query: IOSYSQueryEngine
     graph: IOSYSGraphEngine
 
-    def __init__(self):
-        self.fs = IOSYSFileSystem(
-            on_file_update=[self.update_file],
-            on_file_delete=[self.delete_file],
-            on_dir_update=[self.update_dir],
-            on_dir_delete=[self.delete_dir],
-        )
+    def __init__(self, fs: IOSYSFileSystem):
+        self.fs = fs
+        self.fs.on_file_update.append(self.update_file)
+        self.fs.on_file_delete.append(self.delete_file)
+        self.fs.on_dir_update.append(self.update_file)
+        self.fs.on_dir_delete.append(self.delete_file)
         self.parser = IOSYSParser()
         self.query = IOSYSQueryEngine()
         self.graph = IOSYSGraphEngine()
