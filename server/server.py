@@ -5,10 +5,10 @@ from openai import OpenAI
 import os
 from fastapi.responses import Response
 
-from ..jfs import IOSYSFileSystem
-from ..agent.app import FileManagerApp
-from ..agent.config import AgentConfig
-from ..rag import IOSYSRAG
+from jfs import new_fs
+from agent.app import FileManagerApp
+from agent.config import AgentConfig
+from rag import IOSYSRAG
 
 app = FastAPI()
 
@@ -27,7 +27,7 @@ llm = OpenAI(
     api_key=os.environ.get("LLM_API_KEY"),
 )
 
-fs = IOSYSFileSystem()
+fs = new_fs()
 
 rag = IOSYSRAG(fs=fs)
 
@@ -41,7 +41,7 @@ async def status_endpoint():
         "server": "ready",
         "rag": "ready",
         "llm": MODEL,
-        "fs": "ready" if fs.service.is_running() else "error",
+        "fs": "ready" if fs.is_running() else "error",
         "agent": "ready",
     }
 

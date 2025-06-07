@@ -87,9 +87,12 @@ class OSDirNode(DirNode):
 
 
 class OSFileSystem(IOSYSFileSystem):
-    def __init__(self, root_path: str = "/"):
+    def __init__(self, root_path: str):
         super().__init__()
         self.root_path = root_path
+
+    def is_running(self) -> bool:
+        return True
 
     def get_node(self, id: str) -> FileNode | DirNode | None:
         if not self.exists(id):

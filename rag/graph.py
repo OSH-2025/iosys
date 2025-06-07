@@ -5,7 +5,7 @@ from llama_index.core.graph_stores import SimplePropertyGraphStore, EntityNode
 from llama_index.core.llms.llm import LLM
 from llama_index.llms.openai import OpenAI
 
-from ..parser import IOSYSParsedFile
+from parser import IOSYSParsedFile
 
 
 class IOSYSGraphEngine:

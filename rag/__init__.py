@@ -1,5 +1,6 @@
-from ..jfs import FileNode, IOSYSFileSystem
-from ..parser import IOSYSParser
+from jfs import FileNode, IOSYSFileSystem
+from parser import IOSYSParser
+
 from .query import IOSYSQueryEngine
 from .graph import IOSYSGraphEngine
 

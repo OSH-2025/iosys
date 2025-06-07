@@ -3,8 +3,9 @@ import base64
 
 from typing import Literal
 from openai import OpenAI
-from ..markitdown import Markitdown
-from ..jfs import FileNode
+from markitdown import MarkItDown
+
+from jfs import FileNode
 
 
 class EmbeddedFile:

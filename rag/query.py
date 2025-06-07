@@ -5,7 +5,7 @@ from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.core.embeddings.utils import EmbedType
 from llama_index.core import Document
 
-from ..parser import IOSYSParsedFile
+from parser import IOSYSParsedFile
 
 
 class IOSYSQueryEngine:
@@ -20,6 +20,7 @@ class IOSYSQueryEngine:
         )
         self.index = VectorStoreIndex(
             embed_model=self.embed_model,
+            nodes=[],
         )
 
     def update_file(self, id: str, parsed: IOSYSParsedFile):

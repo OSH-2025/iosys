@@ -1,5 +1,6 @@
 from typing import Literal, Union, Callable
 import abc
+import os
 
 
 class FileNode(abc.ABC):
@@ -72,6 +73,9 @@ class IOSYSFileSystem(abc.ABC):
     on_dir_delete: list[Callable[[DirNode], None]] = []
 
     @abc.abstractmethod
+    def is_running(self) -> bool: ...
+
+    @abc.abstractmethod
     def get_node(self, id: str) -> Union[FileNode, DirNode, None]: ...
 
     @abc.abstractmethod
@@ -122,3 +126,15 @@ class IOSYSFileSystem(abc.ABC):
     def call_dir_delete(self, node: DirNode):
         for callback in self.on_dir_delete:
             callback(node)
+
+
+def new_fs() -> IOSYSFileSystem:
+    use_local_fs = os.environ.get("USE_LOCAL_FS")
+    if use_local_fs:
+        from .osfs_impl import OSFileSystem
+
+        return OSFileSystem(root_path=use_local_fs)
+    else:
+        from .jfs_impl import JuiceFSFileSystem
+
+        return JuiceFSFileSystem()

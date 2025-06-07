@@ -2,7 +2,7 @@ import os
 from typing import Optional
 import logging
 
-from ..jfs import IOSYSFileSystem
+from jfs import IOSYSFileSystem
 
 
 class AgentConfig:

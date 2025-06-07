@@ -100,6 +100,9 @@ class JuiceFSFileSystem(IOSYSFileSystem):
             meta=os.environ.get("JFS_META_URL"),
         )
 
+    def is_running(self) -> bool:
+        return self.service.is_running()
+
     def get_node(self, id: str) -> FileNode | DirNode | None:
         if not self.exists(id):
             return None
