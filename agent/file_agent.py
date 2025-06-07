@@ -6,7 +6,6 @@ from functools import wraps
 from openai import Client
 
 from .config import AgentConfig
-from jfs import FileNode
 
 
 class OperationType(str, Enum):
