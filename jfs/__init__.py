@@ -14,30 +14,30 @@ class FileNode:
         """
         Open the file and read bytes
         """
-        if not self.fs.jfs.exists(self.id):
+        if not self.fs.client.exists(self.id):
             raise FileNotFoundError(f"File {self.id} not found.")
         try:
-            st = self.fs.jfs.stat(self.id)
+            st = self.fs.client.stat(self.id)
             if stat_mod.S_ISDIR(st.st_mode):
                 raise IsADirectoryError(f"{self.id} is a directory.")
         except FileNotFoundError:
             raise
-        with self.fs.jfs.open(self.id, "rb") as f:
+        with self.fs.client.open(self.id, "rb") as f:
             return f.read()
 
     def write(self, content: bytes):
         """
         Write bytes to file (overwrite)
         """
-        if not self.fs.jfs.exists(self.id):
+        if not self.fs.client.exists(self.id):
             raise FileNotFoundError(f"File {self.id} not found.")
         try:
-            st = self.fs.jfs.stat(self.id)
+            st = self.fs.client.stat(self.id)
             if stat_mod.S_ISDIR(st.st_mode):
                 raise IsADirectoryError(f"{self.id} is a directory.")
         except FileNotFoundError:
             raise
-        with self.fs.jfs.open(self.id, "wb") as f:
+        with self.fs.client.open(self.id, "wb") as f:
             f.write(content)
         # Trigger update callback
         self.fs.call_file_update(self)
@@ -46,15 +46,15 @@ class FileNode:
         """
         Remove the file
         """
-        if not self.fs.jfs.exists(self.id):
+        if not self.fs.client.exists(self.id):
             raise FileNotFoundError(f"File {self.id} not found.")
         try:
-            st = self.fs.jfs.stat(self.id)
+            st = self.fs.client.stat(self.id)
             if stat_mod.S_ISDIR(st.st_mode):
                 raise IsADirectoryError(f"{self.id} is a directory.")
         except FileNotFoundError:
             raise
-        self.fs.jfs.remove(self.id)
+        self.fs.client.remove(self.id)
         self.fs.call_file_delete(self)
 
     def parent(self) -> "DirNode":
@@ -79,10 +79,18 @@ class DirNode:
 
 
 class IOSYSFileSystem:
+    client: juicefs.Client
+
     on_file_update: list[callable[[FileNode], None]]
     on_file_delete: list[callable[[FileNode], None]]
     on_dir_update: list[callable[[DirNode], None]]
     on_dir_delete: list[callable[[DirNode], None]]
+
+    def __init__(self):
+        self.client = juicefs.Client(
+            name=os.environ.get("JFS_NAME"),
+            meta=os.environ.get("JFS_META_URL"),
+        )
 
     def get_node(self, id: str) -> FileNode | DirNode | None: ...
     def exists(self, id: str) -> bool: ...
