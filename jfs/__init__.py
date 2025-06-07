@@ -1,5 +1,7 @@
 from typing import Literal
-
+import os
+import stat as stat_mod
+import juicefs
 
 class FileNode:
     fs: "IOSYSFileSystem"
@@ -7,11 +9,56 @@ class FileNode:
     id: str
     meta: dict[str, str]
 
-    def read(self) -> bytes: ...
-    def write(self, content: bytes): ...
-    def remove(self): ...
+    def read(self) -> bytes:
+        '''
+        Open the file and read bytes
+        '''
+        if not self.fs.jfs.exists(self.id):
+            raise FileNotFoundError(f"File {self.id} not found.")
+        try:
+            st = self.fs.jfs.stat(self.id)
+            if stat_mod.S_ISDIR(st.st_mode):
+                raise IsADirectoryError(f"{self.id} is a directory.")
+        except FileNotFoundError:
+            raise
+        with self.fs.jfs.open(self.id, "rb") as f:
+            return f.read()
+    def write(self, content: bytes):
+        '''
+        Write bytes to file (overwrite)
+        '''
+        if not self.fs.jfs.exists(self.id):
+            raise FileNotFoundError(f"File {self.id} not found.")
+        try:
+            st = self.fs.jfs.stat(self.id)
+            if stat_mod.S_ISDIR(st.st_mode):
+                raise IsADirectoryError(f"{self.id} is a directory.")
+        except FileNotFoundError:
+            raise
+        with self.fs.jfs.open(self.id, "wb") as f:
+            f.write(content)
+        # Trigger update callback
+        self.fs.call_file_update(self)
+    def remove(self):
+        '''
+        Remove the file
+        '''
+        if not self.fs.jfs.exists(self.id):
+            raise FileNotFoundError(f"File {self.id} not found.")
+        try:
+            st = self.fs.jfs.stat(self.id)
+            if stat_mod.S_ISDIR(st.st_mode):
+                raise IsADirectoryError(f"{self.id} is a directory.")
+        except FileNotFoundError:
+            raise
+        self.fs.jfs.remove(self.id)
+        self.fs.call_file_delete(self)
 
-    def parent(self) -> "DirNode": ...
+    def parent(self) -> "DirNode":
+        parent_id = os.path.dirname(self.id.rstrip('/'))
+        if parent_id == "":
+            parent_id = "/"
+        return DirNode(self.fs, parent_id)
 
 
 class DirNode:
