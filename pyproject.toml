@@ -20,6 +20,9 @@ dependencies = [
     "ipywidgets>=8.1.7",
     "pandas>=2.2.3",
     "ipykernel>=6.29.5",
+    "llama-index>=0.12.40",
+    "graspologic>=3.4.2.dev5",
+    "future>=1.0.0",
 ]
 
 [tool.uv.sources]
