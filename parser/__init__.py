@@ -1,7 +1,7 @@
 import os
 import base64
 
-from typing import Literal
+from typing import Any, BinaryIO, Optional, Literal
 from openai import OpenAI
 from markitdown import MarkItDown
 
@@ -45,61 +45,57 @@ class IOSYSParser:
         )
         self.model = (os.environ.get("LLM_MODEL_NAME"),)
 
-    def _generate_basic(
+    def _chat(
         self,
-        file_name: str,  # let the argument be file name, for now
-    ):
-        pass  # to be done
+        prompt: str,
+        additional: dict,
+    ) -> str:
+        if not self.client or not self.model:
+            raise Exception("LLM not initialized")
 
-    def _generate_abtract(self, file_name: str, verbose: str):
-        pass  # to be done
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    additional,
+                ],
+            }
+        ]
+
+        response = self.client.chat.completions.create(
+            model=self.model, messages=messages
+        )
+
+        description = response.choices[0].message.content
+        return description
 
     def _generate_verbose(
         self,
         file_name: str,
-    ):
-        """isn't this part a bit too long???"""
-
+    ) -> str:
         def image_converter(image):
+            """A function using llm to get a image's description. It serves as an argument for Markitdown."""
+
             with image.open() as image_bytes:
                 img_data = image_bytes.read()
                 content_type = image.content_type or "image/png"
 
             b64_data = base64.b64encode(img_data).decode()
             prompt = "Write a detailed caption for this image."
-
-            if not self.client or not self.model:
-                return {
-                    "src": "data:{0};base64,{1}".format(content_type, b64_data),
-                    "alt": "image",
-                }
+            data_uri = f"data:{content_type};base64,{b64_data}"
+            additional = {"type": "image_url", "image_url": {"url": data_uri}}
 
             try:
-                data_uri = f"data:{content_type};base64,{b64_data}"
-
-                messages = [
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": prompt},
-                            {"type": "image_url", "image_url": {"url": data_uri}},
-                        ],
-                    }
-                ]
-
-                response = self.client.chat.completions.create(
-                    model=self.model, messages=messages
-                )
-                description = response.choices[0].message.content
-
+                description = self._chat(prompt, additional)
                 return {
-                    "src": "data:{0};base64,{1}".format(image.content_type, b64_data),
+                    "src": "data:{0};base64,{1}".format(content_type, b64_data),
                     "alt": description,
                 }
 
             except Exception:
                 return {
-                    "src": "data:{0};base64,{1}".format(image.content_type, b64_data),
+                    "src": "data:{0};base64,{1}".format(content_type, b64_data),
                     "alt": "LLM Description failed",
                 }
 
@@ -110,6 +106,27 @@ class IOSYSParser:
         )
         result = md.convert(file_name)
         return result.text_content
+
+    def _generate_abstract(
+        self,
+        file_name: str,
+    ) -> str:
+        verbose = self._generate_verbose(file_name)
+        prompt = "Generate an abstracted text for the following text"  # to be modified
+        additional = {"type": "text", "text": verbose}
+
+        try:
+            description = self._chat(prompt, additional)
+            return description
+
+        except Exception as e:
+            return str(e)
+
+    def _generate_basic(
+        self,
+        file_name: str,
+    ) -> str:
+        pass  # to be done
 
     def parse(self, node: FileNode, content: str):
         pass  # to be done
