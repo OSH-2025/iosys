@@ -3,6 +3,8 @@ import os
 import stat as stat_mod
 import juicefs
 
+from .service import JuiceFSService
+
 
 class FileNode:
     fs: "IOSYSFileSystem"
@@ -79,6 +81,7 @@ class DirNode:
 
 
 class IOSYSFileSystem:
+    service: JuiceFSService
     client: juicefs.Client
 
     on_file_update: list[callable[[FileNode], None]]
@@ -87,6 +90,9 @@ class IOSYSFileSystem:
     on_dir_delete: list[callable[[DirNode], None]]
 
     def __init__(self):
+        self.service = JuiceFSService()
+        self.service.start()
+
         self.client = juicefs.Client(
             name=os.environ.get("JFS_NAME"),
             meta=os.environ.get("JFS_META_URL"),
