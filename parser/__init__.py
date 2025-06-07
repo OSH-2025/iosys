@@ -5,6 +5,7 @@ from openai import OpenAI
 
 from ..jfs import FileNode
 
+
 class EmbeddedFile:
     id: str
     type: Literal["image"]
