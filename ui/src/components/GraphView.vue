@@ -13,7 +13,7 @@ const options: Options = {
     arrows: {
       to: { enabled: true, scaleFactor: 1 },
     },
-    smooth:false,
+    smooth: false,
   },
   physics: {
     forceAtlas2Based: {
@@ -41,7 +41,9 @@ const nodes = new DataSet<Node>(graphNodes.value);
 const edges = new DataSet<Edge>(graphEdges.value);
 
 watchEffect(() => {
+  nodes.clear();
   nodes.update(graphNodes.value);
+  edges.clear();
   edges.update(graphEdges.value);
 });
 
@@ -56,7 +58,11 @@ onMounted(() => {
 </script>
 
 <template>
-  <div w-full h-full>
+  <div relative w-full h-full>
     <div ref="container" style="width: 100%; height: 100%; border: 1px solid lightgray;"></div>
+    <div v-if="nodes.length === 0"
+      class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-gray-500">
+      No nodes available
+    </div>
   </div>
 </template>

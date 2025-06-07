@@ -16,7 +16,7 @@ export const messages = reactive<Message[]>([
 
 export const errorMessage = ref<string | null>(null);
 
-export const previewFile = ref<string | null>("D:/assets/avatar_modified.png");
+export const previewFile = ref<string | null>(null);
 
 export const status = ref<Partial<ApiResponse<"status">>>({});
 
