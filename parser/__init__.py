@@ -128,7 +128,7 @@ class IOSYSParser:
             llm_model=self.model,
             image_converter=image_converter,
         )
-        
+
         try:
             result = md.convert_stream(
                 node.read_stream(),
