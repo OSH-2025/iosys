@@ -23,6 +23,9 @@ dependencies = [
     "llama-index>=0.12.40",
     "graspologic>=3.4.2.dev5",
     "future>=1.0.0",
+    "llama-index-graph-stores-nebula>=0.4.2",
+    "nebula3-python>=3.8.3",
+    "jupyter-nebulagraph>=0.14.3",
 ]
 
 [tool.uv.sources]

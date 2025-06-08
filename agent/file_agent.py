@@ -212,7 +212,7 @@ class FileAgent:
         """创建文件"""
         parent_path = self._normalize_path(params.get("path", ""))
         file_name = params.get("file_name", "new_file.txt")
-        content = params.get("content", "")
+        content = params.get("content")
 
         # 检查文件是否已存在
         path = self._normalize_path(f"{parent_path}/{file_name}")
@@ -234,7 +234,8 @@ class FileAgent:
         node = parent_node.insert_node(file_name)
 
         # 写入文件内容
-        node.write(content.encode("utf-8"))
+        if content:
+            node.write(content.encode("utf-8"))
 
         return {
             "status": "success",

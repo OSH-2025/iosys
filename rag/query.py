@@ -32,7 +32,7 @@ class IOSYSQueryEngine:
         )
 
     async def delete_file(self, path: str):
-        await self.index.adelete(path)
+        await self.index.adelete_nodes([path])
 
     async def query_files(self, query: str):
         return await self.index.as_query_engine(llm=self.llm).aquery(query)

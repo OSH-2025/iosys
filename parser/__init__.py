@@ -77,7 +77,9 @@ class IOSYSParser:
         description = response.choices[0].message.content
         return description
 
-    def _generate_verbose(self, node: FileSystemNode) -> str:
+    def _generate_verbose(self, node: FileSystemNode):
+        embedded_files = []  # type: list[EmbeddedFile]
+
         def image_converter(image):
             # A function using llm to get a image's description. It serves as an argument for Markitdown.
             with image.open() as image_bytes:
@@ -91,16 +93,23 @@ class IOSYSParser:
 
             try:
                 description = self._chat(prompt, additional)
-                return {
-                    "src": "data:{0};base64,{1}".format(content_type, b64_data),
-                    "alt": description,
-                }
-
             except Exception:
-                return {
-                    "src": "data:{0};base64,{1}".format(content_type, b64_data),
-                    "alt": "LLM Description failed",
-                }
+                description = "LLM Description failed"
+
+            embedded_files.append(
+                EmbeddedFile(
+                    id=f"{node.path}/{len(embedded_files)}",
+                    type="image",
+                    name=image.name,
+                    description=description,
+                    content=img_data,
+                )
+            )
+
+            return {
+                "src": "data:{0};base64,{1}".format(content_type, b64_data),
+                "alt": description,
+            }
 
         md = MarkItDown(
             llm_client=self.client,
@@ -114,9 +123,9 @@ class IOSYSParser:
                     filename=node.name,
                 ),
             )
-            return result.text_content
+            return (result.text_content, embedded_files)
         except UnsupportedFormatException:
-            return "ERROR: Unsupported file format"
+            return ("ERROR: Unsupported file format", [])
 
     def _generate_brief(
         self, verbose: str, node: FileSystemNode
@@ -136,18 +145,14 @@ class IOSYSParser:
 
     def parse(self, node: FileSystemNode):
         verbose_text = self._generate_verbose(node)
-        brief_text = self._generate_verbose(verbose_text, node)
+        brief_text = self._generate_brief(verbose_text, node)
 
         return IOSYSParsedFile(
             path=node.path,
             name=node.name,
-            created_at=datetime.fromtimestamp(os.path.getctime(node.name)).strftime(
-                "%Y/%m/%d, %H:%M:%S"
-            ),
-            updated_at=datetime.fromtimestamp(os.path.getmtime(node.name)).strftime(
-                "%Y/%m/%d, %H:%M:%S"
-            ),
-            parent_path=node.parent(),
+            created_at=114514,
+            updated_at=1919810,
+            parent_path=node.parent().path,
             verbose_text=verbose_text,
             brief_text=brief_text,
             embedded_files=[],

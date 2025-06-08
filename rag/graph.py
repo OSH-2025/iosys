@@ -1,7 +1,14 @@
 import os
+import json
 from dataclasses import asdict
 
-from llama_index.core.graph_stores import SimplePropertyGraphStore, EntityNode, Relation
+from llama_index.core.graph_stores import (
+    PropertyGraphStore,
+    SimplePropertyGraphStore,
+    EntityNode,
+    Relation,
+)
+from llama_index.graph_stores.nebula import NebulaPropertyGraphStore
 from llama_index.core.llms.llm import LLM
 from llama_index.llms.openai import OpenAI
 
@@ -10,7 +17,8 @@ from parser import IOSYSParsedFile
 
 class IOSYSGraphEngine:
     llm: LLM
-    graph_store: SimplePropertyGraphStore
+    graph_store: PropertyGraphStore
+    local_graph_path: str | None
     revision: int = 0
 
     def __init__(self):
@@ -19,39 +27,59 @@ class IOSYSGraphEngine:
             api_key=os.environ.get("LLM_API_KEY"),
             model=os.environ.get("LLM_MODEL_NAME"),
         )
-        self.graph_store = SimplePropertyGraphStore()
 
-    def load(self, dumped: str):
-        self.graph_store = SimplePropertyGraphStore.from_dict(dumped)
-
-    def dump(self):
-        dumped = self.graph_store.graph.model_dump(mode="json")
-        dumped["revision"] = self.revision
-        return dumped
-
-    def update_file(self, path: str, parsed: IOSYSParsedFile):
-        self.graph_store.graph.add_node(
-            EntityNode(
-                name=path,
-                label="file",
-                properties=asdict(parsed),
+        self.local_graph_path = os.environ.get("USE_LOCAL_GRAPH_STORE")
+        if self.local_graph_path:
+            self.graph_store = SimplePropertyGraphStore()
+            if os.path.exists(self.local_graph_path):
+                with open(self.local_graph_path, "r") as f:
+                    dumped = f.read()
+                if dumped:
+                    dumped = json.loads(dumped)
+                    self.graph_store = SimplePropertyGraphStore.from_dict(dumped)
+        else:
+            self.graph_store = NebulaPropertyGraphStore(
+                username=os.environ.get("NEBULA_USERNAME"),
+                password=os.environ.get("NEBULA_PASSWORD"),
+                url=os.environ.get("NEBULA_URL"),
+                space=os.environ.get("NEBULA_SPACE"),
+                overwrite=True,
             )
-        )
-        if parsed.parent_path:
-            print(
-                parsed.parent_path,
-                "contains",
-                path,
+
+    async def update_file(self, path: str, parsed: IOSYSParsedFile):
+        try:
+            await self.graph_store.aupsert_nodes(
+                [
+                    EntityNode(
+                        name=path,
+                        label="file",
+                        # properties=asdict(parsed),
+                    )
+                ]
             )
-            self.graph_store.graph.add_relation(
-                Relation(
-                    source_id=parsed.parent_path,
-                    label="contains",
-                    target_id=path,
+            if parsed.parent_path:
+                await self.graph_store.aupsert_relations(
+                    [
+                        Relation(
+                            source_id=parsed.parent_path,
+                            label="contains",
+                            target_id=path,
+                        )
+                    ]
                 )
-            )
-        self.revision += 1
+        except Exception as e:
+            print(f"Error updating file {path}: ", e)
+            return
+        self.commit()
 
-    def delete_file(self, path: str):
-        self.graph_store.graph.delete_node(path)
+    async def delete_file(self, path: str):
+        await self.graph_store.adelete(entity_names=[path])
+        self.commit()
+
+    def commit(self):
         self.revision += 1
+        if self.local_graph_path:
+            with open(self.local_graph_path, "w") as f:
+                dumped = self.graph_store.graph.model_dump(mode="json")
+                dumped["revision"] = self.revision
+                f.write(json.dumps(dumped))

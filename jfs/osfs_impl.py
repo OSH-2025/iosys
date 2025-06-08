@@ -14,10 +14,12 @@ class OSFileSystemNode(FileSystemNode):
             real_path = self.fs._get_embedded_path(self.path)
             return open(real_path, "rb")
         real_path = self.fs._get_real_path(self.path)
-        if self.meta.get("type") != "file":
-            raise FileNotFoundError(
-                f"File {self.path} not initialized or is not a file."
+        if self.meta.get("type") == "directory":
+            raise IsADirectoryError(
+                f"Cannot read a directory as a file: {self.path}"
             )
+        if not os.path.exists(real_path):
+            return io.BytesIO()
         return open(real_path, "rb")
 
     def write(self, content: bytes):
@@ -76,6 +78,7 @@ class OSFileSystemNode(FileSystemNode):
             node.update_meta(type="embedded")
         else:
             node._sync_metadata()
+        self.fs.invoke_on_change(self)
         return node
 
     def _sync_metadata(self):
@@ -114,9 +117,10 @@ class OSFileSystem(IOSYSFileSystem):
             node.update_meta(type="file" if os.path.isfile(real_path) else "directory")
             return node
         # Case 2: The metadata exists, but the file hasn't been created yet or is a embedded file
-        meta_path = self._get_meta_path(path)
-        if os.path.isdir(meta_path):
-            return OSFileSystemNode(self, path)
+        if path != "/":
+            meta_path = self._get_meta_path(path)
+            if os.path.isdir(meta_path):
+                return OSFileSystemNode(self, path)
 
     def _get_real_path(self, virtual_path: str) -> str:
         """Convert virtual path to real path within root_path and validate it"""

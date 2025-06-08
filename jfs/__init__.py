@@ -126,10 +126,7 @@ class IOSYSFileSystem(abc.ABC):
             await asyncio.gather(*[callback(node) for callback in self.on_change])
             self._pending_changes.pop(key, None)
 
-        try:
-            self._pending_changes[key] = asyncio.create_task(execute_callbacks())
-        except RuntimeError:
-            pass
+        self._pending_changes[key] = asyncio.create_task(execute_callbacks())
 
     def _normalize_path(self, path: str) -> str:
         path = path.strip().replace("\\", "/")
