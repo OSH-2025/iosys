@@ -5,7 +5,6 @@ from typing import Optional, Literal
 from openai import OpenAI
 from markitdown import MarkItDown, StreamInfo, UnsupportedFormatException
 from dataclasses import dataclass
-from datetime import datetime
 
 from jfs import FileSystemNode
 
@@ -87,6 +86,9 @@ class IOSYSParser:
                 content_type = image.content_type or "image/png"
 
             b64_data = base64.b64encode(img_data).decode()
+
+            # Step 1. Get a detailed caption for the image.
+
             prompt = "Write a detailed caption for this image."
             data_uri = f"data:{content_type};base64,{b64_data}"
             additional = {"type": "image_url", "image_url": {"url": data_uri}}
@@ -95,12 +97,22 @@ class IOSYSParser:
                 description = self._chat(prompt, additional)
             except Exception:
                 description = "LLM Description failed"
+            else:
+                # Step 2. Get a concise title for the image.
+
+                prompt = "The following text describes an image. Write a consise title for the image based on the text."
+                additional = {"type": "text", "text": description}
+
+                try:
+                    name = self._chat(prompt, additional)
+                except Exception:
+                    name = "LLM Description failed"
 
             embedded_files.append(
                 EmbeddedFile(
                     id=f"{node.path}/{len(embedded_files)}",
                     type="image",
-                    name=image.name,
+                    name=name,
                     description=description,
                     content=img_data,
                 )
@@ -116,6 +128,7 @@ class IOSYSParser:
             llm_model=self.model,
             image_converter=image_converter,
         )
+        
         try:
             result = md.convert_stream(
                 node.read_stream(),
@@ -140,11 +153,8 @@ class IOSYSParser:
         except Exception as e:
             return str(e)
 
-    def _extract_docx_embedded(self):
-        pass  # do something ...
-
     def parse(self, node: FileSystemNode):
-        verbose_text = self._generate_verbose(node)
+        (verbose_text, embedded_files) = self._generate_verbose(node)
         brief_text = self._generate_brief(verbose_text, node)
 
         return IOSYSParsedFile(
@@ -155,5 +165,5 @@ class IOSYSParser:
             parent_path=node.parent().path,
             verbose_text=verbose_text,
             brief_text=brief_text,
-            embedded_files=[],
+            embedded_files=embedded_files,
         )
