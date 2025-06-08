@@ -118,7 +118,9 @@ class IOSYSParser:
         except UnsupportedFormatException:
             return "ERROR: Unsupported file format"
 
-    def _generate_brief(self, verbose: str, node: FileSystemNode) -> str: # the node argument is useless for now
+    def _generate_brief(
+        self, verbose: str, node: FileSystemNode
+    ) -> str:  # the node argument is useless for now
         prompt = "Generate an abstracted text summarized from the following text."
         additional = {"type": "text", "text": verbose}
 
@@ -128,9 +130,9 @@ class IOSYSParser:
 
         except Exception as e:
             return str(e)
-        
+
     def _extract_docx_embedded(self):
-        pass # do something ...
+        pass  # do something ...
 
     def parse(self, node: FileSystemNode):
         verbose_text = self._generate_verbose(node)
@@ -139,8 +141,12 @@ class IOSYSParser:
         return IOSYSParsedFile(
             path=node.path,
             name=node.name,
-            created_at=datetime.fromtimestamp(os.path.getctime(node.name)).strftime("%Y/%m/%d, %H:%M:%S"),
-            updated_at=datetime.fromtimestamp(os.path.getmtime(node.name)).strftime("%Y/%m/%d, %H:%M:%S"),
+            created_at=datetime.fromtimestamp(os.path.getctime(node.name)).strftime(
+                "%Y/%m/%d, %H:%M:%S"
+            ),
+            updated_at=datetime.fromtimestamp(os.path.getmtime(node.name)).strftime(
+                "%Y/%m/%d, %H:%M:%S"
+            ),
             parent_path=node.parent(),
             verbose_text=verbose_text,
             brief_text=brief_text,
