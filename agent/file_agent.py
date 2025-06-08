@@ -182,19 +182,16 @@ class FileAgent:
         else:
             return {"status": "error", "message": message + "无效的 LLM 响应格式"}
 
-    def _path_to_id(self, path: str) -> str:
+    def _normalize_path(self, path: str) -> str:
         """将路径转换为文件系统节点ID"""
+        path = path.strip()
         # 移除前导的"./"或"."
         if path.startswith("./"):
             path = path[2:]
         elif path == ".":
             path = ""
         # 使用路径作为ID，可以根据实际需要调整
-        return "/" + path
-
-    def _id_to_relative_path(self, node_id: str) -> str:
-        """将节点ID转换为相对路径显示"""
-        return node_id if node_id != "root" else "."
+        return ("/" + path).replace("\\", "/").replace("//", "/").rstrip("/")
 
     # ------------------------------------ 工具函数定义 ------------------------------------
 
@@ -213,45 +210,36 @@ class FileAgent:
     )
     def _create_file(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """创建文件"""
-        if "file_name" not in params:
-            params["file_name"] = "new_file.txt"
-        if "path" not in params:
-            params["path"] = "."
-
-        # 构造文件路径
-        if params["path"] == ".":
-            file_path = params["file_name"]
-        else:
-            file_path = f"{params['path']}/{params['file_name']}"
-
-        file_id = self._path_to_id(file_path)
+        parent_path = self._normalize_path(params.get("path", ""))
+        file_name = params.get("file_name", "new_file.txt")
         content = params.get("content", "")
 
         # 检查文件是否已存在
-        if self.fs.exists(file_id):
+        path = self._normalize_path(f"{parent_path}/{file_name}")
+        print(f"创建文件: {path}")
+        if self.fs.get_node(path):
             return {
                 "status": "error",
-                "message": f"文件已存在: {params['file_name']}",
+                "message": f"文件已存在: {path}",
             }
 
-        # 确保父目录存在
-        parent_path = "/".join(file_id.split("/")[:-1])
-        parent_id = self._path_to_id(parent_path)
-        parent_node = self.fs.get_dir_node(parent_id)
+        parent_node = self.fs.get_node(parent_path)
         if not parent_node:
             return {
                 "status": "error",
-                "message": f"父目录不存在: {parent_path}",
+                "message": f"父目录不存在: {params['path']}",
             }
 
-        # 创建文件节点并写入内容
-        node = parent_node.insert_file(params["file_name"])
+        # 创建文件节点
+        node = parent_node.insert_node(file_name)
+
+        # 写入文件内容
         node.write(content.encode("utf-8"))
 
         return {
             "status": "success",
             "message": f"文件创建成功: {params['file_name']}",
-            "data": {"path": self._id_to_relative_path(file_id)},
+            "data": {"path": node.path},
         }
 
     @tool(
@@ -279,7 +267,7 @@ class FileAgent:
         else:
             dir_path = f"{params['path']}/{params['directory_name']}"
 
-        dir_id = self._path_to_id(dir_path)
+        dir_id = self._normalize_path(dir_path)
 
         # 检查目录是否已存在
         if self.fs.exists(dir_id):
@@ -289,8 +277,8 @@ class FileAgent:
             }
 
         # 确保父目录存在
-        parent_id = self._path_to_id(params["path"])
-        parent_node = self.fs.get_dir_node(parent_id)
+        parent_id = self._normalize_path(params["path"])
+        parent_node = self.fs.get_node(parent_id)
         if not parent_node:
             return {
                 "status": "error",
@@ -321,7 +309,7 @@ class FileAgent:
         if "file_path" not in params:
             return {"status": "error", "message": "缺少必要参数: file_path"}
 
-        file_id = self._path_to_id(params["file_path"])
+        file_id = self._normalize_path(params["file_path"])
 
         # 检查文件是否存在
         file_node = self.fs.get_file_node(file_id)
@@ -355,7 +343,7 @@ class FileAgent:
         if "directory_path" not in params:
             return {"status": "error", "message": "缺少必要参数: directory_path"}
 
-        dir_id = self._path_to_id(params["directory_path"])
+        dir_id = self._normalize_path(params["directory_path"])
 
         # 检查目录是否存在
         dir_node = self.fs.get_dir_node(dir_id)
@@ -393,8 +381,8 @@ class FileAgent:
                 "message": "缺少必要参数: source_path 或 destination_path",
             }
 
-        src_id = self._path_to_id(params["source_path"])
-        dst_id = self._path_to_id(params["destination_path"])
+        src_id = self._normalize_path(params["source_path"])
+        dst_id = self._normalize_path(params["destination_path"])
 
         # 检查源文件是否存在
         src_node = self.fs.get_file_node(src_id)
@@ -452,8 +440,8 @@ class FileAgent:
                 "message": "缺少必要参数: source_path 或 destination_path",
             }
 
-        src_id = self._path_to_id(params["source_path"])
-        dst_id = self._path_to_id(params["destination_path"])
+        src_id = self._normalize_path(params["source_path"])
+        dst_id = self._normalize_path(params["destination_path"])
 
         # 检查源目录是否存在
         src_node = self.fs.get_dir_node(src_id)
@@ -496,7 +484,7 @@ class FileAgent:
                 "message": "缺少必要参数: file_path 或 new_name",
             }
 
-        file_id = self._path_to_id(params["file_path"])
+        file_id = self._normalize_path(params["file_path"])
 
         # 构造新路径
         if "/" in file_id:
@@ -505,7 +493,7 @@ class FileAgent:
         else:
             new_path = params["new_name"]
 
-        new_id = self._path_to_id(new_path)
+        new_id = self._normalize_path(new_path)
 
         # 检查源文件是否存在
         file_node = self.fs.get_file_node(file_id)
@@ -560,7 +548,7 @@ class FileAgent:
                 "message": "缺少必要参数: directory_path 或 new_name",
             }
 
-        dir_id = self._path_to_id(params["directory_path"])
+        dir_id = self._normalize_path(params["directory_path"])
 
         # 构造新路径
         if "/" in dir_id:
@@ -569,7 +557,7 @@ class FileAgent:
         else:
             new_path = params["new_name"]
 
-        new_id = self._path_to_id(new_path)
+        new_id = self._normalize_path(new_path)
 
         # 检查源目录是否存在
         dir_node = self.fs.get_dir_node(dir_id)
@@ -611,7 +599,7 @@ class FileAgent:
         if "directory_path" not in params:
             params["directory_path"] = "."
 
-        dir_id = self._path_to_id(params["directory_path"])
+        dir_id = self._normalize_path(params["directory_path"])
 
         # 检查目录是否存在
         dir_node = self.fs.get_dir_node(dir_id)
@@ -652,7 +640,7 @@ class FileAgent:
         if "file_path" not in params:
             return {"status": "error", "message": "缺少必要参数: file_path"}
 
-        file_id = self._path_to_id(params["file_path"])
+        file_id = self._normalize_path(params["file_path"])
 
         # 检查文件是否存在
         file_node = self.fs.get_file_node(file_id)
@@ -700,7 +688,7 @@ class FileAgent:
             else:
                 return {"status": "error", "message": "缺少必要参数: file_path"}
 
-        file_id = self._path_to_id(params["file_path"])
+        file_id = self._normalize_path(params["file_path"])
         content = params["content"]
         append = params.get("append", False)
 
@@ -731,7 +719,7 @@ class FileAgent:
         search_path = params.get("search_path", ".")
 
         # 转换为文件系统ID
-        search_id = self._path_to_id(search_path)
+        search_id = self._normalize_path(search_path)
 
         # 检查路径是否存在
         if not self.fs.exists(search_id):

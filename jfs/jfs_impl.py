@@ -2,60 +2,60 @@ import io
 import os
 import stat as stat_mod
 import juicefs
-from . import FileNode, DirNode, IOSYSFileSystem
+from . import FileSystemNode, DirNode, IOSYSFileSystem
 from .service import JuiceFSService
 
 
-class JuiceFSFileNode(FileNode):
+class JuiceFSFileNode(FileSystemNode):
     fs: "JuiceFSFileSystem"
 
     def __init__(self, fs: "JuiceFSFileSystem", id: str):
         self.fs = fs
         self.type = "file"
-        self.id = id
+        self.path = id
         self.name = os.path.basename(id.rstrip("/"))
         self.meta = {}
 
     def read_stream(self) -> io.BytesIO:
-        if not self.fs.client.exists(self.id):
-            raise FileNotFoundError(f"File {self.id} not found.")
+        if not self.fs.client.exists(self.path):
+            raise FileNotFoundError(f"File {self.path} not found.")
         try:
-            st = self.fs.client.stat(self.id)
+            st = self.fs.client.stat(self.path)
             if stat_mod.S_ISDIR(st.st_mode):
-                raise IsADirectoryError(f"{self.id} is a directory.")
+                raise IsADirectoryError(f"{self.path} is a directory.")
         except FileNotFoundError:
             raise
-        return self.fs.client.open(self.id, "rb")
+        return self.fs.client.open(self.path, "rb")
 
     def write(self, content: bytes):
         """Write bytes to file (overwrite)"""
-        if not self.fs.client.exists(self.id):
-            raise FileNotFoundError(f"File {self.id} not found.")
+        if not self.fs.client.exists(self.path):
+            raise FileNotFoundError(f"File {self.path} not found.")
         try:
-            st = self.fs.client.stat(self.id)
+            st = self.fs.client.stat(self.path)
             if stat_mod.S_ISDIR(st.st_mode):
-                raise IsADirectoryError(f"{self.id} is a directory.")
+                raise IsADirectoryError(f"{self.path} is a directory.")
         except FileNotFoundError:
             raise
-        with self.fs.client.open(self.id, "wb") as f:
+        with self.fs.client.open(self.path, "wb") as f:
             f.write(content)
         self.fs.call_file_update(self)
 
     def remove(self):
         """Remove the file"""
-        if not self.fs.client.exists(self.id):
-            raise FileNotFoundError(f"File {self.id} not found.")
+        if not self.fs.client.exists(self.path):
+            raise FileNotFoundError(f"File {self.path} not found.")
         try:
-            st = self.fs.client.stat(self.id)
+            st = self.fs.client.stat(self.path)
             if stat_mod.S_ISDIR(st.st_mode):
-                raise IsADirectoryError(f"{self.id} is a directory.")
+                raise IsADirectoryError(f"{self.path} is a directory.")
         except FileNotFoundError:
             raise
-        self.fs.client.remove(self.id)
+        self.fs.client.remove(self.path)
         self.fs.call_file_delete(self)
 
     def parent(self) -> "JuiceFSDirNode":
-        parent_id = os.path.dirname(self.id.rstrip("/"))
+        parent_id = os.path.dirname(self.path.rstrip("/"))
         if parent_id == "":
             parent_id = "/"
         return JuiceFSDirNode(self.fs, parent_id)
@@ -71,7 +71,7 @@ class JuiceFSDirNode(DirNode):
         self.name = os.path.basename(id.rstrip("/"))
         self.meta = {}
 
-    def insert_file(self, name: str) -> FileNode:
+    def insert_file(self, name: str) -> FileSystemNode:
         """Create a new file in this directory"""
         file_path = os.path.join(self.id, name)
         if self.fs.client.exists(file_path):
@@ -106,7 +106,7 @@ class JuiceFSDirNode(DirNode):
             parent_id = "/"
         return JuiceFSDirNode(self.fs, parent_id)
 
-    def children(self) -> list[FileNode]:
+    def children(self) -> list[FileSystemNode]:
         # Implementation for getting children
         return []
 
@@ -125,7 +125,7 @@ class JuiceFSFileSystem(IOSYSFileSystem):
     def is_running(self) -> bool:
         return self.service.is_running()
 
-    def get_node(self, id: str) -> FileNode | DirNode | None:
+    def get_node(self, id: str) -> FileSystemNode | DirNode | None:
         if not self.exists(id):
             return None
 

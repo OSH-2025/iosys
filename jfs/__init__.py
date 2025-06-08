@@ -1,16 +1,28 @@
 import asyncio
-from typing import Awaitable, Literal, Union, Callable
+from typing import Awaitable, Callable, Union
 import abc
 import os
 import io
 
 
-class FileNode(abc.ABC):
+class FileSystemNode(abc.ABC):
     fs: "IOSYSFileSystem"
-    type: Literal["file"]
-    id: str
-    name: str
+    # Must start with a slash, and not end with a slash
+    # Must use forward slashes
+    # e.g. "/path/to/file.txt" or "/path/to/directory"
+    path: str
     meta: dict[str, str]
+
+    def __init__(self, fs: "IOSYSFileSystem", path: str):
+        self.path = path
+        self.fs = fs
+        self.path = path
+        self.meta = {}
+
+    @property
+    def name(self) -> str:
+        """Get the name of the node"""
+        return os.path.basename(self.path)
 
     @abc.abstractmethod
     def read_stream(self) -> io.BytesIO:
@@ -31,109 +43,100 @@ class FileNode(abc.ABC):
 
     @abc.abstractmethod
     def remove(self):
-        """Remove the file"""
+        """Remove the node itself"""
         pass
 
     @abc.abstractmethod
-    def parent(self) -> "DirNode":
+    def parent(self) -> Union["FileSystemNode", None]:
+        pass
+
+    @abc.abstractmethod
+    def children(self) -> list["FileSystemNode"]:
+        """List children of this node, if applicable"""
+        pass
+
+    @abc.abstractmethod
+    def insert_node(self, name: str) -> "FileSystemNode":
+        """Create a new node in this directory"""
+        pass
+
+    def update_meta(self, **kwargs):
+        """Update metadata of the node"""
+        self.meta.update(kwargs)
+        self._sync_metadata()
+
+    @abc.abstractmethod
+    def _sync_metadata(self):
+        """Synchronize metadata with the underlying file system"""
         pass
 
     def to_dict(self) -> dict:
         return {
-            "id": self.id,
+            "path": self.path,
             "name": self.name,
-            "type": self.type,
-            "meta": self.meta,
-        }
-
-
-class DirNode(abc.ABC):
-    fs: "IOSYSFileSystem"
-    type: Literal["dir"]
-    id: str
-    name: str
-    meta: dict[str, str]
-
-    @abc.abstractmethod
-    def insert_file(self, name: str) -> FileNode: ...
-
-    @abc.abstractmethod
-    def insert_dir(self, name: str) -> "DirNode": ...
-
-    @abc.abstractmethod
-    def remove(self): ...
-
-    @abc.abstractmethod
-    def parent(self) -> "DirNode": ...
-
-    @abc.abstractmethod
-    def children(self) -> list[Union[FileNode, "DirNode"]]: ...
-
-    def to_dict(self) -> dict:
-        return {
-            "id": self.id,
-            "name": self.name,
-            "type": self.type,
             "meta": self.meta,
         }
 
 
 class IOSYSFileSystem(abc.ABC):
-    on_file_update: list[Callable[[FileNode], Awaitable[None]]] = []
-    on_file_delete: list[Callable[[FileNode], Awaitable[None]]] = []
-    on_dir_update: list[Callable[[DirNode], Awaitable[None]]] = []
-    on_dir_delete: list[Callable[[DirNode], Awaitable[None]]] = []
+    on_change: list[Callable[[FileSystemNode], Awaitable[None]]] = []
+    _pending_changes: dict[str, asyncio.Task] = {}
 
     @abc.abstractmethod
     def is_running(self) -> bool: ...
 
     @abc.abstractmethod
-    def get_node(self, id: str) -> Union[FileNode, DirNode, None]: ...
+    def get_node(self, path: str) -> FileSystemNode | None: ...
 
-    @abc.abstractmethod
-    def exists(self, id: str) -> bool: ...
+    def get_root(self) -> FileSystemNode:
+        """Get the root node of the file system"""
+        return self.get_node("/")
 
-    def get_file_node(self, id: str) -> Union[FileNode, None]:
-        node = self.get_node(id)
-        if not node or node.type != "file":
-            return None
-        return node
-
-    def get_dir_node(self, id: str) -> Union[DirNode, None]:
-        node = self.get_node(id)
-        if not node or node.type != "dir":
-            return None
-        return node
-
-    def read(self, id: str) -> bytes:
-        node = self.get_file_node(id)
+    def read(self, path: str) -> bytes:
+        node = self.get_node(path)
         if not node:
-            raise FileNotFoundError(f"File {id} not found.")
+            raise FileNotFoundError(f"File {path} not found.")
         return node.read()
 
-    def write(self, id: str, content: bytes):
-        node = self.get_file_node(id)
+    def write(self, path: str, content: bytes):
+        node = self.get_node(path)
         if not node:
-            raise FileNotFoundError(f"File {id} not found.")
+            raise FileNotFoundError(f"File {path} not found.")
         node.write(content)
 
-    def remove(self, id: str):
-        node = self.get_node(id)
+    def remove(self, path: str):
+        node = self.get_node(path)
         if not node:
-            raise FileNotFoundError(f"Node {id} not found.")
+            raise FileNotFoundError(f"Node {path} not found.")
         node.remove()
 
-    def call_file_update(self, node: FileNode):
-        asyncio.gather(callback(node) for callback in self.on_file_update)
+    def invoke_on_change(self, node: FileSystemNode):
+        if not self.on_change:
+            return
 
-    def call_file_delete(self, node: FileNode):
-        asyncio.gather(callback(node) for callback in self.on_file_delete)
+        # 使用节点路径作为 key 进行 debounce
+        key = node.path
 
-    def call_dir_update(self, node: DirNode):
-        asyncio.gather(callback(node) for callback in self.on_dir_update)
+        # 取消之前的任务
+        if key in self._pending_changes:
+            self._pending_changes[key].cancel()
 
-    def call_dir_delete(self, node: DirNode):
-        asyncio.gather(callback(node) for callback in self.on_dir_delete)
+        async def execute_callbacks():
+            await asyncio.sleep(0.1)  # 100ms debounce
+            await asyncio.gather(*[callback(node) for callback in self.on_change])
+            self._pending_changes.pop(key, None)
+
+        try:
+            self._pending_changes[key] = asyncio.create_task(execute_callbacks())
+        except RuntimeError:
+            pass
+
+    def _normalize_path(self, path: str) -> str:
+        path = path.strip().replace("\\", "/")
+        path = path.rstrip("/")
+        if not path.startswith("/"):
+            path = "/" + path
+        return path
 
 
 def new_fs() -> IOSYSFileSystem:

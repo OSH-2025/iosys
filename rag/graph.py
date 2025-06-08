@@ -29,29 +29,29 @@ class IOSYSGraphEngine:
         dumped["revision"] = self.revision
         return dumped
 
-    def update_file(self, id: str, parsed: IOSYSParsedFile):
+    def update_file(self, path: str, parsed: IOSYSParsedFile):
         self.graph_store.graph.add_node(
             EntityNode(
-                name=id,
+                name=path,
                 label="file",
                 properties=asdict(parsed),
             )
         )
-        if parsed.parent_id:
+        if parsed.parent_path:
             print(
-                parsed.parent_id,
+                parsed.parent_path,
                 "contains",
-                id,
+                path,
             )
             self.graph_store.graph.add_relation(
                 Relation(
-                    source_id=parsed.parent_id,
+                    source_id=parsed.parent_path,
                     label="contains",
-                    target_id=id,
+                    target_id=path,
                 )
             )
         self.revision += 1
 
-    def delete_file(self, id: str):
-        self.graph_store.graph.delete_node(id)
+    def delete_file(self, path: str):
+        self.graph_store.graph.delete_node(path)
         self.revision += 1

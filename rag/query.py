@@ -23,16 +23,16 @@ class IOSYSQueryEngine:
             nodes=[],
         )
 
-    async def update_file(self, id: str, parsed: IOSYSParsedFile):
+    async def update_file(self, path: str, parsed: IOSYSParsedFile):
         await self.index.ainsert(
             document=Document(
-                doc_id=id,
+                doc_id=path,
                 text=parsed.brief_text,
             )
         )
 
-    async def delete_file(self, id: str):
-        await self.index.adelete(id)
+    async def delete_file(self, path: str):
+        await self.index.adelete(path)
 
     async def query_files(self, query: str):
         return await self.index.as_query_engine(llm=self.llm).aquery(query)

@@ -6,7 +6,7 @@ from openai import OpenAI
 from markitdown import MarkItDown, StreamInfo, UnsupportedFormatException
 from dataclasses import dataclass
 
-from jfs import FileNode
+from jfs import FileSystemNode
 
 
 @dataclass
@@ -23,13 +23,13 @@ class EmbeddedFile:
 
 @dataclass
 class IOSYSParsedFile:
-    id: str
+    path: str
     name: str
     created_at: str
     updated_at: str
 
     # 父目录的 ID，根目录为 None
-    parent_id: Optional[str]
+    parent_path: Optional[str]
 
     # 几百字的内容概括
     brief_text: str
@@ -76,7 +76,7 @@ class IOSYSParser:
         description = response.choices[0].message.content
         return description
 
-    def _generate_verbose(self, node: FileNode) -> str:
+    def _generate_verbose(self, node: FileSystemNode) -> str:
         def image_converter(image):
             """A function using llm to get a image's description. It serves as an argument for Markitdown."""
 
@@ -118,7 +118,7 @@ class IOSYSParser:
         except UnsupportedFormatException:
             return "ERROR: Unsupported file format"
 
-    def _generate_abstract(self, node: FileNode) -> str:
+    def _generate_abstract(self, node: FileSystemNode) -> str:
         verbose = self._generate_verbose(node)
         prompt = "Generate an abstracted text for the following text"  # to be modified
         additional = {"type": "text", "text": verbose}
@@ -130,16 +130,16 @@ class IOSYSParser:
         except Exception as e:
             return str(e)
 
-    def _generate_basic(self, node: FileNode) -> str:
+    def _generate_basic(self, node: FileSystemNode) -> str:
         pass  # to be done
 
-    def parse(self, node: FileNode):
+    def parse(self, node: FileSystemNode):
         return IOSYSParsedFile(
-            id=node.id,
+            path=node.path,
             name=node.name,
             created_at=1141514,
             updated_at=1919810,
-            parent_id=node.parent().id,
+            parent_path=node.parent().path,
             brief_text=self._generate_basic(node),
             verbose_text=self._generate_verbose(node),
             embedded_files=[],
