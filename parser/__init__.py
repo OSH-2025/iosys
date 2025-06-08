@@ -5,6 +5,7 @@ from typing import Optional, Literal
 from openai import OpenAI
 from markitdown import MarkItDown, StreamInfo, UnsupportedFormatException
 from dataclasses import dataclass
+from datetime import datetime
 
 from jfs import FileSystemNode
 
@@ -28,7 +29,7 @@ class IOSYSParsedFile:
     created_at: str
     updated_at: str
 
-    # 父目录的 ID，根目录为 None
+    # 父目录的 path，根目录为 None
     parent_path: Optional[str]
 
     # 几百字的内容概括
@@ -78,8 +79,7 @@ class IOSYSParser:
 
     def _generate_verbose(self, node: FileSystemNode) -> str:
         def image_converter(image):
-            """A function using llm to get a image's description. It serves as an argument for Markitdown."""
-
+            # A function using llm to get a image's description. It serves as an argument for Markitdown.
             with image.open() as image_bytes:
                 img_data = image_bytes.read()
                 content_type = image.content_type or "image/png"
@@ -118,9 +118,8 @@ class IOSYSParser:
         except UnsupportedFormatException:
             return "ERROR: Unsupported file format"
 
-    def _generate_abstract(self, node: FileSystemNode) -> str:
-        verbose = self._generate_verbose(node)
-        prompt = "Generate an abstracted text for the following text"  # to be modified
+    def _generate_brief(self, verbose: str, node: FileSystemNode) -> str: # the node argument is useless for now
+        prompt = "Generate an abstracted text summarized from the following text."
         additional = {"type": "text", "text": verbose}
 
         try:
@@ -129,18 +128,21 @@ class IOSYSParser:
 
         except Exception as e:
             return str(e)
-
-    def _generate_basic(self, node: FileSystemNode) -> str:
-        pass  # to be done
+        
+    def _extract_docx_embedded(self):
+        pass # do something ...
 
     def parse(self, node: FileSystemNode):
+        verbose_text = self._generate_verbose(node)
+        brief_text = self._generate_verbose(verbose_text, node)
+
         return IOSYSParsedFile(
             path=node.path,
             name=node.name,
-            created_at=1141514,
-            updated_at=1919810,
-            parent_path=node.parent().path,
-            brief_text=self._generate_basic(node),
-            verbose_text=self._generate_verbose(node),
+            created_at=datetime.fromtimestamp(os.path.getctime(node.name)).strftime("%Y/%m/%d, %H:%M:%S"),
+            updated_at=datetime.fromtimestamp(os.path.getmtime(node.name)).strftime("%Y/%m/%d, %H:%M:%S"),
+            parent_path=node.parent(),
+            verbose_text=verbose_text,
+            brief_text=brief_text,
             embedded_files=[],
         )
