@@ -42,4 +42,3 @@ echo "挂载到 ${MOUNT_POINT}..."
 cleanup
 echo "挂载完成！"
 echo -e "使用指南：\n卸载：fusermount -u ${MOUNT_POINT}\n状态：${BIN_DIR}/juicefs status sqlite3://${LOCAL_META}"
-

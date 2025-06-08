@@ -24,115 +24,349 @@ git lfs install --local
 git lfs pull
 ```
 
-```python
-check_quota(self, path, repair=False, strict=False)
-    Check the quota of a directory.
+### Client 类
 
+Client 类是 JuiceFS 服务的客户端类，用于与 JuiceFS 进行交互。
 
-chmod(self, path, mode)
-    Change the mode of a file.
- |
- |  chown(self, path, uid, gid)
- |      Change the owner and group id of a file.
- |
- |  clone(self, src, dst, preserve=False)
- |      Clone a file.
- |
- |  del_quota(self, path)
- |      Delete the quota of a directory.
- |
- |  exists(self, path)
- |      Check if a file exists.
- |
- |  get_quota(self, path)
- |      Get the quota of a directory.
- |
- |  getxattr(self, path, name)
- |      Get an extended attribute on a file.
- |
- |  info(self, path, recursive=False, strict=False)
- |      Get the information of a file or a directory.
- |
- |  link(self, src, dst)
- |      Create a hard link to a file.
- |
- |  list_quota(self)
- |      List the quota of all directories.
- |
- |  listdir(self, path, detail=False)
- |      Return a list containing the names of the entries in the directory given by path.
- |
- |  listxattr(self, path)
- |      List extended attributes on a file.
- |
- |  lstat(self, path)
- |      Like stat(), but do not follow symbolic links.
- |
- |  makedirs(self, path, mode=511, exist_ok=False)
- |      Create a directory and all its parent components if they do not exist.
-|
- |  mkdir(self, path, mode=511)
- |      Create a directory.
- |
- |  open(self, path, mode='r', buffering=-1, encoding=None, errors=None)
- |      Open a file, returns a filelike object.
- |
- |  readlink(self, path)
- |      Return a string representing the path to which the symbolic link points.
- |
- |  remove(self, path)
- |      Remove a file.
- |
- |  removexattr(self, path, name)
- |      Remove an extended attribute from a file.
- |
- |  rename(self, old, new)
- |      Rename the file or directory old to new.
- |
- |  rmdir(self, path)
- |      Remove a directory. The directory must be empty.
- |
- |  rmr(self, path)
- |      Remove a directory and all its contents recursively.
- |
- |  set_quota(self, path, capacity=0, inodes=0, create=False, strict=False)
- |      Set the quota of a directory.
- |
- |  setxattr(self, path, name, value, flags=0)
- |      Set an extended attribute on a file.
- |
- |  stat(self, path)
- |      Get the status of a file or a directory.
- |
- |  status(self, trash=False, session=0)
- |      Get the status of the volume and client sessions.
- |
- |  summary(self, path, depth=0, entries=1)
- |      Get the summary of a directory.
- |
- |  symlink(self, src, dst)
- |      Create a symbolic link.
- |
- |  truncate(self, path, size)
- |      Truncate a file to a specified size.
+#### 初始化方法
 
- |  unlink(self, path)
- |      Remove a file.
- |
- |  utime(self, path, times=None)
- |      Set the access and modified times of a file.
- |
- |  walk(self, top, topdown=True, onerror=None, followlinks=False)
- |
- |  warmup(self, paths, numthreads=10, background=False, isEvict=False, isCheck=False)
- |      Warm up a file or a directory.
- |
- |  ----------------------------------------------------------------------
- |  Data descriptors defined here:
- |
- |  __dict__
- |      dictionary for instance variables (if defined)
- |
- |  __weakref__
- |      list of weak references to the object (if defined)
+SDK 初始化的过程，完成了客户端认证（获取配置文件），以及连接元数据、建立客户端会话。过程十分类似在使用 JuiceFS 客户端的时候，需要先 auth 再 mount，因此需要传入的参数也可以参考 juicefs auth 及 juicefs mount 命令的选项说明。
+
+需要特别注意：
+
+因为使用场景有很大区别，SDK 的特定选项的默认值和 FUSE 客户端不同，以更好适配 SDK 的常见使用场景，例如：
+cache_dir 的默认值是 memory；
+cache_size 的默认值是 100M。
+console_url 只有在私有部署环境下才需要修改，改成集群实际的 Web 控制台访问地址。
+
+---
+
+```py
+open()
+
+Client.open(path, mode='r', buffering=-1, encoding=None, errors=None, newline=None)
+```
+
+参数说明：
+
+```py
+path (str)：文件路径
+mode (str)：文件打开模式
+buffering (int)：缓冲区大小
+encoding (str)：文件编码
+errors (str)：错误处理策略
+newline (str)：换行符处理策略
+返回值：
+
+返回一个 File 对象
+```
+
+```py
+makedirs()
+
+Client.makedirs(path, mode=0o777, exist_ok=False)
+```
+
+参数说明：
+
+```py
+path (str)：目录路径
+mode (int)：目录权限
+exist_ok (bool)：如果目录已存在，是否忽略错误
+返回值：
+
+无返回值
+```
+
+```py
+exists()
+
+Client.exists(path)
+```
+
+参数说明：
+
+```py
+path (str)：文件或目录路径
+返回值：
+
+返回一个布尔值，表示文件或目录是否存在
+```
+
+```py
+remove()
+
+Client.remove(path)
+```
+
+参数说明：
+
+```py
+path (str)：文件路径
+返回值：
+
+无返回值
+```
+
+```py
+chmod()
+
+Client.chmod(path, mode)
+```
+
+参数说明：
+
+```py
+path (str)：文件路径
+mode (int)：文件权限
+返回值：
+
+无返回值
+```
+
+```py
+symlink()
+
+Client.symlink(src, dst)
+```
+
+参数说明：
+
+```py
+src (str)：源文件路径
+dst (str)：目标符号链接路径
+返回值：
+
+无返回值
+```
+
+```py
+readlink()
+
+Client.readlink(path)
+```
+
+参数说明：
+
+```py
+path (str)：符号链接路径
+返回值：
+
+返回符号链接的目标路径
+```
+
+```py
+unlink()
+
+Client.unlink(path)
+```
+
+参数说明：
+
+```py
+path (str)：符号链接路径
+返回值：
+
+无返回值
+```
+
+```py
+setxattr()
+
+Client.setxattr(path, name, value, flags=0)
+```
+
+参数说明：
+
+```py
+path (str)：文件路径
+name (str)：扩展属性名称
+value (bytes)：扩展属性值
+flags (int)：扩展属性标志
+返回值：
+
+无返回值
+```
+
+```py
+getxattr()
+
+Client.getxattr(path, name)
+```
+
+参数说明：
+
+```
+path (str)：文件路径
+name (str)：扩展属性名称
+返回值：
+
+返回扩展属性值
+```
+
+### File 类
+
+File 类是 JuiceFS 文件操作的类，用于读写文件。
+
+初始化方法
+
+通常使用 Client.open() 方法来初始化 File 对象，不会直接创建。
+
+```py
+fileno()
+
+File.fileno()
+
+返回值：
+
+返回文件描述符
+```
+
+```py
+isatty()
+
+File.isatty()
+
+返回值：
+
+返回一个布尔值，表示文件是否为 TTY
+```
+
+```py
+read()
+
+File.read(size=-1)
+
+参数说明：
+
+size (int)：读取的字节数，默认为 -1，表示读取整个文件
+返回值：
+
+返回读取的字节数据
+```
+
+```py
+write()
+
+File.write(data)
+
+参数说明：
+
+data (bytes)：要写入的数据
+返回值：
+
+返回写入的字节数
+```
+
+```py
+close()
+
+File.close()
+
+返回值：
+
+无返回值
+```
+
+```py
+flush()
+
+File.flush()
+
+返回值：
+
+无返回值
+```
+
+```py
+readlines()
+
+File.readlines(hint=-1)
+
+参数说明：
+
+hint (int)：读取的行数，默认为 -1，表示读取所有行
+返回值：
+
+返回一个包含文件行的列表
+```
+
+```py
+writelines()
+
+File.writelines(lines)
+
+参数说明：
+
+lines (list)：要写入的行列表
+返回值：
+
+无返回值
+```
+
+```py
+seek()
+
+File.seek(offset, whence=0)
+
+参数说明：
+
+offset (int)：偏移量
+whence (int)：偏移基准，0 表示从文件开头，1 表示从当前位置，2 表示从文件末尾
+返回值：
+
+返回新的文件指针位置
+```
+
+```py
+tell()
+
+File.tell()
+
+返回值：
+
+返回当前文件指针位置
+```
+
+```py
+truncate()
+
+File.truncate(size=None)
+
+参数说明：
+
+size (int)：截断后的文件大小，默认为当前文件指针位置
+返回值：
+
+无返回值
+```
+
+```py
+readable()
+
+File.readable()
+
+返回值：
+
+返回一个布尔值，表示文件是否可读
+```
+
+```py
+writable()
+
+File.writable()
+
+返回值：
+
+返回一个布尔值，表示文件是否可写
+```
+
+```py
+seekable()
+
+File.seekable()
+
+返回值：
+
+返回一个布尔值，表示文件是否可寻址
 ```
