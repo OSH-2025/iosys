@@ -15,9 +15,7 @@ class OSFileSystemNode(FileSystemNode):
             return open(real_path, "rb")
         real_path = self.fs._get_real_path(self.path)
         if self.meta.get("type") == "directory":
-            raise IsADirectoryError(
-                f"Cannot read a directory as a file: {self.path}"
-            )
+            raise IsADirectoryError(f"Cannot read a directory as a file: {self.path}")
         if not os.path.exists(real_path):
             return io.BytesIO()
         return open(real_path, "rb")

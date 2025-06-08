@@ -1,6 +1,5 @@
 import os
 import json
-from dataclasses import asdict
 
 from llama_index.core.graph_stores import (
     PropertyGraphStore,
