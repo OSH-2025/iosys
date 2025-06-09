@@ -4,15 +4,18 @@ from llama_index.core import VectorStoreIndex
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.core.embeddings.utils import EmbedType
 from llama_index.core import Document
+from llama_index.core.llms.llm import LLM
 
 from parser import IOSYSParsedFile
 
 
 class IOSYSQueryEngine:
+    llm: LLM 
     embed_model: EmbedType
     index: VectorStoreIndex
 
-    def __init__(self):
+    def __init__(self, llm: LLM):
+        self.llm = llm
         self.embed_model = OpenAIEmbedding(
             api_base=os.environ.get("EMBEDDING_BASE_URL"),
             api_key=os.environ.get("EMBEDDING_API_KEY"),

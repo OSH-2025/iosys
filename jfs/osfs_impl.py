@@ -12,13 +12,15 @@ class OSFileSystemNode(FileSystemNode):
         """Open the file and read bytes"""
         if self.meta.get("type") == "embedded":
             real_path = self.fs._get_embedded_path(self.path)
-            return open(real_path, "rb")
+            with open(real_path, "rb") as f:
+                return io.BytesIO(f.read())
         real_path = self.fs._get_real_path(self.path)
         if self.meta.get("type") == "directory":
             raise IsADirectoryError(f"Cannot read a directory as a file: {self.path}")
         if not os.path.exists(real_path):
             return io.BytesIO()
-        return open(real_path, "rb")
+        with open(real_path, "rb") as f:
+            return io.BytesIO(f.read())
 
     def write(self, content: bytes):
         """Write bytes to file (overwrite)"""
@@ -52,7 +54,7 @@ class OSFileSystemNode(FileSystemNode):
         return self.fs.get_node(os.path.dirname(self.path))
 
     def children(self) -> list[FileSystemNode]:
-        real_path = self.fs._get_real_path(self.id)
+        real_path = self.fs._get_real_path(self.path)
         if not os.path.exists(real_path):
             return []
 

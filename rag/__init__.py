@@ -1,7 +1,9 @@
 import threading
+import os
 
 from jfs import FileSystemNode, IOSYSFileSystem
 from parser import IOSYSParser
+from llama_index.llms.openai import OpenAI
 
 from .query import IOSYSQueryEngine
 from .graph import IOSYSGraphEngine
@@ -17,9 +19,15 @@ class IOSYSRAG:
     def __init__(self, fs: IOSYSFileSystem):
         self.fs = fs
         self.fs.on_change.append(self.on_fs_change)
+
         self.parser = IOSYSParser()
-        self.query = IOSYSQueryEngine()
-        self.graph = IOSYSGraphEngine()
+        llm = OpenAI(
+            api_base=os.environ["LLM_BASE_URL"],
+            api_key=os.environ["LLM_API_KEY"],
+            model=os.environ["LLM_MODEL_NAME"],
+        )
+        self.query = IOSYSQueryEngine(llm)
+        self.graph = IOSYSGraphEngine(llm)
 
     async def on_fs_change(self, node: FileSystemNode):
         # TODO:

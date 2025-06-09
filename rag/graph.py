@@ -1,5 +1,6 @@
 import os
 import json
+from typing import cast
 
 from llama_index.core.graph_stores import (
     PropertyGraphStore,
@@ -9,7 +10,6 @@ from llama_index.core.graph_stores import (
 )
 from llama_index.graph_stores.nebula import NebulaPropertyGraphStore
 from llama_index.core.llms.llm import LLM
-from llama_index.llms.openai import OpenAI
 
 from parser import IOSYSParsedFile
 
@@ -20,13 +20,8 @@ class IOSYSGraphEngine:
     local_graph_path: str | None
     revision: int = 0
 
-    def __init__(self):
-        self.llm = OpenAI(
-            api_base=os.environ.get("LLM_BASE_URL"),
-            api_key=os.environ.get("LLM_API_KEY"),
-            model=os.environ.get("LLM_MODEL_NAME"),
-        )
-
+    def __init__(self, llm: LLM):
+        self.llm = llm
         self.local_graph_path = os.environ.get("USE_LOCAL_GRAPH_STORE")
         if self.local_graph_path:
             self.graph_store = SimplePropertyGraphStore()
@@ -38,10 +33,10 @@ class IOSYSGraphEngine:
                     self.graph_store = SimplePropertyGraphStore.from_dict(dumped)
         else:
             self.graph_store = NebulaPropertyGraphStore(
-                username=os.environ.get("NEBULA_USERNAME"),
-                password=os.environ.get("NEBULA_PASSWORD"),
-                url=os.environ.get("NEBULA_URL"),
-                space=os.environ.get("NEBULA_SPACE"),
+                username=os.environ["NEBULA_USERNAME"],
+                password=os.environ["NEBULA_PASSWORD"],
+                url=os.environ["NEBULA_URL"],
+                space=os.environ["NEBULA_SPACE"],
                 overwrite=True,
             )
 
@@ -79,6 +74,7 @@ class IOSYSGraphEngine:
         self.revision += 1
         if self.local_graph_path:
             with open(self.local_graph_path, "w") as f:
-                dumped = self.graph_store.graph.model_dump(mode="json")
+                graph_store = cast(SimplePropertyGraphStore, self.graph_store)
+                dumped = graph_store.graph.model_dump(mode="json")
                 dumped["revision"] = self.revision
                 f.write(json.dumps(dumped))
