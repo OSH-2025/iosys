@@ -1,4 +1,3 @@
-import juicefs
 import juicefs_local
 import os
 
