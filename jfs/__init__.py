@@ -137,7 +137,7 @@ class IOSYSFileSystem(abc.ABC):
         self._pending_changes[key] = asyncio.create_task(execute_callbacks())
 
     def _normalize_path(self, path: str) -> str:
-        path = path.strip().replace("\\", "/")
+        path = path.strip().replace("\\", "/").replace("//", "/")
         path = path.rstrip("/")
         if not path.startswith("/"):
             path = "/" + path

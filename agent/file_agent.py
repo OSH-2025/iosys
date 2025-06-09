@@ -1,8 +1,10 @@
+import inspect
 import json
 from typing import Dict, Any, Callable, List, NotRequired, TypedDict
 from enum import Enum
 from functools import wraps
 from openai.types.chat import ChatCompletion
+from openai.types.shared_params.function_parameters import FunctionParameters
 
 from openai import Client
 
@@ -33,7 +35,7 @@ class ToolCallResult(TypedDict):
     data: NotRequired[Dict[str, Any]]  # 附加数据，例如文件路径等
 
 
-def tool(name: str, description: str, parameters: Dict[str, Any]):
+def tool(name: str, description: str, parameters: FunctionParameters):
     """
     工具装饰器，用于注册文件操作工具
 
@@ -76,7 +78,6 @@ class FileAgent:
         """
         self.config = config
         self.fs = config.fs
-        self.base_dir = config.base_dir
         self.llm_client = llm_client
         self.tools = self._collect_tools()
         self.tool_handlers = self._collect_tool_handlers()
@@ -99,7 +100,7 @@ class FileAgent:
                 handlers[attr._tool_name] = attr
         return handlers
 
-    def process(self, user_input: str) -> ToolCallResult:
+    async def process(self, user_input: str) -> ToolCallResult:
         """
         处理用户输入并执行相应的文件操作
 
@@ -113,7 +114,7 @@ class FileAgent:
         response = self._call_llm_with_tools(user_input)
 
         # 执行function call
-        return self._execute_function_call(response)
+        return await self._execute_function_call(response)
 
     def _call_llm_with_tools(self, user_input: str):
         """
@@ -138,7 +139,7 @@ class FileAgent:
             tool_choice="auto",
         )
 
-    def _execute_function_call(self, response: ChatCompletion) -> ToolCallResult:
+    async def _execute_function_call(self, response: ChatCompletion) -> ToolCallResult:
         """
         执行function call
 
@@ -165,6 +166,8 @@ class FileAgent:
                 # 使用自动收集的处理函数
                 if function_name in self.tool_handlers:
                     result = self.tool_handlers[function_name](function_args)
+                    if inspect.isawaitable(result):
+                        result = await result
                     if result["status"] != "success":
                         return {
                             "status": "error",
@@ -741,25 +744,29 @@ class FileAgent:
         parameters={
             "type": "object",
             "properties": {
-                "key_words": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "特征词序列",
-                },
-                "constraint": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "限制序列",
-                },
-                "search_path": {
+                "query": {
                     "type": "string",
-                    "description": "搜索地址",
-                    "default": ".",
+                    "description": "自然语言表述的查询内容",
                 },
-                "file_name": {"type": "string", "description": "文件名限制"},
+                "include_glob": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "包含的文件路径glob模式",
+                    "default": ["**/*"],
+                },
+                "exclude_glob": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "排除的文件路径glob模式",
+                    "default": [],
+                },
             },
             "required": ["key_words"],
         },
     )
-    def _search_file_workflow(self, params: Dict[str, Any]) -> ToolCallResult:
-        raise NotImplementedError()
+    async def _search_file_workflow(self, params: Dict[str, Any]) -> ToolCallResult:
+        nodes = await self.config.rag.query.query_nodes(params["query"])
+        print(nodes)
+        raise NotImplementedError(
+            "搜索文件工作流功能需要实现具体的搜索逻辑"
+        )

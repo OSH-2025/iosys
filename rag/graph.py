@@ -30,6 +30,7 @@ class IOSYSGraphEngine:
                 if dumped:
                     dumped = json.loads(dumped)
                     self.graph_store = SimplePropertyGraphStore.from_dict(dumped)
+                    self.revision = dumped["revision"]
         else:
             self.graph_store = NebulaPropertyGraphStore(
                 username=os.environ["NEBULA_USERNAME"],

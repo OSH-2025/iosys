@@ -36,7 +36,7 @@ class FileManagerApp:
         )
         return client
 
-    def process_command(self, user_input: str) -> Dict[str, Any]:
+    async def process_command(self, user_input: str) -> Dict[str, Any]:
         """
         处理用户命令
 
@@ -47,6 +47,6 @@ class FileManagerApp:
             Dict: 处理结果
         """
         logger.info(f"接收到用户输入: {user_input}")
-        result = self.agent.process(user_input)
+        result = await self.agent.process(user_input)
         logger.info(f"处理结果: {json.dumps(result, ensure_ascii=False)}")
-        return result
+        return dict(result)

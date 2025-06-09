@@ -1,22 +1,20 @@
 import os
-from typing import Optional
 import logging
 
 from jfs import IOSYSFileSystem
+from rag import IOSYSRAG
 
 
 class AgentConfig:
     """Agent 配置类"""
 
     fs: IOSYSFileSystem
+    rag: IOSYSRAG
 
     def __init__(
         self,
         fs: IOSYSFileSystem,
-        llm_api_key: Optional[str] = None,
-        llm_model: Optional[str] = None,
-        llm_api_base: Optional[str] = None,
-        base_dir: str = "/",
+        rag: IOSYSRAG,
         log_level: str = "INFO",
     ):
         """
@@ -31,10 +29,10 @@ class AgentConfig:
         """
 
         self.fs = fs
-        self.llm_api_key = llm_api_key or os.environ["LLM_API_KEY"]
-        self.llm_model = llm_model or os.environ["LLM_MODEL_NAME"]
-        self.llm_api_base = llm_api_base or os.environ["LLM_BASE_URL"]
-        self.base_dir = base_dir
+        self.rag = rag
+        self.llm_api_key = os.environ["LLM_API_KEY"]
+        self.llm_model = os.environ["LLM_MODEL_NAME"]
+        self.llm_api_base = os.environ["LLM_BASE_URL"]
 
         # 设置日志级别
         numeric_level = getattr(logging, log_level.upper(), None)

@@ -28,12 +28,8 @@ llm = OpenAI(
 )
 
 fs = new_fs()
-
 rag = IOSYSRAG(fs=fs)
-
-agent_config = AgentConfig(fs=fs)
-file_manager = FileManagerApp(agent_config)
-
+file_manager = FileManagerApp(AgentConfig(fs=fs, rag=rag))
 
 @app.post("/status")
 async def status_endpoint():
@@ -78,7 +74,7 @@ class AgentRequest(BaseModel):
 @app.post("/agent")
 async def agent_endpoint(request: AgentRequest):
     """Process natural language file management commands"""
-    return file_manager.process_command(request.command)
+    return await file_manager.process_command(request.command)
 
 
 @app.get("/files")
