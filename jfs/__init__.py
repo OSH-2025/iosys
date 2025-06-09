@@ -90,7 +90,7 @@ class IOSYSFileSystem(abc.ABC):
 
     def get_root(self) -> FileSystemNode:
         """Get the root node of the file system"""
-        root = self.get_node("")
+        root = self.get_node("/")
         if not root:
             raise FileNotFoundError("Root node not found.")
         return root
