@@ -196,7 +196,7 @@ Client.getxattr(path, name)
 
 参数说明：
 
-```
+```py
 path (str)：文件路径
 name (str)：扩展属性名称
 返回值：

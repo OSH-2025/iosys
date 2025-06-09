@@ -4,8 +4,8 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "juicefs"
+name = "juicefs_local"
 version = "1.3.0"
 
 [tool.setuptools.package-data]
-"juicefs" = ["libjfs.so"]
+"juicefs_local" = ["libjfs.so"]
