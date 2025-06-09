@@ -130,9 +130,7 @@ class JuiceFSFileSystem(IOSYSFileSystem):
         self.service = JuiceFSService()
         self.service.start()
 
-        self.client = juicefs.Client(
-            "iosysfilesystem"
-        )
+        self.client = juicefs.Client("iosysfilesystem")
 
     def is_running(self) -> bool:
         return self.service.is_running()
