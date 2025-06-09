@@ -97,8 +97,12 @@ class JuiceFSDirNode(DirNode):
         return node
 
     def remove(self):
-        # Implementation for removing directory
-        pass
+        # 递归删除子节点
+        for child in self.children():
+            child.remove()
+        # 删除空目录自身
+        self.fs.client.remove(self.path)
+        self.fs.call_dir_delete(self)
 
     def parent(self) -> "JuiceFSDirNode":
         parent_id = os.path.dirname(self.id.rstrip("/"))
@@ -108,7 +112,16 @@ class JuiceFSDirNode(DirNode):
 
     def children(self) -> list[FileSystemNode]:
         # Implementation for getting children
-        return []
+        entries = self.fs.client.listdir(self.path)
+        nodes = []
+        for name in entries:
+            full = os.path.join(self.path, name)
+            st = self.fs.client.stat(full)
+            if stat_mod.S_ISDIR(st.st_mode):
+                nodes.append(JuiceFSDirNode(self.fs, full))
+            else:
+                nodes.append(JuiceFSFileNode(self.fs, full))
+        return nodes
 
 
 class JuiceFSFileSystem(IOSYSFileSystem):

@@ -1,14 +1,15 @@
 import juicefs
+import juicefs_local
 import os
 
 # print("JuiceFS version:", juicefs.__version__)
 print(
     "Shared lib :",
-    os.path.exists(os.path.join(os.path.dirname(juicefs.__file__), "libjfs.so")),
+    os.path.exists(os.path.join(os.path.dirname(juicefs_local.__file__), "libjfs.so")),
 )
-from juicefs import Client
+from juicefs_local import Client
 
-print("Client OK →", Client(name="myjfs", meta="sqlite3://./jfs/jfs.db").listdir("/"))
+print("Client OK →", Client(name="iosys", meta="sqlite3://./data/jfs.db").listdir("/"))
 
 
 # help(juicefs.Client)

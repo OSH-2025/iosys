@@ -6,10 +6,14 @@ set -e
 JUICE_VERSION="1.2.3"                  # JuiceFS版本
 MOUNT_POINT="./fs"                     # 挂载点
 BIN_DIR="./jfs/juicefs"                    # 客户端目录
-CACHE_DIR="./jfs/cache"                    # 缓存目录
-LOCAL_META="./jfs/jfs.db"        # 元数据文件（绝对路径）
+LOCAL_META="./data/jfs.db"        # 元数据文件（绝对路径）
 LOCAL_STORAGE="./jfs/storage"         # 存储目录（绝对路径）
-FS_NAME="myjfs"                        # 文件系统名称
+JFS_NAME="iosys"                        # 文件系统名称
+
+JFS_CACHE_DIR=./data/jfs_cache
+JFS_LOG_FILE=./data/jfs.log
+JFS_PID_FILE=./data/jfs.pid
+JFS_META_URL=sqlite3://./data/jfs.db
 
 # 自动清理函数
 cleanup() {
@@ -17,7 +21,7 @@ cleanup() {
 }
 
 # 创建目录
-mkdir -p "${BIN_DIR}" "${MOUNT_POINT}" "${CACHE_DIR}" "${LOCAL_META%/*}" "${LOCAL_STORAGE}"
+mkdir -p "${BIN_DIR}" "${MOUNT_POINT}" "${JFS_CACHE_DIR}" "${LOCAL_META%/*}" "${LOCAL_STORAGE}"
 
 # 安装到 目录下
 curl -sSL https://d.juicefs.com/install | sh -s "${BIN_DIR}"
@@ -27,16 +31,16 @@ echo "初始化单机文件系统..."
 "${BIN_DIR}/juicefs" format \
     --storage="file" \
     --bucket="${LOCAL_STORAGE}" \
-    "sqlite3://${LOCAL_META}?mode=rwc" \
-    "${FS_NAME}"  # 使用变量传递名称
+    "${JFS_META_URL}?mode=rwc" \
+    "${JFS_NAME}"  # 使用变量传递名称
 
 # 挂载文件系统
 echo "挂载到 ${MOUNT_POINT}..."
 "${BIN_DIR}/juicefs" mount \
-    --cache-dir="${CACHE_DIR}" \
+    --cache-dir="${JFS_CACHE_DIR}" \
     --cache-size 1024 \
     --background \
-    "sqlite3://${LOCAL_META}" \
+    "${JFS_META_URL}" \
     "${MOUNT_POINT}"
 
 cleanup
