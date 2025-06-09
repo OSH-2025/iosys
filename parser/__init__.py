@@ -1,7 +1,7 @@
 import os
 import base64
 
-from typing import Optional, Literal
+from typing import Literal
 from openai import OpenAI
 from markitdown import MarkItDown, StreamInfo, UnsupportedFormatException
 from dataclasses import dataclass
@@ -11,7 +11,6 @@ from jfs import FileSystemNode
 
 @dataclass
 class EmbeddedFile:
-    id: str
     type: Literal["image"]
     # LLM 生成的简短文件名，要求唯一
     name: str
@@ -25,11 +24,11 @@ class EmbeddedFile:
 class IOSYSParsedFile:
     path: str
     name: str
-    created_at: str
-    updated_at: str
+    created_at: int
+    updated_at: int
 
-    # 父目录的 path，根目录为 None
-    parent_path: Optional[str]
+    # 父目录的 path
+    parent_path: str
 
     # 几百字的内容概括
     brief_text: str
@@ -46,15 +45,15 @@ class IOSYSParser:
 
     def __init__(self):
         self.client = OpenAI(
-            base_url=os.environ.get("LLM_BASE_URL"),
-            api_key=os.environ.get("LLM_API_KEY"),
+            base_url=os.environ["LLM_BASE_URL"],
+            api_key=os.environ["LLM_API_KEY"],
         )
-        self.model = os.environ.get("LLM_MODEL_NAME")
+        self.model = os.environ["LLM_MODEL_NAME"]
 
     def _chat(
         self,
         prompt: str,
-        additional: dict,
+        additional,
     ) -> str:
         if not self.client or not self.model:
             raise Exception("LLM not initialized")
@@ -70,10 +69,12 @@ class IOSYSParser:
         ]
 
         response = self.client.chat.completions.create(
-            model=self.model, messages=messages
+            model=self.model,
+            messages=messages,  # type: ignore
         )
 
         description = response.choices[0].message.content
+        assert description is not None
         return description
 
     def _generate_verbose(self, node: FileSystemNode):
@@ -110,7 +111,6 @@ class IOSYSParser:
 
             embedded_files.append(
                 EmbeddedFile(
-                    id=f"{node.path}/{len(embedded_files)}",
                     type="image",
                     name=name,
                     description=description,
@@ -157,12 +157,28 @@ class IOSYSParser:
         (verbose_text, embedded_files) = self._generate_verbose(node)
         brief_text = self._generate_brief(verbose_text, node)
 
+        node.update_meta(
+            verbose_text=verbose_text,
+            brief_text=brief_text,
+        )
+        for embedded_file in embedded_files:
+            embedded_node = node.insert_node(embedded_file.name)
+            embedded_node.update_meta(
+                type=embedded_file.type,
+                description=embedded_file.description,
+                content=embedded_file.content,
+            )
+
+        parent = node.parent()
+        if not parent:
+            raise ValueError("Node must have a parent")
+
         return IOSYSParsedFile(
             path=node.path,
             name=node.name,
             created_at=114514,
             updated_at=1919810,
-            parent_path=node.parent().path,
+            parent_path=parent.path,
             verbose_text=verbose_text,
             brief_text=brief_text,
             embedded_files=embedded_files,
