@@ -767,6 +767,4 @@ class FileAgent:
     async def _search_file_workflow(self, params: Dict[str, Any]) -> ToolCallResult:
         nodes = await self.config.rag.query.query_nodes(params["query"])
         print(nodes)
-        raise NotImplementedError(
-            "搜索文件工作流功能需要实现具体的搜索逻辑"
-        )
+        raise NotImplementedError("搜索文件工作流功能需要实现具体的搜索逻辑")
