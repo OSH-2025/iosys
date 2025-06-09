@@ -38,4 +38,5 @@ class IOSYSQueryEngine:
         await self.index.adelete_nodes([path])
 
     async def query_files(self, query: str):
-        return await self.index.as_query_engine(llm=self.llm).aquery(query)
+        engine = self.index.as_query_engine(llm=self.llm)
+        return await engine.aquery(query)

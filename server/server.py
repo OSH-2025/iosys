@@ -21,10 +21,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-MODEL = os.environ.get("LLM_MODEL_NAME")
+MODEL = os.environ["LLM_MODEL_NAME"]
 llm = OpenAI(
-    base_url=os.environ.get("LLM_BASE_URL"),
-    api_key=os.environ.get("LLM_API_KEY"),
+    base_url=os.environ["LLM_BASE_URL"],
+    api_key=os.environ["LLM_API_KEY"],
 )
 
 fs = new_fs()
@@ -83,14 +83,18 @@ async def agent_endpoint(request: AgentRequest):
 
 @app.get("/files")
 @app.post("/files")
-async def list_files(request: dict = None, id: str = ""):
+async def list_files(request: dict | None, id: str = ""):
     """List files and directories in the agent's managed directory"""
     # Handle both GET and POST requests
     if request and "id" in request:
         id = request["id"] or ""
 
+    node = fs.get_node(id)
+    if not node:
+        raise HTTPException(status_code=404, detail="Directory not found")
+
     items = []
-    for item in fs.get_dir_node(id).children():
+    for item in node.children():
         items.append(item.to_dict())
 
     return {"items": sorted(items, key=lambda x: (x["type"] == "file", x["name"]))}
@@ -100,7 +104,7 @@ async def list_files(request: dict = None, id: str = ""):
 @app.post("/graph")
 async def graph_endpoint():
     """Get the current state of the file management graph"""
-    return rag.graph.dump()
+    return rag.graph.to_dict()
 
 
 class PreviewRequest(BaseModel):
@@ -116,7 +120,7 @@ async def preview_endpoint(request: PreviewRequest):
 
 @app.get("/raw")
 async def raw_endpoint(fileid: str):
-    node = fs.get_file_node(fileid)
+    node = fs.get_node(fileid)
     if not node:
         raise HTTPException(status_code=404, detail="File not found")
 

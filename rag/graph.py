@@ -70,11 +70,15 @@ class IOSYSGraphEngine:
         await self.graph_store.adelete(entity_names=[path])
         self.commit()
 
+    def to_dict(self):
+        if not isinstance(self.graph_store, SimplePropertyGraphStore):
+            raise NotImplementedError()
+        dumped = self.graph_store.graph.model_dump(mode="json")
+        dumped["revision"] = self.revision
+        return dumped
+
     def commit(self):
         self.revision += 1
         if self.local_graph_path:
             with open(self.local_graph_path, "w") as f:
-                graph_store = cast(SimplePropertyGraphStore, self.graph_store)
-                dumped = graph_store.graph.model_dump(mode="json")
-                dumped["revision"] = self.revision
-                f.write(json.dumps(dumped))
+                f.write(json.dumps(self.to_dict(), indent=2))
