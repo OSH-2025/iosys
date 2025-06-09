@@ -10,7 +10,7 @@ def start_main_server():
     uvicorn.run(
         "server.server:app",
         host="localhost",
-        port=int(os.getenv("MAIN_SERVER_PORT")),
+        port=int(os.environ["MAIN_SERVER_PORT"]),
         reload=True,
     )
 

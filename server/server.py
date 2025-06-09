@@ -1,3 +1,4 @@
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -10,16 +11,8 @@ from agent.app import FileManagerApp
 from agent.config import AgentConfig
 from rag import IOSYSRAG
 
-app = FastAPI()
 
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Restrict to localhost
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+load_dotenv()
 
 MODEL = os.environ["LLM_MODEL_NAME"]
 llm = OpenAI(
@@ -30,6 +23,15 @@ llm = OpenAI(
 fs = new_fs()
 rag = IOSYSRAG(fs=fs)
 file_manager = FileManagerApp(AgentConfig(llm=llm, fs=fs, rag=rag))
+
+app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Restrict to localhost
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.post("/status")
