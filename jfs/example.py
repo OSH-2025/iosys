@@ -1,5 +1,6 @@
 import os
 import juicefs_local
+
 # print("JuiceFS version:", juicefs.__version__)
 print(
     "Shared lib :",
@@ -7,7 +8,7 @@ print(
 )
 from juicefs_local import Client
 
-jfs=Client(name="iosys", meta="sqlite3://./data/jfs.db")
+jfs = Client(name="iosys", meta="sqlite3://./data/jfs.db")
 
 jfs.makedirs("/files")
 with jfs.open("/files/hello.txt", "w") as f:
@@ -18,7 +19,7 @@ with jfs.open("/files/hello.txt") as f:
     data = f.read()
     print(data)
 
-'''
+"""
 import juicefs
 
 jfs = juicefs.Client(
@@ -27,4 +28,4 @@ jfs = juicefs.Client(
 
 print(jfs.listdir("/"))
 # help(juicefs.Client)
-'''
+"""
