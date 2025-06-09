@@ -14,6 +14,42 @@
 source jfs/scripts/juiceFsInit_linux.sh
 ```
 
+## JuiceFs 分布式服务部署
+
+### Linux、macOS
+
+Linux、macOS 可用下方命令将客户端安装至 ./jfs/juicefs 。
+
+```bash
+curl -L https://juicefs.com/static/juicefs -o ./jfs/juicefs
+sudo chmod +x ./
+sudo chmod +x ./jfs/juicefs
+```
+
+在python sdk首次运行client时客户端将会交互式地询问一系列认证信息，你需要文件系统的 token，以及对象存储 API 密钥（确保对 Bucket 有完全操控权限）。
+
+```bash
+Token for myjfs: xxxxx
+Access key ID for oss://juicefs-myjfs: xxxxx
+Access key secret for oss://juicefs-myjfs: xxxxx
+OK, myjfs is ready at /jfs.
+```
+
+### Windows
+
+从 5.2 开始，JuiceFS 开始公测 Windows 客户端。如果不希望使用 Beta 版本，也可以通过 WSL 2 在 Linux 子系统中使用 JuiceFS 云服务客户端，安装和使用流程与 Linux 无异。但由于 WSL 2 需要硬件虚拟化，云主机往往无此条件，请提前确认。
+
+[点此下载](https://s.juicefs.com/static/Windows/juicefs.exe) Windows 客户端，除此之外还应该安装 WinFsp 才能实现对 FUSE 的支持。
+
+安装完毕以后，客户端的前台挂载需以管理员模式运行 CMD 或 PowerShell 程序，并打开 JuiceFS 客户端检查是否可以正常执行。
+
+```bash
+PS C:\> ./juicefs.exe -V
+juicefs version 5.2.1 (2025-05-28 6ebc8e9)
+```
+
+> 使用python sdk不需要进行挂载。
+
 ## JuiceFs Python SDK
 
 使用 python SDK 需要：

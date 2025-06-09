@@ -10,5 +10,10 @@ from juicefs_local import Client
 
 print("Client OK →", Client(name="iosys", meta="sqlite3://./data/jfs.db").listdir("/"))
 
+#import juicefs
+
+#jfs = juicefs.Client("iosysfilesystem")
+
+
 
 # help(juicefs.Client)

@@ -1,1 +1,1 @@
-from .juicefs import Client
+from .juicefs_local import Client

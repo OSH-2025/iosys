@@ -131,8 +131,7 @@ class JuiceFSFileSystem(IOSYSFileSystem):
         self.service.start()
 
         self.client = juicefs.Client(
-            name=os.environ.get("JFS_NAME"),
-            meta=os.environ.get("JFS_META_URL"),
+            "iosysfilesystem"
         )
 
     def is_running(self) -> bool:
