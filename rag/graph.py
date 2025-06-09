@@ -39,8 +39,12 @@ class IOSYSGraphEngine:
                 overwrite=True,
             )
 
-    async def update_file(self, path: str, parsed: IOSYSParsedFile):
+    async def create_node(self, path: str, parsed: IOSYSParsedFile):
+        return await self.update_node(path, parsed)
+
+    async def update_node(self, path: str, parsed: IOSYSParsedFile):
         try:
+            self.graph_store.aupsert_nodes
             await self.graph_store.aupsert_nodes(
                 [
                     EntityNode(

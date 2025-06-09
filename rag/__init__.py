@@ -1,7 +1,7 @@
 import threading
 import os
 
-from jfs import FileSystemNode, IOSYSFileSystem
+from jfs import FileSystemNode, IOSYSFileSystem, CHANGE_TYPE
 from parser import IOSYSParser
 from llama_index.llms.openai import OpenAI
 
@@ -29,19 +29,16 @@ class IOSYSRAG:
         self.query = IOSYSQueryEngine(llm)
         self.graph = IOSYSGraphEngine(llm)
 
-    async def on_fs_change(self, node: FileSystemNode):
-        # TODO:
-        await self.update_file(node)
-
-    async def update_file(self, node: FileSystemNode):
-        parsed = self.parser.parse(node)
-        await self.query.update_file(node.path, parsed)
-        await self.graph.update_file(node.path, parsed)
-
-    async def delete_file(self, node: FileSystemNode):
-        await self.query.delete_file(node.path)
-        await self.graph.delete_file(node.path)
-
-    async def update_dir(self, node: FileSystemNode): ...
-
-    async def delete_dir(self, node: FileSystemNode): ...
+    async def on_fs_change(self, node: FileSystemNode, change_type: CHANGE_TYPE):
+        match change_type:
+            case "create":
+                parsed = self.parser.parse(node)
+                await self.query.create_node(node.path, parsed)
+                await self.graph.create_node(node.path, parsed)
+            case "update":
+                parsed = self.parser.parse(node)
+                await self.query.update_node(node.path, parsed)
+                await self.graph.update_node(node.path, parsed)
+            case "delete":
+                await self.query.delete_node(node.path)
+                await self.graph.delete_file(node.path)

@@ -1,5 +1,5 @@
 import asyncio
-from typing import Awaitable, Callable, Union
+from typing import Awaitable, Callable, Literal, Union
 import abc
 import os
 import io
@@ -78,8 +78,11 @@ class FileSystemNode(abc.ABC):
         }
 
 
+CHANGE_TYPE = Literal["create", "update", "delete", "metadata"]
+
+
 class IOSYSFileSystem(abc.ABC):
-    on_change: list[Callable[[FileSystemNode], Awaitable[None]]] = []
+    on_change: list[Callable[[FileSystemNode, CHANGE_TYPE], Awaitable[None]]] = []
     _pending_changes: dict[str, asyncio.Task] = {}
 
     @abc.abstractmethod
@@ -113,7 +116,7 @@ class IOSYSFileSystem(abc.ABC):
             raise FileNotFoundError(f"Node {path} not found.")
         node.remove()
 
-    def invoke_on_change(self, node: FileSystemNode):
+    def invoke_on_change(self, node: FileSystemNode, change_type: CHANGE_TYPE):
         if not self.on_change:
             return
 
@@ -126,7 +129,9 @@ class IOSYSFileSystem(abc.ABC):
 
         async def execute_callbacks():
             await asyncio.sleep(0.1)  # 100ms debounce
-            await asyncio.gather(*[callback(node) for callback in self.on_change])
+            await asyncio.gather(
+                *[callback(node, change_type) for callback in self.on_change]
+            )
             self._pending_changes.pop(key, None)
 
         self._pending_changes[key] = asyncio.create_task(execute_callbacks())

@@ -25,8 +25,8 @@ class IOSYSQueryEngine:
             embed_model=self.embed_model,
             nodes=[],
         )
-
-    async def update_file(self, path: str, parsed: IOSYSParsedFile):
+    
+    async def create_node(self, path: str, parsed: IOSYSParsedFile):
         await self.index.ainsert(
             document=Document(
                 doc_id=path,
@@ -34,9 +34,17 @@ class IOSYSQueryEngine:
             )
         )
 
-    async def delete_file(self, path: str):
+    async def update_node(self, path: str, parsed: IOSYSParsedFile):
+        await self.index.aupdate_ref_doc(
+            document=Document(
+                doc_id=path,
+                text=parsed.brief_text,
+            )
+        )
+
+    async def delete_node(self, path: str):
         await self.index.adelete_nodes([path])
 
-    async def query_files(self, query: str):
+    async def query_nodes(self, query: str):
         engine = self.index.as_query_engine(llm=self.llm)
         return await engine.aquery(query)

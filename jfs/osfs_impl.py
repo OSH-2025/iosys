@@ -34,7 +34,7 @@ class OSFileSystemNode(FileSystemNode):
         with open(real_path, "wb") as f:
             f.write(content)
         self.update_meta(type="file")
-        self.fs.invoke_on_change(self)
+        self.fs.invoke_on_change(self, "update")
 
     def remove(self):
         """Remove the file"""
@@ -46,7 +46,7 @@ class OSFileSystemNode(FileSystemNode):
         meta_path = self.fs._get_meta_path(self.path)
         if os.path.exists(meta_path):
             os.remove(meta_path)
-        self.fs.invoke_on_change(self)
+        self.fs.invoke_on_change(self, "delete")
 
     def parent(self) -> Union["OSFileSystemNode", None]:
         if self.path == "/":
@@ -78,7 +78,6 @@ class OSFileSystemNode(FileSystemNode):
             node.update_meta(type="embedded")
         else:
             node._sync_metadata()
-        self.fs.invoke_on_change(self)
         return node
 
     def _sync_metadata(self):
@@ -94,7 +93,7 @@ class OSFileSystemNode(FileSystemNode):
             old_meta = None
         if old_meta and old_meta != "{}":
             self.meta = {**json.loads(old_meta), **self.meta}
-            self.fs.invoke_on_change(self)
+            self.fs.invoke_on_change(self, "metadata")
         with open(meta_json, "w") as f:
             f.write(json.dumps(self.meta, indent=2))
 
