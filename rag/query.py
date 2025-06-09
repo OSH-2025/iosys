@@ -10,7 +10,7 @@ from parser import IOSYSParsedFile
 
 
 class IOSYSQueryEngine:
-    llm: LLM 
+    llm: LLM
     embed_model: EmbedType
     index: VectorStoreIndex
 
