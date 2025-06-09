@@ -1,5 +1,5 @@
 import json
-from typing import Dict, Any, Callable, List
+from typing import Dict, Any, Callable, List, NotRequired, TypedDict
 from enum import Enum
 from functools import wraps
 from openai.types.chat import ChatCompletion
@@ -24,6 +24,14 @@ class OperationType(str, Enum):
     READ_FILE = "read_file"
     WRITE_FILE = "write_file"
 
+class ToolCallResult(TypedDict):
+    """工具调用结果类型"""
+
+    status: str  # "success" 或 "error"
+    message: str  # 操作结果消息
+    data: NotRequired[Dict[str, Any]]  # 附加数据，例如文件路径等
+
+
 
 def tool(name: str, description: str, parameters: Dict[str, Any]):
     """
@@ -41,7 +49,7 @@ def tool(name: str, description: str, parameters: Dict[str, Any]):
             return func(*args, **kwargs)
 
         # 将工具配置信息附加到函数上
-        wrapper._tool_config = {
+        wrapper._tool_config = {  # type: ignore
             "type": "function",
             "function": {
                 "name": name,
@@ -49,7 +57,7 @@ def tool(name: str, description: str, parameters: Dict[str, Any]):
                 "parameters": parameters,
             },
         }
-        wrapper._tool_name = name
+        wrapper._tool_name = name  # type: ignore
         return wrapper
 
     return decorator
@@ -91,7 +99,7 @@ class FileAgent:
                 handlers[attr._tool_name] = attr
         return handlers
 
-    def process(self, user_input: str) -> Dict[str, Any]:
+    def process(self, user_input: str) -> ToolCallResult:
         """
         处理用户输入并执行相应的文件操作
 
@@ -126,11 +134,11 @@ class FileAgent:
                 },
                 {"role": "user", "content": user_input},
             ],
-            tools=self.tools,
+            tools=self.tools,  # type: ignore
             tool_choice="auto",
         )
 
-    def _execute_function_call(self, response: ChatCompletion) -> Dict[str, Any]:
+    def _execute_function_call(self, response: ChatCompletion) -> ToolCallResult:
         """
         执行function call
 
@@ -208,7 +216,7 @@ class FileAgent:
             "required": ["file_name"],
         },
     )
-    def _create_file(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _create_file(self, params: Dict[str, Any]) -> ToolCallResult:
         """创建文件"""
         parent_path = self._normalize_path(params.get("path", ""))
         file_name = params.get("file_name", "new_file.txt")
@@ -255,7 +263,7 @@ class FileAgent:
             "required": ["directory_name"],
         },
     )
-    def _create_directory(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _create_directory(self, params: Dict[str, Any]) -> ToolCallResult:
         """创建目录"""
         if "directory_name" not in params:
             params["directory_name"] = "new_directory"
@@ -291,7 +299,7 @@ class FileAgent:
         return {
             "status": "success",
             "message": f"目录创建成功: {params['directory_name']}",
-            "data": {"path": self._id_to_relative_path(dir_id)},
+            "data": {"path": dir_id},
         }
 
     @tool(
@@ -305,7 +313,7 @@ class FileAgent:
             "required": ["file_path"],
         },
     )
-    def _delete_file(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _delete_file(self, params: Dict[str, Any]) -> ToolCallResult:
         """删除文件"""
         if "file_path" not in params:
             return {"status": "error", "message": "缺少必要参数: file_path"}
@@ -313,7 +321,7 @@ class FileAgent:
         file_id = self._normalize_path(params["file_path"])
 
         # 检查文件是否存在
-        file_node = self.fs.get_file_node(file_id)
+        file_node = self.fs.get_node(file_id)
         if not file_node:
             return {
                 "status": "error",
@@ -339,7 +347,7 @@ class FileAgent:
             "required": ["directory_path"],
         },
     )
-    def _delete_directory(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _delete_directory(self, params: Dict[str, Any]) -> ToolCallResult:
         """删除目录"""
         if "directory_path" not in params:
             return {"status": "error", "message": "缺少必要参数: directory_path"}
@@ -374,7 +382,7 @@ class FileAgent:
             "required": ["source_path", "destination_path"],
         },
     )
-    def _move_file(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _move_file(self, params: Dict[str, Any]) -> ToolCallResult:
         """移动文件"""
         if "source_path" not in params or "destination_path" not in params:
             return {
@@ -418,7 +426,7 @@ class FileAgent:
         return {
             "status": "success",
             "message": f"文件移动成功: {params['source_path']} -> {params['destination_path']}",
-            "data": {"new_path": self._id_to_relative_path(dst_id)},
+            "data": {"new_path": dst_id},
         }
 
     @tool(
@@ -433,7 +441,7 @@ class FileAgent:
             "required": ["source_path", "destination_path"],
         },
     )
-    def _move_directory(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _move_directory(self, params: Dict[str, Any]) -> ToolCallResult:
         """移动目录"""
         if "source_path" not in params or "destination_path" not in params:
             return {
@@ -477,7 +485,7 @@ class FileAgent:
             "required": ["file_path", "new_name"],
         },
     )
-    def _rename_file(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _rename_file(self, params: Dict[str, Any]) -> ToolCallResult:
         """重命名文件"""
         if "file_path" not in params or "new_name" not in params:
             return {
@@ -523,7 +531,7 @@ class FileAgent:
         return {
             "status": "success",
             "message": f"文件重命名成功: {params['file_path']} -> {params['new_name']}",
-            "data": {"new_path": self._id_to_relative_path(new_id)},
+            "data": {"new_path": new_id},
         }
 
     @tool(
@@ -541,7 +549,7 @@ class FileAgent:
             "required": ["directory_path", "new_name"],
         },
     )
-    def _rename_directory(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _rename_directory(self, params: Dict[str, Any]) -> ToolCallResult:
         """重命名目录"""
         if "directory_path" not in params or "new_name" not in params:
             return {
@@ -595,7 +603,7 @@ class FileAgent:
             },
         },
     )
-    def _list_files(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _list_files(self, params: Dict[str, Any]) -> ToolCallResult:
         """列出目录内容"""
         if "directory_path" not in params:
             params["directory_path"] = "."
@@ -603,7 +611,7 @@ class FileAgent:
         dir_id = self._normalize_path(params["directory_path"])
 
         # 检查目录是否存在
-        dir_node = self.fs.get_dir_node(dir_id)
+        dir_node = self.fs.get_node(dir_id)
         if not dir_node:
             return {
                 "status": "error",
@@ -611,20 +619,20 @@ class FileAgent:
             }
 
         # 列出目录内容
-        children = dir_node.children()
-        files = []
-        directories = []
+        children = []
 
-        for child in children:
-            if child.type == "file":
-                files.append(child.name)
-            elif child.type == "dir":
-                directories.append(child.name)
+        for child in dir_node.children():
+            children.append(
+                {
+                    "path": child.path,
+                    "name": child.name,
+                }
+            )
 
         return {
             "status": "success",
             "message": f"成功列出目录内容: {params['directory_path']}",
-            "data": {"contents": {"files": files, "directories": directories}},
+            "data": {"children": children},
         }
 
     @tool(
@@ -636,7 +644,7 @@ class FileAgent:
             "required": ["file_path"],
         },
     )
-    def _read_file(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _read_file(self, params: Dict[str, Any]) -> ToolCallResult:
         """读取文件内容"""
         if "file_path" not in params:
             return {"status": "error", "message": "缺少必要参数: file_path"}
@@ -644,7 +652,7 @@ class FileAgent:
         file_id = self._normalize_path(params["file_path"])
 
         # 检查文件是否存在
-        file_node = self.fs.get_file_node(file_id)
+        file_node = self.fs.get_node(file_id)
         if not file_node:
             return {
                 "status": "error",
@@ -678,7 +686,7 @@ class FileAgent:
             "required": ["file_path", "content"],
         },
     )
-    def _write_file(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _write_file(self, params: Dict[str, Any]) -> ToolCallResult:
         """写入文件内容"""
         if "content" not in params:
             return {"status": "error", "message": "缺少必要参数: content"}
@@ -704,46 +712,10 @@ class FileAgent:
         return {
             "status": "success",
             "message": f"成功{'追加' if append else '写入'}文件: {params['file_path']}",
-            "data": {"path": self._id_to_relative_path(file_id)},
+            "data": {"path": file_id},
         }
 
-    # 这里只返回大模型解析出的.json格式数据, 其中需要包含:
-    # 特征词序列(例如要求查询和某些关键词有关的文件),
-    # 限制序列(例如明确的文件名),
-    # 搜索地址(也就是在哪一个文件夹下搜素)
-    # 发给 GRAPH RAG 部分
-    def _search_file_send(self, params: Dict[str, Any]) -> Dict[str, Any]:
-        """搜索文件"""
-        # 提取搜索参数
-        key_words = params.get("key_words", [])
-        constraint = params.get("constraint", [])
-        search_path = params.get("search_path", ".")
-
-        # 转换为文件系统ID
-        search_id = self._normalize_path(search_path)
-
-        # 检查路径是否存在
-        if not self.fs.exists(search_id):
-            return {"status": "error", "message": f"搜索路径不存在: {search_path}"}
-
-        # 手动添加file_name到限制序列
-        if "file_name" in params:
-            constraint.append(params["file_name"])
-
-        # 构建发送给 GRAPH RAG 的数据结构
-        search_data = {
-            "key_words": key_words,  # 特征词序列
-            "constraint": constraint,  # 限制序列
-            "search_path": search_id,  # 搜索地址
-        }
-
-        return {
-            "status": "success",
-            "message": "搜索参数已准备完成，等待发送到 GRAPH RAG",
-            "data": search_data,
-        }
-
-    def _search_file_receive(self, search_results: Dict[str, Any]) -> Dict[str, Any]:
+    def _search_file_receive(self, search_results: Dict[str, Any]) -> ToolCallResult:
         """接收搜索结果"""
         # 处理搜索结果
         file_list = search_results.get("file_list", [])
@@ -789,25 +761,5 @@ class FileAgent:
             "required": ["key_words"],
         },
     )
-    def _search_file_workflow(self, params: Dict[str, Any]) -> Dict[str, Any]:
-        """搜索文件工作流，协调发送请求和接收结果"""
-        # 1. 发送搜索请求到 GRAPH RAG
-        send_result = self._search_file_send(params)
-
-        # 检查发送是否成功
-        if send_result["status"] == "error":
-            return send_result
-
-        # 2. 这里应该调用 GRAPH RAG 进行搜索
-        # 注意：这部分需要您实际集成 GRAPH RAG 系统
-        # 以下是一个模拟的 GRAPH RAG 调用示例
-        # 实际使用时请替换为真正的接口调用
-
-        # 模拟 GRAPH RAG 的搜索结果
-        # 在实际应用中，应该使用 GRAPH RAG 系统的返回结果
-        # search_results = call_graph_rag(search_data)
-
-        # 3. 接收并处理搜索结果
-        # 处理 GRAPH RAG 返回的结果
-        # return self._search_file_receive(search_results)
-        return send_result
+    def _search_file_workflow(self, params: Dict[str, Any]) -> ToolCallResult:
+        raise NotImplementedError()

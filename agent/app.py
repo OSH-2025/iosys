@@ -12,14 +12,14 @@ logger = logging.getLogger(__name__)
 class FileManagerApp:
     """文件管理应用"""
 
-    def __init__(self, config: Optional[AgentConfig] = None):
+    def __init__(self, config: AgentConfig):
         """
         初始化文件管理应用
 
         Args:
             config: 配置对象, 如果为None则使用默认配置
         """
-        self.config = config or AgentConfig()
+        self.config = config
         self.llm_client = self._init_llm_client()
         self.agent = FileAgent(config=self.config, llm_client=self.llm_client)
 
@@ -30,13 +30,10 @@ class FileManagerApp:
         Returns:
             LLM 客户端实例
         """
-        client_args = {"api_key": self.config.llm_api_key}
-        # 如果提供了自定义API基础URL，则使用它
-        if self.config.llm_api_base:
-            client_args["base_url"] = self.config.llm_api_base
-
-        client = openai.Client(**client_args)
-        logger.info(f"客户端初始化成功，使用模型: {self.config.llm_model}")
+        client = openai.Client(
+            api_key=self.config.llm_api_key,
+            base_url=self.config.llm_api_base,
+        )
         return client
 
     def process_command(self, user_input: str) -> Dict[str, Any]:

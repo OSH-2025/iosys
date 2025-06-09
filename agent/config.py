@@ -31,9 +31,9 @@ class AgentConfig:
         """
 
         self.fs = fs
-        self.llm_api_key = llm_api_key or os.environ.get("LLM_API_KEY")
-        self.llm_model = llm_model or os.environ.get("LLM_MODEL_NAME")
-        self.llm_api_base = llm_api_base or os.environ.get("LLM_BASE_URL")
+        self.llm_api_key = llm_api_key or os.environ["LLM_API_KEY"]
+        self.llm_model = llm_model or os.environ["LLM_MODEL_NAME"]
+        self.llm_api_base = llm_api_base or os.environ["LLM_BASE_URL"]
         self.base_dir = base_dir
 
         # 设置日志级别
