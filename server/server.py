@@ -29,7 +29,7 @@ llm = OpenAI(
 
 fs = new_fs()
 rag = IOSYSRAG(fs=fs)
-file_manager = FileManagerApp(AgentConfig(fs=fs, rag=rag))
+file_manager = FileManagerApp(AgentConfig(llm=llm, fs=fs, rag=rag))
 
 
 @app.post("/status")

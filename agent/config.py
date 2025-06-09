@@ -1,5 +1,6 @@
 import os
 import logging
+from openai import OpenAI
 
 from jfs import IOSYSFileSystem
 from rag import IOSYSRAG
@@ -8,26 +9,18 @@ from rag import IOSYSRAG
 class AgentConfig:
     """Agent 配置类"""
 
+    llm: OpenAI
     fs: IOSYSFileSystem
     rag: IOSYSRAG
 
     def __init__(
         self,
+        llm: OpenAI,
         fs: IOSYSFileSystem,
         rag: IOSYSRAG,
         log_level: str = "INFO",
     ):
-        """
-        初始化 Agent 配置
-
-        Args:
-            llm_api_key: LLM API 密钥
-            llm_model: 使用的 LLM 模型名称
-            llm_api_base: LLM API 基础URL
-            base_dir: 文件操作的基础目录
-            log_level: 日志级别
-        """
-
+        self.llm = llm
         self.fs = fs
         self.rag = rag
         self.llm_api_key = os.environ["LLM_API_KEY"]

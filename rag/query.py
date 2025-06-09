@@ -1,8 +1,10 @@
 import os
+from typing import cast
 
 from llama_index.core import VectorStoreIndex
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.core.embeddings.utils import EmbedType
+from llama_index.core.base.response.schema import Response
 from llama_index.core import Document
 from llama_index.core.llms.llm import LLM
 
@@ -27,16 +29,18 @@ class IOSYSQueryEngine:
         )
 
     async def create_node(self, path: str, parsed: IOSYSParsedFile):
+        print(f"[VectorIndex]: Creating node for {path}")
         await self.index.ainsert(
-            document=Document(
+            Document(
                 doc_id=path,
                 text=parsed.brief_text,
             )
         )
 
     async def update_node(self, path: str, parsed: IOSYSParsedFile):
+        print(f"[VectorIndex]: Updating node for {path}")
         await self.index.aupdate_ref_doc(
-            document=Document(
+            Document(
                 doc_id=path,
                 text=parsed.brief_text,
             )
@@ -47,4 +51,6 @@ class IOSYSQueryEngine:
 
     async def query_nodes(self, query: str):
         engine = self.index.as_query_engine(llm=self.llm)
-        return await engine.aquery(query)
+        print(f"[VectorIndex]: Querying nodes with query: {query}")
+        result = await engine.aquery(query)
+        return cast(Response, result)

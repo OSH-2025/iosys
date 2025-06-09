@@ -1,5 +1,6 @@
 import inspect
 import json
+import glob
 from typing import Dict, Any, Callable, List, NotRequired, TypedDict
 from enum import Enum
 from functools import wraps
@@ -68,7 +69,7 @@ def tool(name: str, description: str, parameters: FunctionParameters):
 class FileAgent:
     """基于LLM的文件管理Agent"""
 
-    def __init__(self, config: AgentConfig, llm_client: Client):
+    def __init__(self, config: AgentConfig):
         """
         初始化文件管理Agent
 
@@ -78,7 +79,7 @@ class FileAgent:
         """
         self.config = config
         self.fs = config.fs
-        self.llm_client = llm_client
+        self.llm_client = config.llm
         self.tools = self._collect_tools()
         self.tool_handlers = self._collect_tool_handlers()
 
@@ -766,5 +767,11 @@ class FileAgent:
     )
     async def _search_file_workflow(self, params: Dict[str, Any]) -> ToolCallResult:
         nodes = await self.config.rag.query.query_nodes(params["query"])
-        print(nodes)
-        raise NotImplementedError("搜索文件工作流功能需要实现具体的搜索逻辑")
+        return {
+            "status": "success",
+            "message": f"搜索完成，共找到 {len(nodes.source_nodes)} 个相关文件。具体回复：{nodes.response}",
+            "data": {
+                "file_list": [node.node.get_content() for node in nodes.source_nodes],
+                "weights": [node.score for node in nodes.source_nodes],
+            },
+        }
