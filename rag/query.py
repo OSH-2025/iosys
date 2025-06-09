@@ -25,7 +25,7 @@ class IOSYSQueryEngine:
             embed_model=self.embed_model,
             nodes=[],
         )
-    
+
     async def create_node(self, path: str, parsed: IOSYSParsedFile):
         await self.index.ainsert(
             document=Document(
