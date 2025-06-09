@@ -1,13 +1,11 @@
 import inspect
 import json
-import glob
 from typing import Dict, Any, Callable, List, NotRequired, TypedDict
 from enum import Enum
 from functools import wraps
 from openai.types.chat import ChatCompletion
 from openai.types.shared_params.function_parameters import FunctionParameters
 
-from openai import Client
 
 from .config import AgentConfig
 

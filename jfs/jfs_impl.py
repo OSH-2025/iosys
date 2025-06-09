@@ -2,7 +2,7 @@ import io
 import os
 import stat as stat_mod
 import juicefs
-from . import FileSystemNode, DirNode, IOSYSFileSystem
+from . import FileSystemNode, IOSYSFileSystem
 from .service import JuiceFSService
 
 
@@ -130,7 +130,7 @@ class JuiceFSFileSystem(IOSYSFileSystem):
         self.service = JuiceFSService()
         self.service.start()
 
-        self.client = juicefs.Client("iosysfilesystem")
+        self.client = juicefs.Client("iosysfilesystem", token=os.environ["JFS_TOKEN"])
 
     def is_running(self) -> bool:
         return self.service.is_running()

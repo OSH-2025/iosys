@@ -16,6 +16,8 @@ source jfs/scripts/juiceFsInit_linux.sh
 
 ## JuiceFs 分布式服务部署
 
+> 分布式服务的client运行不需要额外其他部署，以下部署仅作验证。
+
 ### Linux、macOS
 
 Linux、macOS 可用下方命令将客户端安装至 ./jfs/juicefs 。
@@ -47,8 +49,6 @@ OK, myjfs is ready at /jfs.
 PS C:\> ./juicefs.exe -V
 juicefs version 5.2.1 (2025-05-28 6ebc8e9)
 ```
-
-> 使用python sdk不需要进行挂载。
 
 ## JuiceFs Python SDK
 

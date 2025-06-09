@@ -42,6 +42,7 @@ class IOSYSParsedFile:
 class IOSYSParser:
     client: OpenAI
     model: str
+    md: MarkItDown
 
     def __init__(self):
         self.client = OpenAI(
@@ -49,6 +50,10 @@ class IOSYSParser:
             api_key=os.environ["LLM_API_KEY"],
         )
         self.model = os.environ["LLM_MODEL_NAME"]
+        self.md = MarkItDown(
+            llm_client=self.client,
+            llm_model=self.model,
+        )
 
     def _chat(
         self,
@@ -101,7 +106,7 @@ class IOSYSParser:
             else:
                 # Step 2. Get a concise title for the image.
 
-                prompt = "The following text describes an image. Write a consise title for the image based on the text."
+                prompt = "The following text describes an image. Write a concise title for the image based on the text."
                 additional = {"type": "text", "text": description}
 
                 try:
@@ -123,18 +128,13 @@ class IOSYSParser:
                 "alt": description,
             }
 
-        md = MarkItDown(
-            llm_client=self.client,
-            llm_model=self.model,
-            image_converter=image_converter,
-        )
-
         try:
-            result = md.convert_stream(
+            result = self.md.convert_stream(
                 node.read_stream(),
                 stream_info=StreamInfo(
                     filename=node.name,
                 ),
+                image_converter=image_converter,
             )
             return (result.text_content, embedded_files)
         except UnsupportedFormatException:
