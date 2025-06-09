@@ -1,6 +1,5 @@
 import os
 import json
-from typing import cast
 
 from llama_index.core.graph_stores import (
     PropertyGraphStore,
