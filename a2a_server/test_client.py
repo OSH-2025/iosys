@@ -1,3 +1,4 @@
+import os
 from a2a.client import A2AClient
 from typing import Any
 from uuid import uuid4
@@ -9,8 +10,13 @@ from a2a.types import (
     TaskState,
 )
 import httpx
+from dotenv import load_dotenv
 
-AGENT_URL = "http://localhost:8001"
+load_dotenv()
+
+host = "localhost"
+port = int(os.environ["A2A_SERVER_PORT"])
+agent_url = f"http://{host}:{port}"
 
 
 def create_send_message_payload(
@@ -108,11 +114,11 @@ async def run_multi_turn_test(client: A2AClient) -> None:
 
 async def main() -> None:
     """Main function to run the tests."""
-    print(f"Connecting to agent at {AGENT_URL}...")
+    print(f"Connecting to agent at {agent_url}...")
     try:
         async with httpx.AsyncClient() as httpx_client:
             client = await A2AClient.get_client_from_agent_card_url(
-                httpx_client, AGENT_URL
+                httpx_client, agent_url
             )
             print("Connection successful.")
 

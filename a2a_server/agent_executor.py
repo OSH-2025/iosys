@@ -1,13 +1,4 @@
 from collections.abc import AsyncGenerator
-from typing import Any
-
-from agent import CurrencyAgent
-from helpers import (
-    create_task_obj,
-    process_streaming_agent_response,
-    update_task_with_agent_response,
-)
-
 from a2a.server import AgentExecutor, TaskStore
 from a2a.types import (
     CancelTaskRequest,
@@ -27,12 +18,16 @@ from a2a.types import (
     UnsupportedOperationError,
 )
 
+from agent.file_agent import IOSYSFileAgent
+from .helpers import (
+    create_task_obj,
+    process_streaming_agent_response,
+    update_task_with_agent_response,
+)
 
-class CurrencyAgentExecutor(AgentExecutor):
-    """Currency AgentExecutor Example."""
-
-    def __init__(self, task_store: TaskStore):
-        self.agent = CurrencyAgent()
+class IOSYSAgentExecutor(AgentExecutor):
+    def __init__(self, file_agent: IOSYSFileAgent, task_store: TaskStore):
+        self.file_agent = file_agent
         self.task_store = task_store
 
     async def on_message_send(
@@ -47,14 +42,14 @@ class CurrencyAgentExecutor(AgentExecutor):
             await self.task_store.save(task)
 
         # invoke the underlying agent
-        agent_response: dict[str, Any] = self.agent.invoke(query, task.contextId)
+        agent_response = dict(await self.file_agent.process(query))
 
         update_task_with_agent_response(task, agent_response)
         return SendMessageResponse(
             root=SendMessageSuccessResponse(id=request.id, result=task)
         )
 
-    async def on_message_stream(  # type: ignore
+    async def on_message_stream(
         self, request: SendMessageStreamingRequest, task: Task | None
     ) -> AsyncGenerator[SendMessageStreamingResponse, None]:
         """Handler for 'message/sendStream' requests."""
@@ -65,24 +60,24 @@ class CurrencyAgentExecutor(AgentExecutor):
             task = create_task_obj(params)
             await self.task_store.save(task)
 
-        # kickoff the streaming agent and process responses
-        async for item in self.agent.stream(query, task.contextId):
-            task_artifact_update_event, task_status_event = (
-                process_streaming_agent_response(task, item)
-            )
+        agent_response = dict(await self.file_agent.process(query))
 
-            if task_artifact_update_event:
-                yield SendMessageStreamingResponse(
-                    root=SendMessageStreamingSuccessResponse(
-                        id=request.id, result=task_artifact_update_event
-                    )
-                )
+        task_artifact_update_event, task_status_event = (
+            process_streaming_agent_response(task, agent_response)
+        )
 
+        if task_artifact_update_event:
             yield SendMessageStreamingResponse(
                 root=SendMessageStreamingSuccessResponse(
-                    id=request.id, result=task_status_event
+                    id=request.id, result=task_artifact_update_event
                 )
             )
+
+        yield SendMessageStreamingResponse(
+            root=SendMessageStreamingSuccessResponse(
+                id=request.id, result=task_status_event
+            )
+        )
 
     async def on_cancel(
         self, request: CancelTaskRequest, task: Task
@@ -92,7 +87,7 @@ class CurrencyAgentExecutor(AgentExecutor):
             root=JSONRPCErrorResponse(id=request.id, error=TaskNotCancelableError())
         )
 
-    async def on_resubscribe(  # type: ignore
+    async def on_resubscribe(
         self, request: TaskResubscriptionRequest, task: Task
     ) -> AsyncGenerator[SendMessageStreamingResponse, None]:
         """Handler for 'tasks/resubscribe' requests."""

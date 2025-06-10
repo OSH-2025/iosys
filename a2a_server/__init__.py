@@ -1,5 +1,3 @@
-from agent_executor import CurrencyAgentExecutor
-
 from a2a.server import A2AServer, DefaultA2ARequestHandler, InMemoryTaskStore
 from a2a.types import (
     AgentAuthentication,
@@ -7,37 +5,42 @@ from a2a.types import (
     AgentCard,
     AgentSkill,
 )
-from dotenv import load_dotenv
 import os
 
+from agent.file_agent import IOSYSFileAgent
+from . import description
+from .agent_executor import IOSYSAgentExecutor
 
-def start_a2a(host: str, port: int):
+
+def start_a2a_server(file_agent: IOSYSFileAgent):
+    host = "localhost"
+    port = int(os.environ["A2A_SERVER_PORT"])
     task_store = InMemoryTaskStore()
 
     request_handler = DefaultA2ARequestHandler(
-        agent_executor=CurrencyAgentExecutor(task_store=task_store),
+        agent_executor=IOSYSAgentExecutor(file_agent=file_agent, task_store=task_store),
         task_store=task_store,
     )
 
     server = A2AServer(
         agent_card=get_agent_card(host, port), request_handler=request_handler
     )
-    server.start(host=host, port=port)
+    server.app(host=host, port=port)
 
 
 def get_agent_card(host: str, port: int):
-    """Returns the Agent Card for the Currency Agent."""
+    """Returns the Agent Card for the File System Agent."""
     capabilities = AgentCapabilities(streaming=True, pushNotifications=True)
     skill = AgentSkill(
-        id="convert_currency",
-        name="Currency Exchange Rates Tool",
-        description="Helps with exchange values between various currencies",
-        tags=["currency conversion", "currency exchange"],
-        examples=["What is exchange rate between USD and GBP?"],
+        id=description.id,
+        name=description.name,
+        description=description.description,
+        tags=description.tags,
+        examples=description.examples,
     )
     return AgentCard(
-        name="Currency Agent",
-        description="Helps with exchange rates for currencies",
+        name=description.name,
+        description="Helps with manipulating files in the user's file system.",
         url=f"http://{host}:{port}/",
         version="1.0.0",
         defaultInputModes=["text", "text/plain"],
@@ -46,9 +49,3 @@ def get_agent_card(host: str, port: int):
         skills=[skill],
         authentication=AgentAuthentication(schemes=["public"]),
     )
-
-
-if __name__ == "__main__":
-    load_dotenv()
-    print("Starting A2A server...")
-    start_a2a(host="localhost", port=int(os.getenv("A2A_SERVER_PORT")))
