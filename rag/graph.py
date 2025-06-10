@@ -1,5 +1,8 @@
 import os
+import time
 import json
+import datetime
+from typing import Tuple, Optional
 
 from llama_index.core.graph_stores import (
     PropertyGraphStore,
@@ -13,11 +16,16 @@ from llama_index.core.llms.llm import LLM
 from parser import IOSYSParsedFile
 
 
+RECENT_TIME_SPAN = 2 * 60  # 2 minutes
+
+
 class IOSYSGraphEngine:
     llm: LLM
     graph_store: PropertyGraphStore
     local_graph_path: str | None
     revision: int = 0
+
+    recent_event: Optional[Tuple[str, float]] = None
 
     def __init__(self, llm: LLM):
         self.llm = llm
@@ -65,14 +73,49 @@ class IOSYSGraphEngine:
                         )
                     ]
                 )
+            await self.connect_event(path)
+            self.commit()
         except Exception as e:
             print(f"Error updating file {path}: ", e)
-            return
-        self.commit()
+            raise e
 
     async def delete_file(self, path: str):
-        await self.graph_store.adelete(entity_names=[path])
-        self.commit()
+        try:
+            await self.graph_store.adelete(entity_names=[path])
+            await self.connect_event(path)
+            self.commit()
+        except Exception as e:
+            print(f"Error removing file {path}: ", e)
+            raise e
+
+    async def connect_event(self, path: str):
+        current_time = time.time()
+        if (
+            self.recent_event
+            and (current_time - self.recent_event[1]) < RECENT_TIME_SPAN
+        ):
+            event_name, _ = self.recent_event
+        else:
+            event_name = f"event_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            await self.graph_store.aupsert_nodes(
+                [
+                    EntityNode(
+                        name=event_name,
+                        label="event",
+                    )
+                ]
+            )
+
+        self.recent_event = (event_name, current_time)
+        await self.graph_store.aupsert_relations(
+            [
+                Relation(
+                    source_id=event_name,
+                    label="modified",
+                    target_id=path,
+                )
+            ]
+        )
 
     def to_dict(self):
         if not isinstance(self.graph_store, SimplePropertyGraphStore):
