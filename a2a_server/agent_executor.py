@@ -1,3 +1,5 @@
+import os
+import httpx
 from collections.abc import AsyncGenerator
 from a2a.server import AgentExecutor, TaskStore
 from a2a.types import (
@@ -18,7 +20,6 @@ from a2a.types import (
     UnsupportedOperationError,
 )
 
-from agent.file_agent import IOSYSFileAgent
 from .helpers import (
     create_task_obj,
     process_streaming_agent_response,
@@ -27,8 +28,8 @@ from .helpers import (
 
 
 class IOSYSAgentExecutor(AgentExecutor):
-    def __init__(self, file_agent: IOSYSFileAgent, task_store: TaskStore):
-        self.file_agent = file_agent
+    def __init__(self, task_store: TaskStore):
+        self.agent_endpoint = f"http://localhost:{os.environ['MAIN_SERVER_PORT']}/agent"
         self.task_store = task_store
 
     async def on_message_send(
@@ -43,7 +44,12 @@ class IOSYSAgentExecutor(AgentExecutor):
             await self.task_store.save(task)
 
         # invoke the underlying agent
-        agent_response = dict(await self.file_agent.process(query))
+        agent_response = httpx.post(
+            self.agent_endpoint,
+            json={
+                "command": query,
+            },
+        ).json()
 
         update_task_with_agent_response(task, agent_response)
         return SendMessageResponse(
@@ -61,7 +67,12 @@ class IOSYSAgentExecutor(AgentExecutor):
             task = create_task_obj(params)
             await self.task_store.save(task)
 
-        agent_response = dict(await self.file_agent.process(query))
+        agent_response = httpx.post(
+            self.agent_endpoint,
+            json={
+                "command": query,
+            },
+        ).json()
 
         task_artifact_update_event, task_status_event = (
             process_streaming_agent_response(task, agent_response)

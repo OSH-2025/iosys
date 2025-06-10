@@ -11,7 +11,6 @@ from agent.app import FileManagerApp
 from agent.config import AgentConfig
 from parser import IOSYSParser
 from rag import IOSYSRAG
-from a2a_server import start_a2a_server
 
 
 load_dotenv()
@@ -26,7 +25,6 @@ fs = new_fs()
 parser = IOSYSParser(llm=llm)
 rag = IOSYSRAG(fs=fs, parser=parser)
 file_manager = FileManagerApp(AgentConfig(llm=llm, fs=fs, rag=rag))
-start_a2a_server(file_manager.agent)
 
 app = FastAPI()
 app.add_middleware(
