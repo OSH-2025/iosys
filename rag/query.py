@@ -44,7 +44,7 @@ class IOSYSQueryEngine:
             model="text-embedding-ada-002",
         )
         qdrant_path = os.environ["QDRANT_DATABASE_PATH"]
-        qdrant_exists = os.path.exists(qdrant_path)
+        qdrant_exists = os.path.exists(qdrant_path + "/meta.json")
         qdrant_client = QdrantClient(path=qdrant_path)
         vector_store = QdrantVectorStore(
             client=qdrant_client,
@@ -75,7 +75,7 @@ class IOSYSQueryEngine:
 
     async def create_node(self, path: str, parsed: IOSYSParsedFile):
         await self._ensure_initialized()
-        print(f"[VectorIndex]: Creating node for {path}")
+        print(f"[VectorIndex]: Creating node for {path}: {parsed.brief_text[0:30]}")
         self.index.insert(
             Document(
                 doc_id=path,
@@ -85,7 +85,7 @@ class IOSYSQueryEngine:
 
     async def update_node(self, path: str, parsed: IOSYSParsedFile):
         await self._ensure_initialized()
-        print(f"[VectorIndex]: Updating node for {path}")
+        print(f"[VectorIndex]: Updating node for {path}: {parsed.brief_text[0:30]}")
         self.index.refresh_ref_docs(
             [
                 Document(
