@@ -20,13 +20,22 @@
     <!-- Main Content Area -->
     <div class="flex flex-1 overflow-hidden">
       <!-- Left Sidebar - Chat -->
-      <aside class="w-80 max-w-40% bg-white border-r border-gray-200 flex flex-col">
+      <aside 
+        :style="{ width: sidebarWidth + 'px' }"
+        class="bg-white border-r border-gray-200 flex flex-col"
+        style="min-width: 200px; max-width: 600px;">
         <div class="flex-1 overflow-hidden">
           <!-- Chat messages component -->
           <Messages />
         </div>
         <ChatBox />
       </aside>
+
+      <!-- Resize Handle -->
+      <div 
+        @mousedown="startResize"
+        class="ml--1 w-1 hover:bg-gray-300 cursor-col-resize transition-colors duration-150 flex-shrink-0">
+      </div>
 
       <!-- Right Main Content -->
       <main class="relative flex-1 bg-white">
@@ -51,6 +60,15 @@ import GraphView from './components/GraphView.vue';
 import { errorMessage, status } from './states';
 import FilePreview from './components/FilePreview.vue';
 import ChatBox from './components/ChatBox.vue';
+import { useDynamicSplitter } from './composables/useDynamicSplitter';
+
+// Sidebar width with persistent storage and resize functionality
+const { width: sidebarWidth, startResize } = useDynamicSplitter({
+  storageKey: 'sidebar-width',
+  defaultWidth: 320,
+  minWidth: 200,
+  maxWidth: 800
+});
 
 let errorTimeout: number | null = null;
 watch(
