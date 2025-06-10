@@ -11,7 +11,7 @@ class FileSystemNode(abc.ABC):
     # Must use forward slashes
     # e.g. "/path/to/file.txt" or "/path/to/directory"
     path: str
-    meta: dict[str, str]
+    meta: dict[str, str | int | float | bool]
 
     def __init__(self, fs: "IOSYSFileSystem", path: str):
         self.path = path
@@ -56,7 +56,7 @@ class FileSystemNode(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def insert_node(self, name: str) -> "FileSystemNode":
+    def create_child(self, name: str) -> "FileSystemNode":
         """Create a new node in this directory"""
         pass
 

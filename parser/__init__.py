@@ -159,7 +159,7 @@ class IOSYSParser:
             brief_text=brief_text,
         )
         for embedded_file in embedded_files:
-            embedded_node = node.insert_node(embedded_file.name)
+            embedded_node = node.create_child(embedded_file.name)
             embedded_node.update_meta(
                 type=embedded_file.type,
                 description=embedded_file.description,
@@ -173,8 +173,8 @@ class IOSYSParser:
         return IOSYSParsedFile(
             path=node.path,
             name=node.name,
-            created_at=114514,
-            updated_at=1919810,
+            created_at=int(node.meta.get("created_at", 0)),
+            updated_at=int(node.meta.get("modified_at", 0)),
             parent_path=parent.path,
             verbose_text=verbose_text,
             brief_text=brief_text,

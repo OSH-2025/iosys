@@ -1,5 +1,6 @@
 import io
 import json
+import time
 import os
 from typing import Union
 from . import FileSystemNode, IOSYSFileSystem
@@ -27,13 +28,16 @@ class OSFileSystemNode(FileSystemNode):
         if self.meta.get("type") == "embedded":
             raise ValueError("Cannot write to an embedded file directly.")
         real_path = self.fs._get_real_path(self.path)
-        if self.meta.get("type") and self.meta.get("type") != "file":
-            raise FileNotFoundError(
-                f"File {self.path} not initialized or is not a file."
+        if self.meta.get("type") == "directory":
+            raise IsADirectoryError(
+                f"Cannot write to a directory as a file: {self.path}"
             )
         with open(real_path, "wb") as f:
             f.write(content)
-        self.update_meta(type="file")
+        self.update_meta(
+            type="file",
+            modified_at=int(time.time()),
+        )
         self.fs.invoke_on_change(self, "update")
 
     def remove(self):
@@ -66,7 +70,7 @@ class OSFileSystemNode(FileSystemNode):
             children.append(self.fs.get_node(item_path))
         return children
 
-    def insert_node(self, name: str) -> "OSFileSystemNode":
+    def create_child(self, name: str) -> "OSFileSystemNode":
         if self.meta.get("embedded") == "embedded":
             raise ValueError("Cannot insert node into an embedded file.")
         if self.path == "/":
@@ -74,10 +78,11 @@ class OSFileSystemNode(FileSystemNode):
         else:
             path = f"{self.path}/{name}"
         node = OSFileSystemNode(self.fs, path)
-        if self.meta.get("type") == "file":
-            node.update_meta(type="embedded")
-        else:
-            node._sync_metadata()
+        node.update_meta(
+            type="embedded" if self.meta.get("type") == "file" else None,
+            created_at=int(time.time()),
+            modified_at=int(time.time()),
+        )
         return node
 
     def _sync_metadata(self):
@@ -92,7 +97,10 @@ class OSFileSystemNode(FileSystemNode):
         else:
             old_meta = None
         if old_meta and old_meta != "{}":
-            self.meta = {**json.loads(old_meta), **self.meta}
+            self.meta = {
+                **json.loads(old_meta),
+                **{k: v for k, v in self.meta.items() if v is not None},
+            }
             self.fs.invoke_on_change(self, "metadata")
         with open(meta_json, "w") as f:
             f.write(json.dumps(self.meta, indent=2))
@@ -119,7 +127,9 @@ class OSFileSystem(IOSYSFileSystem):
         if path != "/":
             meta_path = self._get_meta_path(path)
             if os.path.isdir(meta_path):
-                return OSFileSystemNode(self, path)
+                node = OSFileSystemNode(self, path)
+                node.update_meta(type="embedded")
+                return node
 
     def _get_real_path(self, virtual_path: str) -> str:
         """Convert virtual path to real path within root_path and validate it"""

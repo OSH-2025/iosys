@@ -241,7 +241,7 @@ class IOSYSFileAgent:
             }
 
         # 创建文件节点
-        node = parent_node.insert_node(file_name)
+        node = parent_node.create_child(file_name)
 
         # 写入文件内容
         if content:
