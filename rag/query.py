@@ -1,7 +1,9 @@
 import os
 from typing import cast
 from qdrant_client import QdrantClient
+from dataclasses import dataclass, asdict
 import asyncio
+from fnmatch import fnmatch
 
 from llama_index.core import VectorStoreIndex, StorageContext
 from llama_index.embeddings.openai import OpenAIEmbedding
@@ -10,8 +12,22 @@ from llama_index.core.base.response.schema import Response
 from llama_index.core import Document
 from llama_index.core.llms.llm import LLM
 from llama_index.vector_stores.qdrant import QdrantVectorStore
+from llama_index.core.schema import NodeRelationship, NodeWithScore
 
 from parser import IOSYSParsedFile
+
+
+@dataclass
+class QueryResponse:
+    response: str
+    files: list[str]
+    nodes: list[NodeWithScore]
+
+    def to_dict(self):
+        return {
+            "response": self.response,
+            "files": self.files,
+        }
 
 
 class IOSYSQueryEngine:
@@ -83,9 +99,32 @@ class IOSYSQueryEngine:
         await self._ensure_initialized()
         self.index.delete_nodes([path])
 
-    async def query_nodes(self, query: str):
+    async def query_nodes(
+        self, query: str, include_glob: list[str], exclude_glob: list[str]
+    ):
+        print(f"[VectorIndex]: Querying nodes with query: {query}")
+
+        def get_file_path(node: NodeWithScore):
+            relation_node = node.node.relationships[NodeRelationship.SOURCE]
+            return relation_node.node_id  # type: ignore
+
+        def filter(path: str):
+            return any(fnmatch(path, pattern) for pattern in include_glob) and not any(
+                fnmatch(path, pattern) for pattern in exclude_glob
+            )
+
         await self._ensure_initialized()
         engine = self.index.as_query_engine(llm=self.llm, use_async=True)
-        print(f"[VectorIndex]: Querying nodes with query: {query}")
-        result = engine.query(query)
-        return cast(Response, result)
+        result = cast(Response, engine.query(query))
+
+        files = set()
+        for node in result.source_nodes:
+            file_path = get_file_path(node)
+            if filter(file_path):
+                files.add(file_path)
+
+        return QueryResponse(
+            response=result.response or "",
+            files=list(files),
+            nodes=result.source_nodes,
+        )

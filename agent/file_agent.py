@@ -764,12 +764,13 @@ class FileAgent:
         },
     )
     async def _search_file_workflow(self, params: Dict[str, Any]) -> ToolCallResult:
-        nodes = await self.config.rag.query.query_nodes(params["query"])
+        result = await self.config.rag.query.query_nodes(
+            params["query"],
+            include_glob=params.get("include_glob", ["**/*"]),
+            exclude_glob=params.get("exclude_glob", []),
+        )
         return {
             "status": "success",
-            "message": f"搜索完成，共找到 {len(nodes.source_nodes)} 个相关文件。具体回复：{nodes.response}",
-            "data": {
-                "file_list": [node.node.get_content() for node in nodes.source_nodes],
-                "weights": [node.score for node in nodes.source_nodes],
-            },
+            "message": f"搜索完成，共找到 {len(result.nodes)} 个相关文件。具体回复：{result.response}",
+            "data": result.to_dict(),
         }
