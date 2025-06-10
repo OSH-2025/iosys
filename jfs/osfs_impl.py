@@ -39,6 +39,20 @@ class OSFileSystemNode(FileSystemNode):
             modified_at=int(time.time()),
         )
         self.fs.invoke_on_change(self, "update")
+    
+    def makedir(self):
+        """Create a directory node"""
+        node_type = self.meta.get("type")
+        if node_type and not node_type == "directory":
+            raise ValueError(f"Wrong node type for makedir at {self.path}, got '{node_type}'")
+        real_path = self.fs._get_real_path(self.path)
+        os.makedirs(real_path, exist_ok=True)
+        self.update_meta(
+            type="directory",
+            created_at=int(time.time()),
+            modified_at=int(time.time()),
+        )
+        self.fs.invoke_on_change(self, "create")
 
     def remove(self):
         """Remove the file"""

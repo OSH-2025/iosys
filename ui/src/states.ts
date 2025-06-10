@@ -20,16 +20,19 @@ export const previewFile = ref<string | null>(null);
 
 export const status = ref<Partial<ApiResponse<"status">>>({});
 
-useIntervalFn(
-  async () => {
-    try {
-      status.value = await rpc.status({});
-    } catch (e) {
-      status.value = {
-        server: 'offline',
-      }
+
+export async function refreshStatus() {
+  try {
+    status.value = await rpc.status({});
+  } catch (e) {
+    status.value = {
+      server: 'offline',
     }
-  },
-  10000,
+  }
+}
+
+useIntervalFn(
+  refreshStatus,
+  5000,
   { immediate: true, immediateCallback: true }
 );

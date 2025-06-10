@@ -42,6 +42,11 @@ class FileSystemNode(abc.ABC):
         pass
 
     @abc.abstractmethod
+    def makedir(self):
+        """Create a directory node"""
+        pass
+
+    @abc.abstractmethod
     def remove(self):
         """Remove the node itself"""
         pass
@@ -83,7 +88,8 @@ CHANGE_TYPE = Literal["create", "update", "delete", "metadata"]
 
 class IOSYSFileSystem(abc.ABC):
     on_change: list[Callable[[FileSystemNode, CHANGE_TYPE], Awaitable[None]]] = []
-    _pending_changes: dict[str, asyncio.Task] = {}
+    
+    _previous_task: asyncio.Task | None = None
 
     @abc.abstractmethod
     def is_running(self) -> bool: ...
@@ -122,7 +128,7 @@ class IOSYSFileSystem(abc.ABC):
     def ensure_directory(self, path: str) -> FileSystemNode:
         node = self.get_node(path)
         if node:
-            if node.meta.get("type") != "directory":
+            if node.meta.get("type", "directory") != "directory":
                 raise ValueError(f"Path {path} is not a directory.")
             return node
         segmented_path = self._normalize_path(path).split("/")
@@ -133,6 +139,7 @@ class IOSYSFileSystem(abc.ABC):
             node = self.get_node(dir_path)
             if not node:
                 node = dir_node.create_child(segment)
+            node.makedir()
             dir_node = node
         return dir_node
 
@@ -146,21 +153,16 @@ class IOSYSFileSystem(abc.ABC):
         if not self.on_change:
             return
 
-        # 使用节点路径作为 key 进行 debounce
-        key = node.path
-
-        # 取消之前的任务
-        if key in self._pending_changes:
-            self._pending_changes[key].cancel()
+        previous_task = self._previous_task
 
         async def execute_callbacks():
-            await asyncio.sleep(0.1)  # 100ms debounce
+            if previous_task and not previous_task.done():
+                await previous_task
             await asyncio.gather(
                 *[callback(node, change_type) for callback in self.on_change]
             )
-            self._pending_changes.pop(key, None)
 
-        self._pending_changes[key] = asyncio.create_task(execute_callbacks())
+        self._previous_task = asyncio.create_task(execute_callbacks())
 
     def _normalize_path(self, path: str) -> str:
         path = path.strip().replace("\\", "/").replace("//", "/")

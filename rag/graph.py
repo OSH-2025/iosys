@@ -1,4 +1,5 @@
 import os
+import shutil
 import time
 import json
 import datetime
@@ -23,13 +24,13 @@ class IOSYSGraphEngine:
     llm: LLM
     graph_store: PropertyGraphStore
     local_graph_path: str | None
-    revision: int = 0
+    revision: int = int(time.time())
 
     recent_event: Optional[Tuple[str, float]] = None
 
     def __init__(self, llm: LLM):
         self.llm = llm
-        self.local_graph_path = os.environ.get("USE_LOCAL_GRAPH_STORE")
+        self.local_graph_path = os.environ["USE_LOCAL_GRAPH_STORE"]
         if self.local_graph_path:
             self.graph_store = SimplePropertyGraphStore()
             if os.path.exists(self.local_graph_path):
@@ -39,6 +40,11 @@ class IOSYSGraphEngine:
                     dumped = json.loads(dumped)
                     self.graph_store = SimplePropertyGraphStore.from_dict(dumped)
                     self.revision = dumped["revision"]
+                else:
+                    local_fs = os.environ["USE_LOCAL_FS"]
+                    if os.path.exists(local_fs):
+                        shutil.rmtree(local_fs)
+                        os.makedirs(local_fs)
         else:
             self.graph_store = NebulaPropertyGraphStore(
                 username=os.environ["NEBULA_USERNAME"],
@@ -48,12 +54,11 @@ class IOSYSGraphEngine:
                 overwrite=True,
             )
 
-    async def create_node(self, path: str, parsed: IOSYSParsedFile):
-        return await self.update_node(path, parsed)
+    async def create_file(self, path: str, parsed: IOSYSParsedFile):
+        return await self.update_file(path, parsed)
 
-    async def update_node(self, path: str, parsed: IOSYSParsedFile):
+    async def update_file(self, path: str, parsed: IOSYSParsedFile):
         try:
-            self.graph_store.aupsert_nodes
             await self.graph_store.aupsert_nodes(
                 [
                     EntityNode(
@@ -63,17 +68,16 @@ class IOSYSGraphEngine:
                     )
                 ]
             )
-            if parsed.parent_path:
-                await self.graph_store.aupsert_relations(
-                    [
-                        Relation(
-                            source_id=parsed.parent_path,
-                            label="contains",
-                            target_id=path,
-                        )
-                    ]
-                )
-            await self.connect_event(path)
+            await self.graph_store.aupsert_relations(
+                [
+                    Relation(
+                        source_id=parsed.parent_path,
+                        label="contains",
+                        target_id=path,
+                    )
+                ]
+            )
+            await self.connect_event(path, "updated")
             self.commit()
         except Exception as e:
             print(f"Error updating file {path}: ", e)
@@ -82,13 +86,44 @@ class IOSYSGraphEngine:
     async def delete_file(self, path: str):
         try:
             await self.graph_store.adelete(entity_names=[path])
-            await self.connect_event(path)
+            await self.connect_event(path, "deleted")
             self.commit()
         except Exception as e:
             print(f"Error removing file {path}: ", e)
             raise e
 
-    async def connect_event(self, path: str):
+    async def create_directory(self, path: str, parent_path: str):
+        return await self.update_directory(path, parent_path)
+
+    async def update_directory(self, path: str, parent_path: str):
+        try:
+            await self.graph_store.aupsert_nodes(
+                [
+                    EntityNode(
+                        name=path,
+                        label="directory",
+                    )
+                ]
+            )
+            await self.graph_store.aupsert_relations(
+                [
+                    Relation(
+                        source_id=parent_path,
+                        label="contains",
+                        target_id=path,
+                    )
+                ]
+            )
+            await self.connect_event(path, "created")
+            self.commit()
+        except Exception as e:
+            print(f"Error creating directory {path}: ", e)
+            raise e
+
+    async def delete_directory(self, path: str):
+        raise NotImplementedError("Delete directory is not implemented yet.")
+
+    async def connect_event(self, path: str, label: str):
         current_time = time.time()
         if (
             self.recent_event
@@ -96,7 +131,7 @@ class IOSYSGraphEngine:
         ):
             event_name, _ = self.recent_event
         else:
-            event_name = f"event_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            event_name = f"event_{datetime.datetime.now().strftime('%m/%d_%H:%M')}"
             await self.graph_store.aupsert_nodes(
                 [
                     EntityNode(
@@ -111,7 +146,7 @@ class IOSYSGraphEngine:
             [
                 Relation(
                     source_id=event_name,
-                    label="modified",
+                    label=label,
                     target_id=path,
                 )
             ]
