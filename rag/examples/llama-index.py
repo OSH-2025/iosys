@@ -86,7 +86,8 @@ relationship_pattern = r"source_entity:\s*(.+?)\s*target_entity:\s*(.+?)\s*relat
 def parse_fn(response_str: str) -> Any:
     """Parse LLM response to extract entities and relationships."""
     entities = re.findall(entity_pattern, response_str)
-    relationships = re.findall(relationship_pattern, response_str)
+    relationships = re.findall(
+        , response_str)
     return entities, relationships
 
 
