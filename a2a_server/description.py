@@ -21,4 +21,4 @@ examples = [
     "Delete the file 'example.txt'",
     "What is the size of 'example.txt'?",
     "Find a file containing a story about a tree",
-]   
+]
