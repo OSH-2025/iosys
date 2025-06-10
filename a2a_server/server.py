@@ -24,7 +24,7 @@ def get_agent_card():
     return AgentCard(
         name=description.name,
         description="Helps with manipulating files in the user's file system.",
-        url=f"http://localhost:{os.environ["A2A_SERVER_PORT"]}/",
+        url=f"http://localhost:{os.environ['A2A_SERVER_PORT']}/",
         version="1.0.0",
         defaultInputModes=["text", "text/plain"],
         defaultOutputModes=["text", "text/plain"],
@@ -46,7 +46,8 @@ def get_app():
         agent_card=get_agent_card(),
         request_handler=request_handler,
     )
-    
+
     return server.app()
+
 
 app = get_app()
