@@ -14,17 +14,13 @@ const md = new MarkdownIt({
 
 <script setup lang="ts">
 import "github-markdown-css/github-markdown-light.css";
-import { computed, watchEffect } from 'vue';
+import { computed } from 'vue';
 
 const props = defineProps<{
   content: string
 }>();
 
 const renderedContent = computed(() => md.render(props.content || ''));
-
-watchEffect(() => {
-  console.log('Rendered content:', renderedContent.value);
-});
 </script>
 
 <style scoped>
