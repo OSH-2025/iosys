@@ -106,9 +106,26 @@ class IOSYSFileSystem(abc.ABC):
 
     def write(self, path: str, content: bytes):
         node = self.get_node(path)
-        if not node:
-            raise FileNotFoundError(f"File {path} not found.")
+        if node:
+            node.write(content)
+            return node
+        # If the node does not exist, we need to create it
+        segmented_path = self._normalize_path(path).split("/")
+        if not segmented_path:
+            raise ValueError("Cannot write to root directory.")
+        dir_path = "/"
+        dir_node = self.get_root()
+        file_name = segmented_path[-1]
+        for segment in segmented_path[:-1]:
+            dir_path = dir_path + segment + "/"
+            node = self.get_node(dir_path)
+            if not node:
+                node = dir_node.create_child(segment)
+            dir_node = node
+        path = dir_path + file_name
+        node = dir_node.create_child(file_name)
         node.write(content)
+        return node
 
     def remove(self, path: str):
         node = self.get_node(path)

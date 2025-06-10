@@ -222,7 +222,7 @@ class IOSYSFileAgent:
         """创建文件"""
         parent_path = self._normalize_path(params.get("path", ""))
         file_name = params.get("file_name", "new_file.txt")
-        content = params.get("content")
+        content = params.get("content", "")
 
         # 检查文件是否已存在
         path = self._normalize_path(f"{parent_path}/{file_name}")
@@ -233,24 +233,12 @@ class IOSYSFileAgent:
                 "message": f"文件已存在: {path}",
             }
 
-        parent_node = self.fs.get_node(parent_path)
-        if not parent_node:
-            return {
-                "status": "error",
-                "message": f"父目录不存在: {params['path']}",
-            }
-
-        # 创建文件节点
-        node = parent_node.create_child(file_name)
-
-        # 写入文件内容
-        if content:
-            node.write(content.encode("utf-8"))
+        self.fs.write(path, content.encode("utf-8"))
 
         return {
             "status": "success",
             "message": f"文件创建成功: {params['file_name']}",
-            "data": {"path": node.path},
+            "data": {"path": path},
         }
 
     @tool(
