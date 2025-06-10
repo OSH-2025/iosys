@@ -88,7 +88,7 @@ CHANGE_TYPE = Literal["create", "update", "delete", "metadata"]
 
 class IOSYSFileSystem(abc.ABC):
     on_change: list[Callable[[FileSystemNode, CHANGE_TYPE], Awaitable[None]]] = []
-    
+
     _previous_task: asyncio.Task | None = None
 
     @abc.abstractmethod
