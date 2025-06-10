@@ -1,7 +1,7 @@
 import os
 from typing import cast
 from qdrant_client import QdrantClient
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 import asyncio
 from fnmatch import fnmatch
 
