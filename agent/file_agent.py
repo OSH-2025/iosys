@@ -233,7 +233,7 @@ class IOSYSFileAgent:
                 "message": f"文件已存在: {path}",
             }
 
-        self.fs.write(path, content.encode("utf-8"))
+        self.fs.write_file(path, content.encode("utf-8"))
 
         return {
             "status": "success",
@@ -255,41 +255,25 @@ class IOSYSFileAgent:
     )
     def _create_directory(self, params: Dict[str, Any]) -> ToolCallResult:
         """创建目录"""
-        if "directory_name" not in params:
-            params["directory_name"] = "new_directory"
-        if "path" not in params:
-            params["path"] = "."
-
-        # 构造目录路径
-        if params["path"] == ".":
-            dir_path = params["directory_name"]
-        else:
-            dir_path = f"{params['path']}/{params['directory_name']}"
-
-        dir_id = self._normalize_path(dir_path)
+        parent_path = self._normalize_path(params.get("path", "/"))
+        directory_name = params.get("directory_name", "new_directory")
+        if not directory_name:
+            return {"status": "error", "message": "目录名不能为空"}
+        dir_path = self._normalize_path(f"{parent_path}/{directory_name}")
 
         # 检查目录是否已存在
-        if self.fs.exists(dir_id):
+        if self.fs.get_node(dir_path):
             return {
                 "status": "error",
                 "message": f"目录已存在: {params['directory_name']}",
             }
 
-        # 确保父目录存在
-        parent_id = self._normalize_path(params["path"])
-        parent_node = self.fs.get_node(parent_id)
-        if not parent_node:
-            return {
-                "status": "error",
-                "message": f"父目录不存在: {params['path']}",
-            }
-
         # 创建目录节点
-        parent_node.insert_dir(params["directory_name"])
+        self.fs.ensure_directory(dir_path)
         return {
             "status": "success",
-            "message": f"目录创建成功: {params['directory_name']}",
-            "data": {"path": dir_id},
+            "message": f"目录创建成功: {dir_path}",
+            "data": {"path": dir_path},
         }
 
     @tool(
@@ -403,7 +387,7 @@ class IOSYSFileAgent:
 
         # 写入目标文件
         try:
-            self.fs.write(dst_id, content)
+            self.fs.write_file(dst_id, content)
         except FileNotFoundError:
             return {
                 "status": "error",
@@ -513,7 +497,7 @@ class IOSYSFileAgent:
         content = self.fs.read(file_id)
 
         # 写入新文件
-        self.fs.write(new_id, content)
+        self.fs.write_file(new_id, content)
 
         # 删除原文件
         self.fs.remove(file_id)
@@ -697,7 +681,7 @@ class IOSYSFileAgent:
             content = existing_content + content
 
         # 写入文件
-        self.fs.write(file_id, content.encode("utf-8"))
+        self.fs.write_file(file_id, content.encode("utf-8"))
 
         return {
             "status": "success",

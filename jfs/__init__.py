@@ -104,28 +104,37 @@ class IOSYSFileSystem(abc.ABC):
             raise FileNotFoundError(f"File {path} not found.")
         return node.read()
 
-    def write(self, path: str, content: bytes):
+    def write_file(self, path: str, content: bytes) -> FileSystemNode:
         node = self.get_node(path)
         if node:
             node.write(content)
             return node
-        # If the node does not exist, we need to create it
         segmented_path = self._normalize_path(path).split("/")
         if not segmented_path:
             raise ValueError("Cannot write to root directory.")
-        dir_path = "/"
-        dir_node = self.get_root()
+        dir_name = "/".join(segmented_path[:-1]) + "/"
         file_name = segmented_path[-1]
-        for segment in segmented_path[:-1]:
-            dir_path = dir_path + segment + "/"
+        dir_node = self.ensure_directory(dir_name)
+        node = dir_node.create_child(file_name)
+        node.write(content)
+        return node
+
+    def ensure_directory(self, path: str) -> FileSystemNode:
+        node = self.get_node(path)
+        if node:
+            if node.meta.get("type") != "directory":
+                raise ValueError(f"Path {path} is not a directory.")
+            return node
+        segmented_path = self._normalize_path(path).split("/")
+        dir_path = ""
+        dir_node = self.get_root()
+        for segment in segmented_path:
+            dir_path = dir_path + "/" + segment
             node = self.get_node(dir_path)
             if not node:
                 node = dir_node.create_child(segment)
             dir_node = node
-        path = dir_path + file_name
-        node = dir_node.create_child(file_name)
-        node.write(content)
-        return node
+        return dir_node
 
     def remove(self, path: str):
         node = self.get_node(path)
