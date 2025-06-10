@@ -1,13 +1,11 @@
 import os
 from typing import cast
-from qdrant_client import QdrantClient, AsyncQdrantClient
-from qdrant_client.models import VectorParams, Distance
+from qdrant_client import QdrantClient
 import asyncio
 from dotenv import load_dotenv
 
 from llama_index.core import VectorStoreIndex, StorageContext
 from llama_index.embeddings.openai import OpenAIEmbedding
-from llama_index.core.embeddings.utils import EmbedType
 from llama_index.core.base.response.schema import Response
 from llama_index.core import Document
 from llama_index.llms.openai import OpenAI
