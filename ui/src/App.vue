@@ -32,9 +32,11 @@
       </aside>
 
       <!-- Resize Handle -->
-      <div 
-        @mousedown="startResize"
-        class="ml--1 w-1 hover:bg-gray-300 cursor-col-resize transition-colors duration-150 flex-shrink-0">
+      <div class="relative w-0 z-100">
+        <div 
+          @mousedown="startResize"
+          class="absolute inset-x--3px inset-y-0 hover:bg-gray-300 cursor-col-resize transition-colors duration-150">
+        </div>
       </div>
 
       <!-- Right Main Content -->
