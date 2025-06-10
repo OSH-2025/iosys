@@ -16,11 +16,12 @@ class IOSYSRAG:
     graph: IOSYSGraphEngine
     _dump_timer: threading.Timer
 
-    def __init__(self, fs: IOSYSFileSystem):
+    def __init__(self, fs: IOSYSFileSystem, parser: IOSYSParser):
         self.fs = fs
         self.fs.on_change.append(self.on_fs_change)
 
-        self.parser = IOSYSParser()
+        self.parser = parser
+
         llm = OpenAI(
             api_base=os.environ["LLM_BASE_URL"],
             api_key=os.environ["LLM_API_KEY"],

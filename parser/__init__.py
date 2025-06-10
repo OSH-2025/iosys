@@ -40,18 +40,15 @@ class IOSYSParsedFile:
 
 
 class IOSYSParser:
-    client: OpenAI
+    llm: OpenAI
     model: str
     md: MarkItDown
 
-    def __init__(self):
-        self.client = OpenAI(
-            base_url=os.environ["LLM_BASE_URL"],
-            api_key=os.environ["LLM_API_KEY"],
-        )
+    def __init__(self, llm: OpenAI):
+        self.llm = llm
         self.model = os.environ["LLM_MODEL_NAME"]
         self.md = MarkItDown(
-            llm_client=self.client,
+            llm_client=self.llm,
             llm_model=self.model,
         )
 
@@ -60,7 +57,7 @@ class IOSYSParser:
         prompt: str,
         additional,
     ) -> str:
-        if not self.client or not self.model:
+        if not self.llm or not self.model:
             raise Exception("LLM not initialized")
 
         messages = [
@@ -73,7 +70,7 @@ class IOSYSParser:
             }
         ]
 
-        response = self.client.chat.completions.create(
+        response = self.llm.chat.completions.create(
             model=self.model,
             messages=messages,  # type: ignore
         )

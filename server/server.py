@@ -9,6 +9,7 @@ from fastapi.responses import Response
 from jfs import new_fs
 from agent.app import FileManagerApp
 from agent.config import AgentConfig
+from parser import IOSYSParser
 from rag import IOSYSRAG
 
 
@@ -21,7 +22,8 @@ llm = OpenAI(
 )
 
 fs = new_fs()
-rag = IOSYSRAG(fs=fs)
+parser = IOSYSParser(llm=llm)
+rag = IOSYSRAG(fs=fs, parser=parser)
 file_manager = FileManagerApp(AgentConfig(llm=llm, fs=fs, rag=rag))
 
 app = FastAPI()
