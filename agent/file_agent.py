@@ -64,7 +64,7 @@ def tool(name: str, description: str, parameters: FunctionParameters):
     return decorator
 
 
-class IOSYSFileAgent:
+class FileAgent:
     """基于LLM的文件管理Agent"""
 
     def __init__(self, config: AgentConfig):
