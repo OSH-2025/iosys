@@ -67,7 +67,18 @@ class IOSYSAgent:
 
             # 处理LLM响应
             message = response.choices[0].message.content if response.choices else None
-            message = message + "\n\n---\n\n" if message else ""
+            message = message.strip() if message else ""
+
+            def concat_message(msg: str | None) -> str:
+                result = message
+                if msg:
+                    msg = msg.strip()
+                    if result and msg:
+                        result += "\n\n---\n\n" + msg
+                    elif msg:
+                        result += msg
+                return result
+
             # 提取function call信息
             if hasattr(response, "choices") and response.choices:
                 choice = response.choices[0]
@@ -88,24 +99,23 @@ class IOSYSAgent:
                         if result["status"] != "success":
                             return {
                                 "status": "error",
-                                "message": message + result.get("message", "工具调用失败"),
+                                "message": concat_message(result.get("message", "工具调用失败")),
                             }
                         else:
                             return {
                                 "status": "success",
-                                "message": message + result.get("message", ""),
+                                "message": concat_message(result.get("message", "")),
                                 "data": result.get("data", {}),
                             }
                     else:
                         return {
                             "status": "error",
-                            "message": message
-                            + f"工具调用失败：不支持的操作: {function_name}",
+                            "message": concat_message(f"工具调用失败：不支持的操作: {function_name}"),
                         }
                 else:
                     return {
                         "status": "success",
-                        "message": message + "LLM 没有调用任何工具函数",
+                        "message": message,
                     }
             else:
                 return {"status": "error", "message": message + "无效的 LLM 响应格式"}
