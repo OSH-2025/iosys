@@ -29,6 +29,7 @@ dependencies = [
     "juicefs_local==1.3.0",
     "qdrant-client>=1.12.1",
     "llama-index-vector-stores-qdrant>=0.6.0",
+    "mcp>=1.9.3",
 ]
 
 [tool.uv.sources]
