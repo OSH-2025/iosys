@@ -35,7 +35,7 @@ class McpTool:
     handler: Callable[..., Awaitable[Any]]
 
 
-class IOSYSMCP:
+class MCPClient:
     def __init__(self) -> None:
         self.servers: Dict[str, ServerInfo] = {}
         self.sessions: Dict[str, SessionInfo] = {}  # session_id -> SessionInfo

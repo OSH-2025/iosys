@@ -1,11 +1,11 @@
 import logging
 from typing import Dict, Any, NotRequired, TypedDict
-from openai.types.chat import ChatCompletion
 import json
 import inspect
 
 from .file_agent import FileAgent
 from .config import AgentConfig
+from .mcp import MCPClient
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +30,7 @@ class IOSYSAgent:
         """
         self.config = config
         self.file_agent = FileAgent(config=self.config)
+        self.mcp = MCPClient()
 
     async def process_command(self, user_input: str) -> Dict[str, Any]:
         """
@@ -48,11 +49,11 @@ class IOSYSAgent:
 
     async def _process(self, user_input: str) -> ToolCallResult:
         # 收集工具配置和处理函数
-        tool_configs = [
-            *self.file_agent.tool_configs,
-        ]
+        _id, mcp_tool_configs, mcp_tool_handlers = await self.mcp.start_session()
+        tool_configs = [*self.file_agent.tool_configs, *mcp_tool_configs]
         tool_handlers = {
             **self.file_agent.tool_handlers,
+            **mcp_tool_handlers,
         }
 
         # 调用 LLM 进行工具选择和调用
