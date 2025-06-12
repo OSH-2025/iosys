@@ -18,9 +18,8 @@ class ServerInfo:
     connection_exit_stack: AsyncExitStack
     read_stream: MemoryObjectReceiveStream[SessionMessage | Exception]
     write_stream: MemoryObjectSendStream[SessionMessage]
-    server_config: Optional[Dict[str, Any]] = (
-        None  # Store original config for comparison
-    )
+    server_config: Dict[str, Any]
+    errors: Optional[List[str]] = None
 
 
 @dataclass
@@ -64,6 +63,10 @@ class MCPClient:
             exit_stack=session_exit_stack,
         )
         for server_info in self.servers.values():
+            # Skip servers with errors
+            if server_info.errors:
+                continue
+
             # Create and initialize session using existing connection
             session = await session_exit_stack.enter_async_context(
                 ClientSession(server_info.read_stream, server_info.write_stream)
@@ -93,7 +96,7 @@ class MCPClient:
             await server_info.exit_stack.aclose()
             del self.sessions[session_id]
 
-    async def _add_http_server(self, server_url: str) -> None:
+    async def _add_http_server(self, server_name: str, server_url: str) -> None:
         """Add a new HTTP MCP server"""
         if server_url in self.servers:
             await self._remove_server(server_url)
@@ -108,7 +111,7 @@ class MCPClient:
             )
 
             # Store session info and tools with connection information
-            self.servers[server_url] = ServerInfo(
+            self.servers[server_name] = ServerInfo(
                 connection_exit_stack=exit_stack,
                 read_stream=read_stream,
                 write_stream=write_stream,
@@ -165,7 +168,9 @@ class MCPClient:
         self, server_info: ServerInfo, new_config: Dict[str, Any]
     ) -> bool:
         """Check if server configuration matches the new config"""
-        if not server_info.server_config:
+
+        # Don't reuse connections with errors
+        if server_info.errors:
             return False
 
         current_config = server_info.server_config
@@ -221,7 +226,10 @@ class MCPClient:
                 )
             elif "url" in server_config:
                 # HTTP server
-                await self._add_http_server(server_config["url"])
+                await self._add_http_server(
+                    server_name=server_name,
+                    server_url=server_config["url"],
+                )
             else:
                 raise ValueError(
                     f"Invalid server configuration for {server_name}: missing 'command' or 'url'"
@@ -269,6 +277,20 @@ class MCPClient:
     ) -> Dict[str, Callable[..., Awaitable[Any]]]:
         """Private method to get handlers for a specific session"""
         return {tool.name: tool.handler for tool in mcp_tools}
+
+    def get_status(self) -> Dict[str, Any]:
+        """Get status of all servers
+
+        Returns:
+            Dict mapping server names to either True (healthy) or list of errors
+        """
+        status = {}
+        for server_name, server_info in self.servers.items():
+            if server_info.errors:
+                status[server_name] = server_info.errors
+            else:
+                status[server_name] = True
+        return status
 
     async def __aenter__(self):
         return self
