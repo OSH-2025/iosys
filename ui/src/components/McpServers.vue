@@ -142,96 +142,141 @@
       @click="closeModal"
     >
       <div
-        class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4"
+        class="bg-white rounded-lg shadow-lg w-full max-w-2xl mx-4"
         @click.stop
       >
         <div class="px-6 py-4 border-b border-gray-200">
-          <h3 class="text-lg font-medium text-gray-900">
-            {{ editingServer ? 'Edit Server' : 'Add New Server' }}
-          </h3>
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-medium text-gray-900">
+              {{ editingServer ? 'Edit Server' : 'Add New Server' }}
+            </h3>
+            <div class="flex items-center space-x-2">
+              <span class="text-sm text-gray-600">Form</span>
+              <button
+                type="button"
+                @click="jsonMode = !jsonMode"
+                :class="[
+                  'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+                  jsonMode ? 'bg-blue-600' : 'bg-gray-200'
+                ]"
+              >
+                <span
+                  :class="[
+                    'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
+                    jsonMode ? 'translate-x-6' : 'translate-x-1'
+                  ]"
+                />
+              </button>
+              <span class="text-sm text-gray-600">JSON</span>
+            </div>
+          </div>
         </div>
         
         <form @submit.prevent="saveServer" class="p-6 space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Server Name
-            </label>
-            <input
-              v-model="serverForm.name"
-              type="text"
-              required
-              :disabled="!!editingServer"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="my-server"
-            />
-          </div>
-          
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Server Type
-            </label>
-            <select
-              v-model="serverForm.type"
-              required
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="stdio">Stdio</option>
-              <option value="http">HTTP</option>
-            </select>
-          </div>
-          
-          <!-- Stdio Configuration -->
-          <div v-if="serverForm.type === 'stdio'" class="space-y-4">
+          <!-- Form Mode -->
+          <div v-if="!jsonMode">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">
-                Command
+                Server Name
               </label>
               <input
-                v-model="serverForm.command"
+                v-model="serverForm.name"
                 type="text"
                 required
+                :disabled="!!editingServer"
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="/path/to/executable"
+                placeholder="my-server"
               />
             </div>
             
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">
-                Arguments (one per line)
+                Server Type
               </label>
-              <textarea
-                v-model="argsText"
+              <select
+                v-model="serverForm.type"
+                required
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                rows="3"
-                placeholder="--arg1&#10;--arg2"
-              ></textarea>
+              >
+                <option value="stdio">Stdio</option>
+                <option value="http">HTTP</option>
+              </select>
             </div>
             
-            <div>
+            <!-- Stdio Configuration -->
+            <div v-if="serverForm.type === 'stdio'" class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Command
+                </label>
+                <input
+                  v-model="serverForm.command"
+                  type="text"
+                  required
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="/path/to/executable"
+                />
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Arguments (one per line)
+                </label>
+                <textarea
+                  v-model="argsText"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows="3"
+                  placeholder="--arg1&#10;--arg2"
+                ></textarea>
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Environment Variables (KEY=VALUE, one per line)
+                </label>
+                <textarea
+                  v-model="envText"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows="3"
+                  placeholder="NODE_ENV=production&#10;API_KEY=secret"
+                ></textarea>
+              </div>
+            </div>
+            
+            <!-- HTTP Configuration -->
+            <div v-if="serverForm.type === 'http'">
               <label class="block text-sm font-medium text-gray-700 mb-2">
-                Environment Variables (KEY=VALUE, one per line)
+                Server URL
               </label>
-              <textarea
-                v-model="envText"
+              <input
+                v-model="serverForm.url"
+                type="url"
+                required
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                rows="3"
-                placeholder="NODE_ENV=production&#10;API_KEY=secret"
-              ></textarea>
+                placeholder="http://localhost:8080"
+              />
             </div>
           </div>
-          
-          <!-- HTTP Configuration -->
-          <div v-if="serverForm.type === 'http'">
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Server URL
-            </label>
-            <input
-              v-model="serverForm.url"
-              type="url"
-              required
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="http://localhost:8080"
-            />
+
+          <!-- JSON Mode -->
+          <div v-else>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Server Configuration (JSON)
+              </label>
+              <div class="text-xs text-gray-500 mb-2">
+                Edit the complete MCP servers configuration directly. Changes will overwrite the current configuration.
+              </div>
+              <textarea
+                v-model="jsonText"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                rows="15"
+                :placeholder="jsonPlaceholder"
+              ></textarea>
+              <div v-if="jsonError" class="mt-2 text-sm text-red-600">
+                {{ jsonError }}
+              </div>
+            </div>
           </div>
           
           <div class="flex justify-end space-x-3 pt-4">
@@ -244,7 +289,7 @@
             </button>
             <button
               type="submit"
-              :disabled="saving"
+              :disabled="saving || (jsonMode && !!jsonError)"
               class="px-4 py-2 text-sm font-medium text-white bg-black rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
             >
               {{ saving ? 'Saving...' : (editingServer ? 'Update' : 'Add') }}
@@ -265,12 +310,26 @@ import { status } from '../states'
 // State
 const loading = ref(false)
 const saving = ref(false)
-const mcpServers = computed(() => status.value.mcp_servers)
-const currentConfig = ref<Record<string, any>>({})
+const mcpServers = computed(() => status.value.mcp_servers ?? {})
+const currentConfig = ref<Record<string, any>>({
+  "mcpServers": {
+    "time": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-time",
+        "--local-timezone=America/New_York"
+      ]
+    }
+  }
+})
 
 // Modal state
 const showAddModal = ref(false)
 const editingServer = ref<string | null>(null)
+const jsonMode = ref(false)
+const jsonPlaceholder = JSON.stringify(currentConfig.value)
+const jsonText = ref(jsonPlaceholder)
+const jsonError = ref('')
 
 // Form state
 const serverForm = ref({
@@ -285,15 +344,15 @@ const envText = ref('')
 
 // Computed
 const activeServersCount = computed(() => 
-  Object.values(mcpServers.value ?? {}).filter(status => status === true).length
+  Object.values(mcpServers.value).filter(status => status === true).length
 )
 
 const errorServersCount = computed(() => 
-  Object.values(mcpServers.value ?? {}).filter(status => status !== true).length
+  Object.values(mcpServers.value).filter(status => status !== true).length
 )
 
 const totalServersCount = computed(() => 
-  Object.keys(mcpServers.value ?? {}).length
+  Object.keys(mcpServers.value).length
 )
 
 const loadCurrentConfig = () => {
@@ -336,24 +395,17 @@ const editServer = (serverName: string) => {
     serverForm.value.type = 'http'
     serverForm.value.url = config.url
   }
-}
-
-const removeServer = async (serverName: string) => {
-  if (!confirm(`Are you sure you want to remove server "${serverName}"?`)) {
-    return
-  }
   
-  // Remove from config
-  if (currentConfig.value.mcpServers) {
-    delete currentConfig.value.mcpServers[serverName]
-  }
-  
-  await syncConfig()
+  // Initialize JSON text
+  updateJsonText()
 }
 
 const closeModal = () => {
   showAddModal.value = false
   editingServer.value = null
+  jsonMode.value = false
+  jsonText.value = ''
+  jsonError.value = ''
   resetForm()
 }
 
@@ -368,40 +420,82 @@ const resetForm = () => {
   envText.value = ''
 }
 
+const updateJsonText = () => {
+  jsonText.value = JSON.stringify(currentConfig.value, null, 2)
+  jsonError.value = ''
+}
+
+const validateJson = () => {
+  if (!jsonMode.value) return true
+  
+  try {
+    JSON.parse(jsonText.value)
+    jsonError.value = ''
+    return true
+  } catch (error) {
+    jsonError.value = `Invalid JSON: ${error.message}`
+    return false
+  }
+}
+
+// Watch for JSON text changes to validate
+import { watch } from 'vue'
+
+watch(jsonText, () => {
+  if (jsonMode.value) {
+    validateJson()
+  }
+})
+
+watch(jsonMode, (newMode) => {
+  if (newMode) {
+    updateJsonText()
+  }
+})
+
 const saveServer = async () => {
   saving.value = true
   
   try {
-    // Initialize config if needed
-    if (!currentConfig.value.mcpServers) {
-      currentConfig.value.mcpServers = {}
-    }
-    
-    // Build server config
-    const serverConfig: any = {}
-    
-    if (serverForm.value.type === 'stdio') {
-      serverConfig.command = serverForm.value.command
-      
-      if (argsText.value.trim()) {
-        serverConfig.args = argsText.value.trim().split('\n').filter(arg => arg.trim())
+    if (jsonMode.value) {
+      // Save from JSON
+      if (!validateJson()) {
+        saving.value = false
+        return
       }
       
-      if (envText.value.trim()) {
-        serverConfig.env = {}
-        envText.value.trim().split('\n').forEach(line => {
-          const [key, ...valueParts] = line.split('=')
-          if (key && valueParts.length > 0) {
-            serverConfig.env[key.trim()] = valueParts.join('=').trim()
-          }
-        })
+      const parsedConfig = JSON.parse(jsonText.value)
+      currentConfig.value = parsedConfig
+    } else {
+      // Save from form (existing logic)
+      if (!currentConfig.value.mcpServers) {
+        currentConfig.value.mcpServers = {}
       }
-    } else if (serverForm.value.type === 'http') {
-      serverConfig.url = serverForm.value.url
+      
+      const serverConfig: any = {}
+      
+      if (serverForm.value.type === 'stdio') {
+        serverConfig.command = serverForm.value.command
+        
+        if (argsText.value.trim()) {
+          serverConfig.args = argsText.value.trim().split('\n').filter(arg => arg.trim())
+        }
+        
+        if (envText.value.trim()) {
+          serverConfig.env = {}
+          envText.value.trim().split('\n').forEach(line => {
+            const [key, ...valueParts] = line.split('=')
+            if (key && valueParts.length > 0) {
+              serverConfig.env[key.trim()] = valueParts.join('=').trim()
+            }
+          })
+        }
+      } else if (serverForm.value.type === 'http') {
+        serverConfig.url = serverForm.value.url
+      }
+      
+      currentConfig.value.mcpServers[serverForm.value.name] = serverConfig
     }
-    
-    // Add to config
-    currentConfig.value.mcpServers[serverForm.value.name] = serverConfig
     
     await syncConfig()
     closeModal()
@@ -420,6 +514,22 @@ const syncConfig = async () => {
   } catch (error) {
     console.error('Failed to sync MCP config:', error)
     alert('Failed to sync server configuration')
+  }
+}
+
+const removeServer = async (serverName: string) => {
+  if (!confirm(`Are you sure you want to remove server "${serverName}"?`)) {
+    return
+  }
+  
+  try {
+    if (currentConfig.value.mcpServers && currentConfig.value.mcpServers[serverName]) {
+      delete currentConfig.value.mcpServers[serverName]
+      await syncConfig()
+    }
+  } catch (error) {
+    console.error('Failed to remove server:', error)
+    alert('Failed to remove server')
   }
 }
 

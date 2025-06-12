@@ -161,7 +161,7 @@ class MCPClient:
             if "exit_stack" in locals():
                 await exit_stack.aclose()
             raise RuntimeError(
-                f"Failed to connect to stdio server {server_name}"
+                f"Failed to connect to stdio server {server_name}: {e}"
             ) from e
 
     def _config_matches(
