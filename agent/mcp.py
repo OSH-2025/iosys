@@ -94,15 +94,19 @@ class MCPClient:
     async def end_session(self, session_id: str) -> None:
         """End a specific session"""
         if session_id in self.sessions:
-            server_info = self.sessions[session_id]
+            session_info = self.sessions[session_id]
 
-            # Close session
-            for name, exit_stack in server_info.exit_stacks.items():
+            # Close session exit stacks in reverse order
+            for name in list(session_info.exit_stacks.keys()):
                 try:
+                    exit_stack = session_info.exit_stacks[name]
                     await exit_stack.aclose()
+                    del session_info.exit_stacks[name]
                 except Exception as e:
-                    print(f"Error closing exit stack for {name}: {e}")
-                    self.servers[name].errors.append(f"{e}")
+                    print(f"Error closing session for {name}: {e}")
+                    if name in self.servers:
+                        self.servers[name].errors.append(f"Session cleanup error: {e}")
+        
             del self.sessions[session_id]
 
     async def _add_http_server(self, server_name: str, server_url: str) -> None:
@@ -252,26 +256,41 @@ class MCPClient:
                     f"Invalid server configuration for {server_name}: missing 'command' or 'url'"
                 )
 
-    async def _remove_server(self, server_url: str) -> None:
+    async def _remove_server(self, server_name: str) -> None:
         """Remove an MCP server"""
-        if server_url in self.servers:
-            for session_info in self.sessions.values():
-                # Remove this server from all sessions
-                if server_url in session_info.exit_stacks:
-                    await session_info.exit_stacks[server_url].aclose()
-                    del session_info.exit_stacks[server_url]
+        if server_name in self.servers:
+            # First, remove this server from all active sessions
+            for session_id, session_info in list(self.sessions.items()):
+                if server_name in session_info.exit_stacks:
+                    try:
+                        await session_info.exit_stacks[server_name].aclose()
+                        del session_info.exit_stacks[server_name]
+                    except Exception as e:
+                        print(f"Error closing session exit stack for {server_name}: {e}")
 
-            server_info = self.servers[server_url]
-            # Properly close the connection
-            await server_info.connection_exit_stack.aclose()
-            del self.servers[server_url]
+            # Then close the server's main connection
+            server_info = self.servers[server_name]
+            try:
+                await server_info.connection_exit_stack.aclose()
+            except Exception as e:
+                print(f"Error closing server connection for {server_name}: {e}")
+        
+            del self.servers[server_name]
 
     async def _close_all_servers(self) -> None:
         """Close all server connections"""
+        # Close all sessions first
         for session_id in list(self.sessions.keys()):
             await self.end_session(session_id)
-        for server_url in list(self.servers.keys()):
-            await self._remove_server(server_url)
+        
+        # Then close all server connections
+        for server_name in list(self.servers.keys()):
+            try:
+                server_info = self.servers[server_name]
+                await server_info.connection_exit_stack.aclose()
+                del self.servers[server_name]
+            except Exception as e:
+                print(f"Error closing server {server_name}: {e}")
 
     def _get_tools_for_session(self, mcp_tools: List[McpTool]) -> List[Dict[str, Any]]:
         """Private method to get tools for a specific session"""
