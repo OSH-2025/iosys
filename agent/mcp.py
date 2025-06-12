@@ -1,6 +1,6 @@
 # Credit: https://github.com/langchain-ai/langchain-mcp-adapters/
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Callable, Awaitable
 from contextlib import AsyncExitStack
 from mcp.client.streamable_http import streamablehttp_client, SessionMessage
@@ -19,7 +19,7 @@ class ServerInfo:
     read_stream: MemoryObjectReceiveStream[SessionMessage | Exception]
     write_stream: MemoryObjectSendStream[SessionMessage]
     server_config: Dict[str, Any]
-    errors: Optional[List[str]] = None
+    errors: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -60,30 +60,38 @@ class MCPClient:
             exit_stacks={},
         )
         for name, server_info in self.servers.items():
-            # Create session exit stack for this specific session
-            session_info.exit_stacks[name] = session_exit_stack = AsyncExitStack()
+            try:
+                # Create session exit stack for this specific session
+                session_info.exit_stacks[name] = session_exit_stack = AsyncExitStack()
 
-            # Skip servers with errors
-            if server_info.errors:
-                continue
+                # Skip servers with errors
+                if server_info.errors:
+                    continue
 
-            # Create and initialize session using existing connection
-            session = await session_exit_stack.enter_async_context(
-                ClientSession(server_info.read_stream, server_info.write_stream)
-            )
-            await session.initialize()
+                # Create and initialize session using existing connection
+                session = await session_exit_stack.enter_async_context(
+                    ClientSession(server_info.read_stream, server_info.write_stream)
+                )
+                await session.initialize()
 
-            # Load tools for this server
-            mcp_tools: List[McpTool] = await load_mcp_tools(session)
+                # Load tools for this server
+                mcp_tools: List[McpTool] = await load_mcp_tools(session)
 
-            # Collect tools and handlers
-            server_tools = self._get_tools_for_session(mcp_tools)
-            server_handlers = self._get_handlers_for_session(mcp_tools)
+                # Collect tools and handlers
+                server_tools = self._get_tools_for_session(mcp_tools)
+                server_handlers = self._get_handlers_for_session(mcp_tools)
 
-            all_tools.extend(server_tools)
-            all_handlers.update(server_handlers)
+                all_tools.extend(server_tools)
+                all_handlers.update(server_handlers)
 
-            session_info.sessions.append(session)
+                session_info.sessions.append(session)
+            except Exception as e:
+                print(f"Error starting session for server {name}: {e}")
+                server_info.errors.append(str(e))
+                # Clean up the exit stack if it was created
+                if name in session_info.exit_stacks:
+                    await session_info.exit_stacks[name].aclose()
+                    del session_info.exit_stacks[name]
 
         return session_id, all_tools, all_handlers
 
@@ -94,8 +102,12 @@ class MCPClient:
 
             # Close session
             # await server_info.exit_stack.aclose()
-            for exit_stack in server_info.exit_stacks.values():
-                await exit_stack.aclose()
+            for name, exit_stack in server_info.exit_stacks.items():
+                try:
+                    await exit_stack.aclose()
+                except Exception as e:
+                    print(f"Error closing exit stack for {name}: {e}")
+                    self.servers[name].errors.append(f"{e}")
             del self.sessions[session_id]
 
     async def _add_http_server(self, server_name: str, server_url: str) -> None:

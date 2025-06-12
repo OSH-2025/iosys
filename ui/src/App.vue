@@ -15,8 +15,8 @@
           </div>
           <button 
             v-else-if="key === 'mcp_servers'"
-            class="flex items-center hover:bg-gray-300 gap-x-1 transition-colors duration-150 px-2 py-2 my--2 rounded-md border-2 border-gray-300"
-            :class="showMcpPanel ? 'bg-gray-200' : ''"
+            class="flex items-center hover:bg-gray-200 gap-x-1 transition-colors duration-150 px-2 py-2 my--2 rounded-md border-2 border-gray-200"
+            :class="showMcpPanel ? 'bg-gray-100' : ''"
             @click="showMcpPanel = !showMcpPanel"
             title="Toggle MCP Servers"
           >
