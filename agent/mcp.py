@@ -24,7 +24,6 @@ class ServerInfo:
 
 @dataclass
 class SessionInfo:
-    sessions: List[ClientSession]
     exit_stacks: Dict[str, AsyncExitStack]
 
 
@@ -56,7 +55,6 @@ class MCPClient:
 
         # Create sessions for all servers
         self.sessions[session_id] = session_info = SessionInfo(
-            sessions=[],
             exit_stacks={},
         )
         for name, server_info in self.servers.items():
@@ -83,8 +81,6 @@ class MCPClient:
 
                 all_tools.extend(server_tools)
                 all_handlers.update(server_handlers)
-
-                session_info.sessions.append(session)
             except Exception as e:
                 print(f"Error starting session for server {name}: {e}")
                 server_info.errors.append(str(e))
@@ -101,7 +97,6 @@ class MCPClient:
             server_info = self.sessions[session_id]
 
             # Close session
-            # await server_info.exit_stack.aclose()
             for name, exit_stack in server_info.exit_stacks.items():
                 try:
                     await exit_stack.aclose()
@@ -345,7 +340,7 @@ async def _list_all_tools(session: ClientSession) -> List[Tool]:
 
 def _convert_call_tool_result(
     call_tool_result: CallToolResult,
-) -> tuple[str | List[str], Optional[List[NonTextContent]]]:
+):
     text_contents: List[TextContent] = []
     non_text_contents: List[NonTextContent] = []
     for content in call_tool_result.content:
@@ -361,9 +356,16 @@ def _convert_call_tool_result(
         tool_content = tool_content[0]
 
     if call_tool_result.isError:
-        raise RuntimeError(tool_content)
+        return {
+            "status": "error",
+            "message": tool_content,
+        }
 
-    return tool_content, non_text_contents or None
+    return {
+        "status": "success",
+        "message": tool_content,
+        "data": non_text_contents if non_text_contents else None,
+    }
 
 
 def convert_mcp_tool(
@@ -371,8 +373,9 @@ def convert_mcp_tool(
     tool: Tool,
 ) -> McpTool:
     async def call_tool(
-        **params: Dict[str, Any],
-    ) -> tuple[str | List[str], Optional[List[NonTextContent]]]:
+        params: Dict[str, Any],
+    ):
+        print(f"Calling tool: {tool.name} with params: {params}")
         call_tool_result = await session.call_tool(tool.name, params)
         return _convert_call_tool_result(call_tool_result)
 

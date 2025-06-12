@@ -43,68 +43,71 @@ class IOSYSAgent:
 
     async def _process(self, user_input: str) -> ToolCallResult:
         # 收集工具配置和处理函数
-        _id, mcp_tool_configs, mcp_tool_handlers = await self.mcp.start_session()
-        tool_configs = [*self.file_agent.tool_configs, *mcp_tool_configs]
-        tool_handlers = {
-            **self.file_agent.tool_handlers,
-            **mcp_tool_handlers,
-        }
+        session_id, mcp_tool_configs, mcp_tool_handlers = await self.mcp.start_session()
+        try:
+            tool_configs = [*self.file_agent.tool_configs, *mcp_tool_configs]
+            tool_handlers = {
+                **self.file_agent.tool_handlers,
+                **mcp_tool_handlers,
+            }
 
-        # 调用 LLM 进行工具选择和调用
-        response = self.config.llm.chat.completions.create(
-            model=self.config.llm_model,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "你是一个文件管理助手，可以帮助用户进行各种文件操作。根据用户的需求，选择合适的工具来完成任务。",
-                },
-                {"role": "user", "content": user_input},
-            ],
-            tools=tool_configs,  # type: ignore
-            tool_choice="auto",
-        )
+            # 调用 LLM 进行工具选择和调用
+            response = self.config.llm.chat.completions.create(
+                model=self.config.llm_model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "你是一个文件管理助手，可以帮助用户进行各种文件操作。根据用户的需求，选择合适的工具来完成任务。",
+                    },
+                    {"role": "user", "content": user_input},
+                ],
+                tools=tool_configs,  # type: ignore
+                tool_choice="auto",
+            )
 
-        # 处理LLM响应
-        message = response.choices[0].message.content if response.choices else None
-        message = message + "\n\n---\n\n" if message else ""
-        # 提取function call信息
-        if hasattr(response, "choices") and response.choices:
-            choice = response.choices[0]
-            if (
-                hasattr(choice, "message")
-                and hasattr(choice.message, "tool_calls")
-                and choice.message.tool_calls
-            ):
-                tool_call = choice.message.tool_calls[0]
-                function_name = tool_call.function.name
-                function_args = json.loads(tool_call.function.arguments)
+            # 处理LLM响应
+            message = response.choices[0].message.content if response.choices else None
+            message = message + "\n\n---\n\n" if message else ""
+            # 提取function call信息
+            if hasattr(response, "choices") and response.choices:
+                choice = response.choices[0]
+                if (
+                    hasattr(choice, "message")
+                    and hasattr(choice.message, "tool_calls")
+                    and choice.message.tool_calls
+                ):
+                    tool_call = choice.message.tool_calls[0]
+                    function_name = tool_call.function.name
+                    function_args = json.loads(tool_call.function.arguments)
 
-                # 使用自动收集的处理函数
-                if function_name in tool_handlers:
-                    result = tool_handlers[function_name](function_args)
-                    if inspect.isawaitable(result):
-                        result = await result
-                    if result["status"] != "success":
-                        return {
-                            "status": "error",
-                            "message": message + result.get("message", "工具调用失败"),
-                        }
+                    # 使用自动收集的处理函数
+                    if function_name in tool_handlers:
+                        result = tool_handlers[function_name](function_args)
+                        if inspect.isawaitable(result):
+                            result = await result
+                        if result["status"] != "success":
+                            return {
+                                "status": "error",
+                                "message": message + result.get("message", "工具调用失败"),
+                            }
+                        else:
+                            return {
+                                "status": "success",
+                                "message": message + result.get("message", ""),
+                                "data": result.get("data", {}),
+                            }
                     else:
                         return {
-                            "status": "success",
-                            "message": message + result.get("message", ""),
-                            "data": result.get("data", {}),
+                            "status": "error",
+                            "message": message
+                            + f"工具调用失败：不支持的操作: {function_name}",
                         }
                 else:
                     return {
-                        "status": "error",
-                        "message": message
-                        + f"工具调用失败：不支持的操作: {function_name}",
+                        "status": "success",
+                        "message": message + "LLM 没有调用任何工具函数",
                     }
             else:
-                return {
-                    "status": "success",
-                    "message": message + "LLM 没有调用任何工具函数",
-                }
-        else:
-            return {"status": "error", "message": message + "无效的 LLM 响应格式"}
+                return {"status": "error", "message": message + "无效的 LLM 响应格式"}
+        finally:
+            await self.mcp.end_session(session_id)

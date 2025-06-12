@@ -50,8 +50,8 @@
       <main class="relative flex-1 bg-white">
         <!-- Main content will go here -->
         <FilePreview />
-        <McpServers v-if="showMcpPanel" />
-        <GraphView v-else />
+        <McpServers v-show="showMcpPanel" />
+        <GraphView v-show="!showMcpPanel" />
       </main>
     </div>
 
