@@ -1179,7 +1179,7 @@ requires-dist = [
     { name = "llama-index-graph-stores-nebula", specifier = ">=0.4.2" },
     { name = "llama-index-vector-stores-qdrant", specifier = ">=0.6.0" },
     { name = "markitdown", extras = ["all"], directory = "parser/markitdown" },
-    { name = "mcp", specifier = ">=1.9.3" },
+    { name = "mcp", git = "https://github.com/theailanguage/python-sdk.git?branch=fix%2Fwindows_stdio_subprocess" },
     { name = "nebula3-python", specifier = ">=3.8.3" },
     { name = "networkx", specifier = ">=3.4.2" },
     { name = "openai", specifier = ">=1.75.0" },
@@ -2148,8 +2148,8 @@ wheels = [
 
 [[package]]
 name = "mcp"
-version = "1.9.3"
-source = { registry = "https://mirrors.ustc.edu.cn/pypi/simple" }
+version = "0.0.1.dev489+a3164ae"
+source = { git = "https://github.com/theailanguage/python-sdk.git?branch=fix%2Fwindows_stdio_subprocess#a3164aeb1d79542868c6a6e682410edabd0d79c9" }
 dependencies = [
     { name = "anyio" },
     { name = "httpx" },
@@ -2160,10 +2160,6 @@ dependencies = [
     { name = "sse-starlette" },
     { name = "starlette" },
     { name = "uvicorn", marker = "sys_platform != 'emscripten'" },
-]
-sdist = { url = "https://mirrors.ustc.edu.cn/pypi/packages/f2/df/8fefc0c6c7a5c66914763e3ff3893f9a03435628f6625d5e3b0dc45d73db/mcp-1.9.3.tar.gz", hash = "sha256:587ba38448e81885e5d1b84055cfcc0ca56d35cd0c58f50941cab01109405388", size = 333045, upload-time = "2025-06-05T15:48:25.681Z" }
-wheels = [
-    { url = "https://mirrors.ustc.edu.cn/pypi/packages/79/45/823ad05504bea55cb0feb7470387f151252127ad5c72f8882e8fe6cf5c0e/mcp-1.9.3-py3-none-any.whl", hash = "sha256:69b0136d1ac9927402ed4cf221d4b8ff875e7132b0b06edd446448766f34f9b9", size = 131063, upload-time = "2025-06-05T15:48:24.171Z" },
 ]
 
 [[package]]

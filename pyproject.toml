@@ -29,7 +29,7 @@ dependencies = [
     "juicefs_local==1.3.0",
     "qdrant-client>=1.12.1",
     "llama-index-vector-stores-qdrant>=0.6.0",
-    "mcp>=1.9.3",
+    "mcp",
 ]
 
 [tool.uv.sources]
@@ -37,6 +37,7 @@ a2a = { path = "a2a_server/a2a-python-sdk" }
 markitdown = { path = "parser/markitdown" }
 juicefs = { url = "https://static.juicefs.com/misc/juicefs-5.2.1.202506040923-py3-none-any.whl" }
 juicefs_local = { path = "jfs/juicefs-1.3.0-sdk" }
+mcp = { git = "https://github.com/theailanguage/python-sdk.git", branch = "fix/windows_stdio_subprocess" }
 
 [[tool.uv.index]]
 url = "https://mirrors.ustc.edu.cn/pypi/simple"
