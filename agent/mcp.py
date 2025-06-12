@@ -25,7 +25,7 @@ class ServerInfo:
 @dataclass
 class SessionInfo:
     sessions: List[ClientSession]
-    exit_stack: AsyncExitStack
+    exit_stacks: Dict[str, AsyncExitStack]
 
 
 @dataclass
@@ -50,9 +50,6 @@ class MCPClient:
         self._session_counter += 1
         session_id = f"session_{self._session_counter}"
 
-        # Create session exit stack for this specific session
-        session_exit_stack = AsyncExitStack()
-
         # Collect all tools and handlers from all servers
         all_tools: List[Dict[str, Any]] = []
         all_handlers: Dict[str, Callable[..., Awaitable[Any]]] = {}
@@ -60,9 +57,12 @@ class MCPClient:
         # Create sessions for all servers
         self.sessions[session_id] = session_info = SessionInfo(
             sessions=[],
-            exit_stack=session_exit_stack,
+            exit_stacks={},
         )
-        for server_info in self.servers.values():
+        for name, server_info in self.servers.items():
+            # Create session exit stack for this specific session
+            session_info.exit_stacks[name] = session_exit_stack = AsyncExitStack()
+
             # Skip servers with errors
             if server_info.errors:
                 continue
@@ -93,7 +93,9 @@ class MCPClient:
             server_info = self.sessions[session_id]
 
             # Close session
-            await server_info.exit_stack.aclose()
+            # await server_info.exit_stack.aclose()
+            for exit_stack in server_info.exit_stacks.values():
+                await exit_stack.aclose()
             del self.sessions[session_id]
 
     async def _add_http_server(self, server_name: str, server_url: str) -> None:
@@ -205,14 +207,22 @@ class MCPClient:
 
         # Track which servers should remain
         servers_to_keep = set()
-
-        # Check existing servers and add new ones
         for server_name, server_config in mcp_servers.items():
             # Check if server already exists with same config
             if server_name in self.servers and self._config_matches(
                 self.servers[server_name], server_config
             ):
                 servers_to_keep.add(server_name)
+
+        # Remove servers that are out-dated
+        servers_to_remove = set(self.servers.keys()) - servers_to_keep
+        for server_name in servers_to_remove:
+            await self._remove_server(server_name)
+
+        # Check existing servers and add new ones
+        for server_name, server_config in mcp_servers.items():
+            if server_name in servers_to_keep:
+                # Server already exists with same config, skip
                 continue
 
             # Add or update server
@@ -235,16 +245,15 @@ class MCPClient:
                     f"Invalid server configuration for {server_name}: missing 'command' or 'url'"
                 )
 
-            servers_to_keep.add(server_name)
-
-        # Remove servers not in the new config
-        servers_to_remove = set(self.servers.keys()) - servers_to_keep
-        for server_name in servers_to_remove:
-            await self._remove_server(server_name)
-
     async def _remove_server(self, server_url: str) -> None:
         """Remove an MCP server"""
         if server_url in self.servers:
+            for session_info in self.sessions.values():
+                # Remove this server from all sessions
+                if server_url in session_info.exit_stacks:
+                    await session_info.exit_stacks[server_url].aclose()
+                    del session_info.exit_stacks[server_url]
+
             server_info = self.servers[server_url]
             # Properly close the connection
             await server_info.connection_exit_stack.aclose()
