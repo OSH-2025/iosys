@@ -1,21 +1,15 @@
 import logging
-from typing import Dict, Any, NotRequired, TypedDict
+from typing import Dict, Any
 import json
 import inspect
 
+
+from .types import ToolCallResult
 from .file_agent import FileAgent
 from .config import AgentConfig
 from .mcp import MCPClient
 
 logger = logging.getLogger(__name__)
-
-
-class ToolCallResult(TypedDict):
-    """工具调用结果类型"""
-
-    status: str  # "success" 或 "error"
-    message: str  # 操作结果消息
-    data: NotRequired[Dict[str, Any]]  # 附加数据，例如文件路径等
 
 
 class IOSYSAgent:

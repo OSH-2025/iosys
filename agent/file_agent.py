@@ -1,27 +1,10 @@
 from typing import Dict, Any, Callable, List
-from enum import Enum
 from functools import wraps
 from openai.types.shared_params.function_parameters import FunctionParameters
 
 
-from . import ToolCallResult
+from .types import ToolCallResult
 from .config import AgentConfig
-
-
-class OperationType(str, Enum):
-    """支持的文件操作类型枚举"""
-
-    CREATE_FILE = "create_file"
-    CREATE_DIRECTORY = "create_directory"
-    DELETE_FILE = "delete_file"
-    DELETE_DIRECTORY = "delete_directory"
-    MOVE_FILE = "move_file"
-    MOVE_DIRECTORY = "move_directory"
-    RENAME_FILE = "rename_file"
-    RENAME_DIRECTORY = "rename_directory"
-    LIST_FILES = "list_files"
-    READ_FILE = "read_file"
-    WRITE_FILE = "write_file"
 
 
 def tool(name: str, description: str, parameters: FunctionParameters):
