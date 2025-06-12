@@ -48,45 +48,38 @@ class MCPClient:
         self._session_counter += 1
         session_id = f"session_{self._session_counter}"
 
-        if not self.servers:
-            raise RuntimeError("No servers available. Please add servers first.")
+        # Create session exit stack for this specific session
+        session_exit_stack = AsyncExitStack()
 
-        try:
-            # Create session exit stack for this specific session
-            session_exit_stack = AsyncExitStack()
+        # Collect all tools and handlers from all servers
+        all_tools: List[Dict[str, Any]] = []
+        all_handlers: Dict[str, Callable[..., Awaitable[Any]]] = {}
 
-            # Collect all tools and handlers from all servers
-            all_tools: List[Dict[str, Any]] = []
-            all_handlers: Dict[str, Callable[..., Awaitable[Any]]] = {}
-
-            # Create sessions for all servers
-            self.sessions[session_id] = session_info = SessionInfo(
-                sessions=[],
-                exit_stack=session_exit_stack,
+        # Create sessions for all servers
+        self.sessions[session_id] = session_info = SessionInfo(
+            sessions=[],
+            exit_stack=session_exit_stack,
+        )
+        for server_info in self.servers.values():
+            # Create and initialize session using existing connection
+            session = await session_exit_stack.enter_async_context(
+                ClientSession(server_info.read_stream, server_info.write_stream)
             )
-            for server_info in self.servers.values():
-                # Create and initialize session using existing connection
-                session = await session_exit_stack.enter_async_context(
-                    ClientSession(server_info.read_stream, server_info.write_stream)
-                )
-                await session.initialize()
+            await session.initialize()
 
-                # Load tools for this server
-                mcp_tools: List[McpTool] = await load_mcp_tools(session)
+            # Load tools for this server
+            mcp_tools: List[McpTool] = await load_mcp_tools(session)
 
-                # Collect tools and handlers
-                server_tools = self._get_tools_for_session(mcp_tools)
-                server_handlers = self._get_handlers_for_session(mcp_tools)
+            # Collect tools and handlers
+            server_tools = self._get_tools_for_session(mcp_tools)
+            server_handlers = self._get_handlers_for_session(mcp_tools)
 
-                all_tools.extend(server_tools)
-                all_handlers.update(server_handlers)
+            all_tools.extend(server_tools)
+            all_handlers.update(server_handlers)
 
-                session_info.sessions.append(session)
+            session_info.sessions.append(session)
 
-            return session_id, all_tools, all_handlers
-
-        except Exception as e:
-            raise RuntimeError(f"Failed to start session: {e}")
+        return session_id, all_tools, all_handlers
 
     async def end_session(self, session_id: str) -> None:
         """End a specific session"""
