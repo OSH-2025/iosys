@@ -24,7 +24,7 @@ llm = OpenAI(
 fs = new_fs()
 parser = IOSYSParser(llm=llm)
 rag = IOSYSRAG(fs=fs, parser=parser)
-file_manager = IOSYSAgent(AgentConfig(llm=llm, fs=fs, rag=rag))
+agent = IOSYSAgent(AgentConfig(llm=llm, fs=fs, rag=rag))
 
 app = FastAPI()
 app.add_middleware(
@@ -45,6 +45,7 @@ async def status_endpoint():
         "fs": "ready" if fs.is_running() else "error",
         "agent": "ready",
         "graph_revision": rag.graph.revision,
+        "mcp_servers": agent.mcp.list_servers(),
     }
 
 
@@ -79,7 +80,7 @@ class AgentRequest(BaseModel):
 @app.post("/agent")
 async def agent_endpoint(request: AgentRequest):
     """Process natural language file management commands"""
-    return await file_manager.process_command(request.command)
+    return await agent.process_command(request.command)
 
 
 @app.get("/files")
@@ -129,3 +130,29 @@ async def raw_endpoint(fileid: str):
         media_type="application/octet-stream",
         content=node.read(),
     )
+
+
+class MCPServerRequest(BaseModel):
+    server_url: str
+
+
+@app.post("/mcp/add")
+async def add_mcp_server(request: MCPServerRequest):
+    """Add a new MCP server"""
+    await agent.mcp.add_server(request.server_url)
+    return {
+        "status": "success",
+        "message": f"Successfully added MCP server: {request.server_url}",
+        "servers": agent.mcp.list_servers(),
+    }
+
+
+@app.post("/mcp/remove")
+async def remove_mcp_server(request: MCPServerRequest):
+    """Remove an MCP server"""
+    await agent.mcp.remove_server(request.server_url)
+    return {
+        "status": "success",
+        "message": f"Successfully removed MCP server: {request.server_url}",
+        "servers": agent.mcp.list_servers(),
+    }

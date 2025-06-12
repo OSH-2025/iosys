@@ -7,12 +7,14 @@ const BASE_URL = import.meta.env.VITE_API_SERVER_URL;
 console.log("BASE_URL", BASE_URL);
 
 const apis = {
-  status: defineApi<{}, { server: string, rag: string, llm: string, fs: string, graph_revision: number }>("/status"),
+  status: defineApi<{}, { server: string, rag: string, llm: string, fs: string, graph_revision: number, mcp_servers: string[] }>("/status"),
   chat: defineApi<{ input: string }, { response: string }>("/chat"),
   preview: defineApi<{ id: string }, { url: string }>("/preview"),
   agent: defineApi<{ command: string }, { status: string, message?: string, data: any }>("/agent"),
   files: defineApi<{ path?: string }, { items: Array<{ name: string, path: string, type: string, size?: number }> }>("/files"),
   graph: defineApi<{}, RawGraph>("/graph"),
+  mcpAdd: defineApi<{ server_url: string }, { status: string, message: string, servers: string[] }>("/mcp/add"),
+  mcpRemove: defineApi<{ server_url: string }, { status: string, message: string, servers: string[] }>("/mcp/remove"),
 };
 
 export default apis;
