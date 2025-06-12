@@ -4,7 +4,8 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Callable, Awaitable
 from contextlib import AsyncExitStack
 from mcp.client.streamable_http import streamablehttp_client, SessionMessage
-from mcp import ClientSession
+from mcp.client.stdio import stdio_client
+from mcp import ClientSession, StdioServerParameters
 from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
 from mcp.types import Tool, CallToolResult, ImageContent, TextContent, EmbeddedResource
 
@@ -17,7 +18,9 @@ class ServerInfo:
     connection_exit_stack: AsyncExitStack
     read_stream: MemoryObjectReceiveStream[SessionMessage | Exception]
     write_stream: MemoryObjectSendStream[SessionMessage]
-    server_url: str
+    server_config: Optional[Dict[str, Any]] = (
+        None  # Store original config for comparison
+    )
 
 
 @dataclass
@@ -90,16 +93,16 @@ class MCPClient:
             await server_info.exit_stack.aclose()
             del self.sessions[session_id]
 
-    async def add_server(self, server_url: str) -> None:
-        """Add a new MCP server"""
+    async def _add_http_server(self, server_url: str) -> None:
+        """Add a new HTTP MCP server"""
         if server_url in self.servers:
-            await self.remove_server(server_url)
+            await self._remove_server(server_url)
 
         try:
             # Create an exit stack to manage this server's connection lifecycle
             exit_stack = AsyncExitStack()
 
-            # Connect to the server and keep the connection alive - only called once per server
+            # Connect to HTTP server
             read_stream, write_stream, _ = await exit_stack.enter_async_context(
                 streamablehttp_client(server_url)
             )
@@ -109,15 +112,129 @@ class MCPClient:
                 connection_exit_stack=exit_stack,
                 read_stream=read_stream,
                 write_stream=write_stream,
-                server_url=server_url,
+                server_config={"url": server_url},
             )
         except Exception as e:
             # Clean up on error
             if "exit_stack" in locals():
                 await exit_stack.aclose()
-            raise RuntimeError(f"Failed to connect to server {server_url}: {e}")
+            raise RuntimeError(f"Failed to connect to HTTP server {server_url}") from e
 
-    async def remove_server(self, server_url: str) -> None:
+    async def _add_stdio_server(
+        self,
+        server_name: str,
+        command: str,
+        args: Optional[List[str]] = None,
+        env: Optional[Dict[str, str]] = None,
+    ) -> None:
+        """Add a new stdio MCP server"""
+        if server_name in self.servers:
+            await self._remove_server(server_name)
+
+        try:
+            # Create an exit stack to manage this server's connection lifecycle
+            exit_stack = AsyncExitStack()
+
+            # Connect to stdio server
+            read_stream, write_stream = await exit_stack.enter_async_context(
+                stdio_client(
+                    StdioServerParameters(
+                        command=command,
+                        args=args or [],
+                        env=env,
+                    )
+                )
+            )
+
+            # Store session info and tools with connection information
+            self.servers[server_name] = ServerInfo(
+                connection_exit_stack=exit_stack,
+                read_stream=read_stream,
+                write_stream=write_stream,
+                server_config={"command": command, "args": args, "env": env},
+            )
+        except Exception as e:
+            # Clean up on error
+            if "exit_stack" in locals():
+                await exit_stack.aclose()
+            raise RuntimeError(
+                f"Failed to connect to stdio server {server_name}"
+            ) from e
+
+    def _config_matches(
+        self, server_info: ServerInfo, new_config: Dict[str, Any]
+    ) -> bool:
+        """Check if server configuration matches the new config"""
+        if not server_info.server_config:
+            return False
+
+        current_config = server_info.server_config
+
+        # Compare key fields
+        if "command" in new_config:
+            return (
+                current_config.get("command") == new_config["command"]
+                and current_config.get("args") == new_config.get("args")
+                and current_config.get("env") == new_config.get("env")
+            )
+        elif "url" in new_config:
+            return current_config.get("url") == new_config["url"]
+
+        return False
+
+    async def sync_config(self, config: Dict[str, Any]) -> None:
+        """Sync servers from Claude's MCP configuration format
+
+        Expected format:
+        {
+            "mcpServers": {
+                "server_name": {
+                    "command": "path/to/executable",
+                    "args": ["arg1", "arg2"],
+                    "env": {"VAR": "value"}
+                }
+            }
+        }
+        """
+        mcp_servers = config.get("mcpServers", {})
+
+        # Track which servers should remain
+        servers_to_keep = set()
+
+        # Check existing servers and add new ones
+        for server_name, server_config in mcp_servers.items():
+            # Check if server already exists with same config
+            if server_name in self.servers and self._config_matches(
+                self.servers[server_name], server_config
+            ):
+                servers_to_keep.add(server_name)
+                continue
+
+            # Add or update server
+            if "command" in server_config:
+                # Stdio server
+                await self._add_stdio_server(
+                    server_name=server_name,
+                    command=server_config["command"],
+                    args=server_config.get("args"),
+                    env=server_config.get("env"),
+                )
+            elif "url" in server_config:
+                # HTTP server
+                await self._add_http_server(server_config["url"])
+            else:
+                raise ValueError(
+                    f"Invalid server configuration for {server_name}: missing 'command' or 'url'"
+                )
+
+            servers_to_keep.add(server_name)
+
+        # Remove servers not in the new config
+        servers_to_remove = set(self.servers.keys()) - servers_to_keep
+        for server_name in servers_to_remove:
+            await self._remove_server(server_name)
+
+    async def _remove_server(self, server_url: str) -> None:
         """Remove an MCP server"""
         if server_url in self.servers:
             server_info = self.servers[server_url]
@@ -125,20 +242,12 @@ class MCPClient:
             await server_info.connection_exit_stack.aclose()
             del self.servers[server_url]
 
-    async def close_all_servers(self) -> None:
+    async def _close_all_servers(self) -> None:
         """Close all server connections"""
         for session_id in list(self.sessions.keys()):
             await self.end_session(session_id)
         for server_url in list(self.servers.keys()):
-            await self.remove_server(server_url)
-
-    def list_servers(self) -> List[str]:
-        """List all connected servers"""
-        return list(self.servers.keys())
-
-    def list_sessions(self) -> List[str]:
-        """List all active sessions"""
-        return list(self.sessions.keys())
+            await self._remove_server(server_url)
 
     def _get_tools_for_session(self, mcp_tools: List[McpTool]) -> List[Dict[str, Any]]:
         """Private method to get tools for a specific session"""
@@ -165,7 +274,7 @@ class MCPClient:
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        await self.close_all_servers()
+        await self._close_all_servers()
 
 
 async def _list_all_tools(session: ClientSession) -> List[Tool]:
