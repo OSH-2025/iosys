@@ -1,12 +1,10 @@
-import inspect
-import json
-from typing import Dict, Any, Callable, List, NotRequired, TypedDict
+from typing import Dict, Any, Callable, List
 from enum import Enum
 from functools import wraps
-from openai.types.chat import ChatCompletion
 from openai.types.shared_params.function_parameters import FunctionParameters
 
 
+from . import ToolCallResult
 from .config import AgentConfig
 
 
@@ -24,14 +22,6 @@ class OperationType(str, Enum):
     LIST_FILES = "list_files"
     READ_FILE = "read_file"
     WRITE_FILE = "write_file"
-
-
-class ToolCallResult(TypedDict):
-    """工具调用结果类型"""
-
-    status: str  # "success" 或 "error"
-    message: str  # 操作结果消息
-    data: NotRequired[Dict[str, Any]]  # 附加数据，例如文件路径等
 
 
 def tool(name: str, description: str, parameters: FunctionParameters):
@@ -78,10 +68,10 @@ class FileAgent:
         self.config = config
         self.fs = config.fs
         self.llm_client = config.llm
-        self.tools = self._collect_tools()
+        self.tool_configs = self._collect_tool_configs()
         self.tool_handlers = self._collect_tool_handlers()
 
-    def _collect_tools(self) -> List[Dict[str, Any]]:
+    def _collect_tool_configs(self) -> List[Dict[str, Any]]:
         """自动收集所有注册的工具配置"""
         tools = []
         for attr_name in dir(self):
@@ -98,99 +88,6 @@ class FileAgent:
             if hasattr(attr, "_tool_name"):
                 handlers[attr._tool_name] = attr
         return handlers
-
-    async def process(self, user_input: str) -> ToolCallResult:
-        """
-        处理用户输入并执行相应的文件操作
-
-        Args:
-            user_input: 用户的自然语言输入
-
-        Returns:
-            Dict: 包含操作结果的字典
-        """
-        # 调用LLM获取function call
-        response = self._call_llm_with_tools(user_input)
-
-        # 执行function call
-        return await self._execute_function_call(response)
-
-    def _call_llm_with_tools(self, user_input: str):
-        """
-        调用LLM并获取function call响应
-
-        Args:
-            user_input: 用户输入
-
-        Returns:
-            LLM响应对象
-        """
-        return self.llm_client.chat.completions.create(
-            model=self.config.llm_model,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "你是一个文件管理助手，可以帮助用户进行各种文件操作。根据用户的需求，选择合适的工具来完成任务。",
-                },
-                {"role": "user", "content": user_input},
-            ],
-            tools=self.tools,  # type: ignore
-            tool_choice="auto",
-        )
-
-    async def _execute_function_call(self, response: ChatCompletion) -> ToolCallResult:
-        """
-        执行function call
-
-        Args:
-            response: LLM响应
-
-        Returns:
-            Dict: 执行结果
-        """
-        message = response.choices[0].message.content if response.choices else None
-        message = message + "\n\n---\n\n" if message else ""
-        # 提取function call信息
-        if hasattr(response, "choices") and response.choices:
-            choice = response.choices[0]
-            if (
-                hasattr(choice, "message")
-                and hasattr(choice.message, "tool_calls")
-                and choice.message.tool_calls
-            ):
-                tool_call = choice.message.tool_calls[0]
-                function_name = tool_call.function.name
-                function_args = json.loads(tool_call.function.arguments)
-
-                # 使用自动收集的处理函数
-                if function_name in self.tool_handlers:
-                    result = self.tool_handlers[function_name](function_args)
-                    if inspect.isawaitable(result):
-                        result = await result
-                    if result["status"] != "success":
-                        return {
-                            "status": "error",
-                            "message": message + result.get("message", "工具调用失败"),
-                        }
-                    else:
-                        return {
-                            "status": "success",
-                            "message": message + result.get("message", ""),
-                            "data": result.get("data", {}),
-                        }
-                else:
-                    return {
-                        "status": "error",
-                        "message": message
-                        + f"工具调用失败：不支持的操作: {function_name}",
-                    }
-            else:
-                return {
-                    "status": "success",
-                    "message": message + "LLM 没有调用任何工具函数",
-                }
-        else:
-            return {"status": "error", "message": message + "无效的 LLM 响应格式"}
 
     def _normalize_path(self, path: str) -> str:
         """将路径转换为文件系统节点ID"""
