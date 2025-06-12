@@ -99,7 +99,9 @@ class IOSYSAgent:
                         if result["status"] != "success":
                             return {
                                 "status": "error",
-                                "message": concat_message(result.get("message", "工具调用失败")),
+                                "message": concat_message(
+                                    result.get("message", "工具调用失败")
+                                ),
                             }
                         else:
                             return {
@@ -110,7 +112,9 @@ class IOSYSAgent:
                     else:
                         return {
                             "status": "error",
-                            "message": concat_message(f"工具调用失败：不支持的操作: {function_name}"),
+                            "message": concat_message(
+                                f"工具调用失败：不支持的操作: {function_name}"
+                            ),
                         }
                 else:
                     return {

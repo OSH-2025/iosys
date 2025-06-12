@@ -106,7 +106,7 @@ class MCPClient:
                     print(f"Error closing session for {name}: {e}")
                     if name in self.servers:
                         self.servers[name].errors.append(f"Session cleanup error: {e}")
-        
+
             del self.sessions[session_id]
 
     async def _add_http_server(self, server_name: str, server_url: str) -> None:
@@ -266,7 +266,9 @@ class MCPClient:
                         await session_info.exit_stacks[server_name].aclose()
                         del session_info.exit_stacks[server_name]
                     except Exception as e:
-                        print(f"Error closing session exit stack for {server_name}: {e}")
+                        print(
+                            f"Error closing session exit stack for {server_name}: {e}"
+                        )
 
             # Then close the server's main connection
             server_info = self.servers[server_name]
@@ -274,7 +276,7 @@ class MCPClient:
                 await server_info.connection_exit_stack.aclose()
             except Exception as e:
                 print(f"Error closing server connection for {server_name}: {e}")
-        
+
             del self.servers[server_name]
 
     async def _close_all_servers(self) -> None:
@@ -282,7 +284,7 @@ class MCPClient:
         # Close all sessions first
         for session_id in list(self.sessions.keys()):
             await self.end_session(session_id)
-        
+
         # Then close all server connections
         for server_name in list(self.servers.keys()):
             try:
