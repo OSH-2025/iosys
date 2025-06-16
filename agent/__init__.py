@@ -1,4 +1,3 @@
-import logging
 from typing import Dict, Any
 import json
 import inspect
@@ -8,8 +7,7 @@ from .types import ToolCallResult
 from .file_agent import FileAgent
 from .config import AgentConfig
 from .mcp import MCPClient
-
-logger = logging.getLogger(__name__)
+from utils.logger import IOSYSLogger
 
 
 class IOSYSAgent:
@@ -22,6 +20,7 @@ class IOSYSAgent:
         Args:
             config: 配置对象, 如果为None则使用默认配置
         """
+        self.logger = IOSYSLogger("Agent")
         self.config = config
         self.file_agent = FileAgent(config=self.config)
         self.mcp = MCPClient()
@@ -36,9 +35,9 @@ class IOSYSAgent:
         Returns:
             Dict: 处理结果
         """
-        logger.info(f"接收到用户输入: {user_input}")
+        self.logger.info(f"接收到用户输入: {user_input}")
         result = await self._process(user_input)
-        logger.info(f"处理结果: {json.dumps(result, ensure_ascii=False)}")
+        self.logger.info(f"处理结果: {json.dumps(result, ensure_ascii=False)}")
         return dict(result)
 
     async def _process(self, user_input: str) -> ToolCallResult:

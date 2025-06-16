@@ -96,7 +96,7 @@ class JuiceFSService:
             os.environ.get("JFS_MOUNTPOINT"),
         ]
 
-        log_file = os.environ.get("JFS_LOG_FILE")
+        log_file = os.environ["JFS_LOG_FILE"]
         with open(log_file, "w") as f:
             self.process = subprocess.Popen(
                 command,

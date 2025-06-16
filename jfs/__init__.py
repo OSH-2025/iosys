@@ -4,6 +4,8 @@ import abc
 import os
 import io
 
+from utils.logger import IOSYSLogger
+
 
 class FileSystemNode(abc.ABC):
     fs: "IOSYSFileSystem"
@@ -87,9 +89,17 @@ CHANGE_TYPE = Literal["create", "update", "delete", "metadata"]
 
 
 class IOSYSFileSystem(abc.ABC):
-    on_change: list[Callable[[FileSystemNode, CHANGE_TYPE], Awaitable[None]]] = []
+    on_change: list[Callable[[FileSystemNode, CHANGE_TYPE], Awaitable[None]]]
 
     _previous_task: asyncio.Task | None = None
+
+    def __init__(self):
+        logger = IOSYSLogger("FS")
+
+        async def log_callback(node: FileSystemNode, change_type: CHANGE_TYPE):
+            logger.info(f"{change_type} {node.path}")
+
+        self.on_change = [log_callback]
 
     @abc.abstractmethod
     def is_running(self) -> bool: ...

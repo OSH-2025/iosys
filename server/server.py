@@ -11,6 +11,7 @@ from agent import IOSYSAgent
 from agent.config import AgentConfig
 from parser import IOSYSParser
 from rag import IOSYSRAG
+from utils.logger import all_logs
 
 
 load_dotenv()
@@ -139,3 +140,8 @@ class MCPServerRequest(BaseModel):
 @app.post("/mcp")
 async def sync_mcp_server(request: MCPServerRequest):
     await agent.mcp.sync_config(request.config)
+
+
+@app.post("/logs")
+async def logs_endpoint():
+    return [log.to_dict() for log in all_logs]

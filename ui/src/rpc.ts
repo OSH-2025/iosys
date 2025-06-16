@@ -14,6 +14,7 @@ const apis = {
   files: defineApi<{ path?: string }, { items: Array<{ name: string, path: string, type: string, size?: number }> }>("/files"),
   graph: defineApi<{}, RawGraph>("/graph"),
   mcpSync: defineApi<{ config: Record<string, any> }, {}>("/mcp"),
+  getLogs: defineApi<{}, Array<{ timestamp: string, level: string, name: string, message: string }>>("/logs"),
 };
 
 export default apis;

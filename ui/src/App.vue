@@ -13,8 +13,8 @@
         </button>
         <button
           class="flex items-center hover:bg-gray-200 gap-x-1 transition-colors duration-150 px-4 py-2 my--2 rounded-md border-2 border-gray-200"
-          :class="panel === 'logging' ? 'bg-gray-100' : 'op-70'" @click="panel = 'logging'">
-          Logging
+          :class="panel === 'log' ? 'bg-gray-100' : 'op-70'" @click="panel = 'log'">
+          Logs
         </button>
         <button
           class="flex items-center hover:bg-gray-200 gap-x-1 transition-colors duration-150 px-4 py-2 my--2 rounded-md border-2 border-gray-200"
@@ -63,6 +63,7 @@
         <!-- Main content will go here -->
         <FilePreview />
         <GraphView v-show="panel === 'graph'" />
+        <LogView v-show="panel === 'log'" />
         <McpServers v-show="panel === 'mcp'" />
       </main>
     </div>
@@ -76,16 +77,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { watch } from 'vue';
+import { useSessionStorage } from '@vueuse/core';
 import Messages from './components/Messages.vue';
 import GraphView from './components/GraphView.vue';
+import LogView from './components/LogView.vue';
 import { errorMessage, status } from './states';
 import FilePreview from './components/FilePreview.vue';
 import ChatBox from './components/ChatBox.vue';
 import { useDynamicSplitter } from './composables/useDynamicSplitter';
 import McpServers from './components/McpServers.vue';
 
-const panel = ref('graph');
+const panel = useSessionStorage('iosys.active-panel', 'graph');
 
 // Sidebar width with persistent storage and resize functionality
 const { width: sidebarWidth, startResize } = useDynamicSplitter({
