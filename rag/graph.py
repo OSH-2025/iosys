@@ -131,7 +131,7 @@ class IOSYSGraphEngine:
         ):
             event_name, _ = self.recent_event
         else:
-            event_name = f"event_{datetime.datetime.now().strftime('%m/%d_%H:%M')}"
+            event_name = f"event_{datetime.datetime.now().strftime('%m-%d_%H:%M')}"
             await self.graph_store.aupsert_nodes(
                 [
                     EntityNode(

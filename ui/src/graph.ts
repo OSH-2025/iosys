@@ -33,17 +33,21 @@ whenever(
     if (graph.revision < (status.value.graph_revision || 0) || graph.revision < currentRevision.value)
       return;
     currentRevision.value = graph.revision;
-    graphNodes.value = Object.entries(graph.nodes).map(([id, node]) => ({
-      id,
-      label: node.name,
-      group: node.label,
-    } satisfies Node));
-    graphEdges.value = Object.entries(graph.relations).map(([id, relation]) => ({
-      id,
-      from: relation.source_id,
-      to: relation.target_id,
-      label: relation.label,
-    } satisfies Edge));
+    graphNodes.value = Object.entries(graph.nodes)
+      .filter(([_, node]) => node.label !== 'event')
+      .map(([id, node]) => ({
+        id,
+        label: node.name,
+        group: node.label,
+      } satisfies Node));
+    graphEdges.value = Object.entries(graph.relations)
+      .filter(([_, relation]) => graph.nodes[relation.source_id].label !== 'event')
+      .map(([id, relation]) => ({
+        id,
+        from: relation.source_id,
+        to: relation.target_id,
+        label: relation.label,
+      } satisfies Edge));
   },
   { immediate: true }
 )

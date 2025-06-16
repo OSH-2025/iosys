@@ -1,10 +1,32 @@
 <template>
   <div class="flex flex-col h-screen bg-white">
     <!-- Title Bar -->
-    <header class="bg-white text-black p-4 border-b-2 border-gray-200 flex justify-between items-center">
-      <h1 class="text-xl font-normal pl-2">IOSYS</h1>
+    <header class="bg-white text-black p-3 border-b-2 border-gray-200 flex items-center">
+      <h1 class="text-xl font-normal pl-2 min-w-fit" :style="{ width: (sidebarWidth - 13.5) + 'px' }">IOSYS</h1>
+
+      <!-- View Switch -->
+      <div mb--18px flex gap-3>
+        <button
+          class="flex items-center hover:bg-gray-200 gap-x-1 transition-colors duration-150 px-4 py-2 my--2 rounded-md border-2 border-gray-200"
+          :class="panel === 'graph' ? 'bg-gray-100' : 'op-70'" @click="panel = 'graph'">
+          File Graph
+        </button>
+        <button
+          class="flex items-center hover:bg-gray-200 gap-x-1 transition-colors duration-150 px-4 py-2 my--2 rounded-md border-2 border-gray-200"
+          :class="panel === 'logging' ? 'bg-gray-100' : 'op-70'" @click="panel = 'logging'">
+          Logging
+        </button>
+        <button
+          class="flex items-center hover:bg-gray-200 gap-x-1 transition-colors duration-150 px-4 py-2 my--2 rounded-md border-2 border-gray-200"
+          :class="panel === 'mcp' ? 'bg-gray-100' : 'op-70'" @click="panel = 'mcp'">
+          <span class="select-none font-medium">MCP Servers:</span>
+          <span class="select-none text-green-600">{{ Object.keys(status.mcp_servers ?? {}).length }}</span>
+        </button>
+      </div>
+
       <!-- Status Display -->
-      <div class="text-sm text-gray-600 flex space-x-4">
+      <div class="text-sm text-gray-600 flex space-x-4 w-0 flex-grow overflow-x-auto my--3 h-fit">
+        <div flex-grow />
         <template v-for="(value, key) in status" :key="key">
           <div v-if="typeof value === 'string'" class="flex items-center gap-x-1">
             <span class="font-medium">{{ key }}:</span>
@@ -13,16 +35,6 @@
               {{ value }}
             </span>
           </div>
-          <button 
-            v-else-if="key === 'mcp_servers'"
-            class="flex items-center hover:bg-gray-200 gap-x-1 transition-colors duration-150 px-2 py-2 my--2 rounded-md border-2 border-gray-200"
-            :class="showMcpPanel ? 'bg-gray-100' : ''"
-            @click="showMcpPanel = !showMcpPanel"
-            title="Toggle MCP Servers"
-          >
-            <span class="font-medium">MCP Servers:</span>
-            <span class="text-green-600">{{ Object.keys(value ?? {}).length }}</span>
-          </button>
         </template>
       </div>
     </header>
@@ -50,8 +62,8 @@
       <main class="relative flex-1 bg-white">
         <!-- Main content will go here -->
         <FilePreview />
-        <McpServers v-show="showMcpPanel" />
-        <GraphView v-show="!showMcpPanel" />
+        <GraphView v-show="panel === 'graph'" />
+        <McpServers v-show="panel === 'mcp'" />
       </main>
     </div>
 
@@ -73,14 +85,14 @@ import ChatBox from './components/ChatBox.vue';
 import { useDynamicSplitter } from './composables/useDynamicSplitter';
 import McpServers from './components/McpServers.vue';
 
-const showMcpPanel = ref(false);
+const panel = ref('graph');
 
 // Sidebar width with persistent storage and resize functionality
 const { width: sidebarWidth, startResize } = useDynamicSplitter({
   storageKey: 'sidebar-width',
   defaultWidth: 320,
   minWidth: 200,
-  maxWidth: 800
+  maxWidth: 600
 });
 
 let errorTimeout: number | null = null;
