@@ -75,16 +75,25 @@ class OSFileSystemNode(FileSystemNode):
 
     def children(self) -> list[FileSystemNode]:
         real_path = self.fs._get_real_path(self.path)
-        if not os.path.exists(real_path):
+        if os.path.isdir(real_path):
+            children = []
+            for item in os.listdir(real_path):
+                if item.startswith("."):
+                    continue
+                item_path = f"{self.path}/{item}"
+                children.append(self.fs.get_node(item_path))
+            return children
+        elif os.path.isfile(real_path):
+            children = []
+            meta_path = self.fs._get_meta_path(self.path)
+            for item in os.listdir(meta_path):
+                if not os.path.isdir(os.path.join(meta_path, item)):
+                    continue
+                item_path = f"{self.path}/{item}"
+                children.append(self.fs.get_node(item_path))
+            return children
+        else:
             return []
-
-        children = []
-        for item in os.listdir(real_path):
-            if item.startswith("."):
-                continue
-            item_path = f"{self.path}/{item}"
-            children.append(self.fs.get_node(item_path))
-        return children
 
     def create_child(self, name: str) -> "OSFileSystemNode":
         if self.meta.get("embedded") == "embedded":
