@@ -185,11 +185,11 @@ class JuiceFSFileSystem(IOSYSFileSystem):
         secret_key = os.getenv("JFS_SECRET_KEY")
 
         kwargs = {}
-        #if meta:
+        # if meta:
         #    kwargs["meta"] = meta
         if token:
             kwargs["token"] = token
-        #if access_key and secret_key:
+        # if access_key and secret_key:
         #    kwargs["access_key"] = access_key
         #    kwargs["secret_key"] = secret_key
 
