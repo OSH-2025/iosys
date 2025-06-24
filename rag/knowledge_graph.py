@@ -1,10 +1,5 @@
-import openai  # For LLM interaction
-import json  # For parsing LLM responses
-import networkx as nx  # For creating and managing the graph data structure
-import ipycytoscape  # For interactive in-notebook graph visualization
 import pandas as pd  # For displaying data in tables
 import os  # For accessing environment variables (safer for API keys)
-import re  # For basic text cleaning (regular expressions)
 import warnings  # To suppress potential deprecation warnings
 
 import logging
@@ -57,6 +52,7 @@ Please extract Subject-Predicate-Object (S-P-O) triples from the text below. 对
 **Your JSON Output (MUST start with '[' and end with ']'):**
 """
 
+
 class IOSYSKnowledgeGraphConfig:
     """Agent 配置类"""
 
@@ -87,6 +83,7 @@ class IOSYSKnowledgeGraphConfig:
             format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         )
 
+
 class IOSYSKnowledegeGraph:
     def __init__(self, config: IOSYSKnowledgeGraphConfig):
         self.config = config
@@ -113,7 +110,7 @@ class IOSYSKnowledegeGraph:
             if hasattr(attr, "_tool_name"):
                 handlers[attr._tool_name] = attr
         return handlers
-    
+
     def get_unstructured_text(self, node: FileSystemNode) -> str:
         text = ""
         name = node.name
@@ -132,6 +129,6 @@ class IOSYSKnowledegeGraph:
 
     def generate_knowledge_graph(self):
         raise NotImplementedError("This method should be implemented in subclasses.")
-    
+
     def knowledge_graph_status(self):
         raise NotImplementedError("This method should be implemented in subclasses.")
