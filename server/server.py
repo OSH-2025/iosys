@@ -11,6 +11,7 @@ from agent import IOSYSAgent
 from agent.config import AgentConfig
 from parser import IOSYSParser
 from rag import IOSYSRAG
+from rag.knowledge_graph import IOSYSKnowledegeGraph, IOSYSKnowledgeGraphConfig
 from utils.logger import all_logs
 
 
@@ -26,6 +27,11 @@ fs = new_fs()
 parser = IOSYSParser(llm=llm)
 rag = IOSYSRAG(fs=fs, parser=parser)
 agent = IOSYSAgent(AgentConfig(llm=llm, fs=fs, rag=rag))
+
+# An example to use IOSYSKnowledgeGraph
+knowledge_graph = IOSYSKnowledegeGraph(IOSYSKnowledgeGraphConfig(llm=llm, fs=fs, chunk_size=400))
+knowledge_graph.update_knowledge_graph()
+print(knowledge_graph)
 
 app = FastAPI()
 app.add_middleware(
