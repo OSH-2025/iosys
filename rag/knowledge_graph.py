@@ -264,7 +264,9 @@ class IOSYSKnowledegeGraph:
                             )
                     else:
                         parsing_error = "JSONDecodeError and Regex fallback failed."
-                        logger.error("      ERROR: Regex could not find JSON array structure.")
+                        logger.error(
+                            "      ERROR: Regex could not find JSON array structure."
+                        )
 
                 except ValueError as val_err:
                     parsing_error = f"ValueError: {val_err}"  # Catches issues with unexpected structure
@@ -325,7 +327,6 @@ class IOSYSKnowledegeGraph:
                         )
                 if valid_triples_in_chunk:
                     all_extracted_triples.extend(valid_triples_in_chunk)
-
 
         # Stage 4: Normalize, Filter, and De-duplicate Triples
         normalized_triples = []
