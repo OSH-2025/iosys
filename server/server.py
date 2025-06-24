@@ -29,7 +29,9 @@ rag = IOSYSRAG(fs=fs, parser=parser)
 agent = IOSYSAgent(AgentConfig(llm=llm, fs=fs, rag=rag))
 
 # An example to use IOSYSKnowledgeGraph
-knowledge_graph = IOSYSKnowledegeGraph(IOSYSKnowledgeGraphConfig(llm=llm, fs=fs, chunk_size=400))
+knowledge_graph = IOSYSKnowledegeGraph(
+    IOSYSKnowledgeGraphConfig(llm=llm, fs=fs, chunk_size=400)
+)
 knowledge_graph.update_knowledge_graph()
 print(knowledge_graph)
 
