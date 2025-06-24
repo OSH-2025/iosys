@@ -2,11 +2,10 @@ import pandas as pd  # For displaying data in tables
 import os  # For accessing environment variables (safer for API keys)
 import warnings  # To suppress potential deprecation warnings
 import json  # For parsing LLM responses
-import networkx as nx  # For creating and managing the graph data structure
 import re  # For basic text cleaning (regular expressions)
 import jieba
-
 import logging
+
 from openai import OpenAI
 from typing import Dict, Any, Callable, List
 
@@ -16,6 +15,8 @@ from jfs import IOSYSFileSystem, FileSystemNode
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 pd.set_option("display.max_rows", 100)  # Show more rows in pandas tables
 pd.set_option("display.max_colwidth", 150)  # Show more text width in pandas tables
+logger = logging.getLogger(__name__)
+jieba.setLogLevel(logging.INFO)
 
 # --- System Prompt: Sets the context/role for the LLM ---
 extraction_system_prompt = """
@@ -31,6 +32,12 @@ extraction_user_prompt_template = """
 Please extract Subject-Predicate-Object (S-P-O) triples from the text below. 对于文本中的名词、关系，如果原文使用中文表述，你生成的内容也应该为中文；即：不必将内容翻译为英文再输出。
 
 如果节点和关系中出现用 $$ 括起来的公式，你需要将公式表达为不含 $$ 的文本形式，不使用 latex 语法，不必严谨表述，只要能大致看出公式形式即可。
+
+我希望你提取的 Subject 和 Object 是具体的实体名称，而不是泛指的名词或代词，且应尽可能简单，在非必要时不带有多余的形容词。Predicate 应该是一个简短的动词或动词短语，描述实体之间的关系。
+
+**重要**：当实体名称中出现“和”、“或”等连接词或顿号“、”时，你要将其视为并列关系进行处理，即当作两个对象，建立两个 tripet。
+
+对于意义相近的词，可以用同一个词来表示，以提高知识的结构性。
 
 **VERY IMPORTANT RULES:**
 1.  **Output Format:** Respond ONLY with a single, valid JSON array. Each element MUST be an object with keys "subject", "predicate", "object".
@@ -71,7 +78,7 @@ class IOSYSKnowledgeGraphConfig:
         self.llm = llm
         self.fs = fs
         self.llm_api_key = os.environ["LLM_API_KEY"]
-        self.llm_model = os.environ["LLM_MODEL_NAME"]
+        self.llm_model = os.environ["KG_LLM_MODEL_NAME"]
         self.llm_api_base = os.environ["LLM_BASE_URL"]
         self.chunk_size = chunk_size
         self.overlap = overlap
@@ -101,7 +108,7 @@ class IOSYSKnowledegeGraph:
         self.unstructured_text = ""
         self.chunk_size = config.chunk_size
         self.overlap = config.overlap
-        self.knowledge_graph = None  # TODO
+        self.knowledge_graph = []
 
     def _collect_tool_configs(self) -> List[Dict[str, Any]]:
         """自动收集所有注册的工具配置"""
@@ -134,21 +141,16 @@ class IOSYSKnowledegeGraph:
             text += self.get_unstructured_text(child)
         return text
 
-    def generate_knowledge_graph(self):
-        # TODO: Load chunks streamly by files
-        self.unstructured_text = self.get_unstructured_text(self.fs.get_root())
-        print("Unstructured text loaded successfully.")
-        print(self.unstructured_text)
+    def update_knowledge_graph(self):
+        # Stage 1: Initialize Chunks
 
+        # TODO: Load chunks streamly by files, merge stage 1 & 2
+        self.unstructured_text = self.get_unstructured_text(self.fs.get_root())
         words = list(jieba.cut(self.unstructured_text))
         total_words = len(words)
         chunks = []
         start_index = 0
         chunk_number = 1
-
-        print("Starting chunking process...")
-        print("Chunk Size: ", self.chunk_size)
-        print("Total Words: ", total_words)
 
         while start_index < total_words:
             end_index = min(start_index + self.chunk_size, total_words)
@@ -167,22 +169,22 @@ class IOSYSKnowledegeGraph:
 
             # Safety break (optional)
             if chunk_number > total_words:  # Simple safety
-                print("Warning: Chunking loop exceeded total word count, breaking.")
+                logger.warning("Chunking loop exceeded total word count, breaking.")
                 break
 
         all_extracted_triples = []
         failed_chunks = []
 
+        # Stage 2: Process Each Chunk with LLM
         for chunk_index in range(len(chunks)):
             chunk_info = chunks[chunk_index]
             chunk_text = chunk_info["text"]
             chunk_num = chunk_info["chunk_number"]
 
-            print(f"\n--- Processing Chunk {chunk_num}/{len(chunks)} --- ")
+            logger.info(f"Processing Chunks ({chunk_num}/{len(chunks)})")
 
             # Format the User Prompt
             user_prompt = extraction_user_prompt_template.format(text_chunk=chunk_text)
-
             llm_output = None
             error_message = None
 
@@ -200,11 +202,10 @@ class IOSYSKnowledegeGraph:
                 )
 
                 llm_output = str(response.choices[0].message.content).strip()
-                print("Output: ", llm_output)
 
             except Exception as e:
                 error_message = str(e)
-                print(f"   ERROR during API call: {error_message}")
+                logger.error(f"   ERROR during API call: {error_message}")
                 failed_chunks.append(
                     {
                         "chunk_number": chunk_num,
@@ -217,29 +218,24 @@ class IOSYSKnowledegeGraph:
             parsed_json = None
             parsing_error = None
             if llm_output is not None:
-                print("Attempting to parse JSON from response...")
                 try:
                     # Strategy 1: Direct parsing (ideal)
                     parsed_data = json.loads(llm_output)
 
                     # Handle if response_format={'type':'json_object'} returns a dict containing the list
                     if isinstance(parsed_data, dict):
-                        print(
-                            "   Detected dictionary response, attempting to extract list..."
-                        )
                         list_values = [
                             v for v in parsed_data.values() if isinstance(v, list)
                         ]
                         if len(list_values) == 1:
                             parsed_json = list_values[0]
-                            print("      Successfully extracted list from dictionary.")
                         else:
+                            logger.error(f"LLM raw output: {llm_output}")
                             raise ValueError(
                                 "JSON object received, but doesn't contain a single list of triples."
                             )
                     elif isinstance(parsed_data, list):
                         parsed_json = parsed_data
-                        print("   Successfully parsed JSON list directly.")
                     else:
                         raise ValueError(
                             "Parsed JSON is not a list or expected dictionary wrapper."
@@ -249,40 +245,36 @@ class IOSYSKnowledegeGraph:
                     parsing_error = (
                         f"JSONDecodeError: {json_err}. Trying regex fallback..."
                     )
-                    print(f"   {parsing_error}")
+                    logger.warning(f"   {parsing_error}")
                     # Strategy 2: Regex fallback for arrays potentially wrapped in text/markdown
                     match = re.search(r"^\s*(\[.*?\])\s*$", llm_output, re.DOTALL)
                     if match:
                         json_string_extracted = match.group(1)
-                        print("      Regex found potential JSON array structure.")
+                        logger.info("      Regex found potential JSON array structure.")
                         try:
                             parsed_json = json.loads(json_string_extracted)
-                            print(
+                            logger.info(
                                 "      Successfully parsed JSON from regex extraction."
                             )
                             parsing_error = None  # Clear previous error
                         except json.JSONDecodeError as nested_err:
                             parsing_error = f"JSONDecodeError after regex: {nested_err}"
-                            print(
+                            logger.error(
                                 f"      ERROR: Regex content is not valid JSON: {nested_err}"
                             )
                     else:
                         parsing_error = "JSONDecodeError and Regex fallback failed."
-                        print("      ERROR: Regex could not find JSON array structure.")
+                        logger.error("      ERROR: Regex could not find JSON array structure.")
 
                 except ValueError as val_err:
                     parsing_error = f"ValueError: {val_err}"  # Catches issues with unexpected structure
-                    print(f"   ERROR: {parsing_error}")
+                    logger.error(f"   ERROR: {parsing_error}")
 
                 # --- Show Parsed Result (or error) ---
-                if parsed_json is not None:
-                    print("--- Parsed JSON Data (Chunk {chunk_num}) ---")
-                    print(json.dumps(parsed_json, indent=2))  # Pretty print the JSON
-                    print("-" * 20)
-                else:
-                    print(f"--- JSON Parsing FAILED (Chunk {chunk_num}) --- ")
-                    print(f"   Final Parsing Error: {parsing_error}")
-                    print("-" * 20)
+                if parsed_json is None:
+                    logger.error(f"--- JSON Parsing FAILED (Chunk {chunk_num}) --- ")
+                    logger.error(f"   Final Parsing Error: {parsing_error}")
+                    logger.error("-" * 20)
                     failed_chunks.append(
                         {
                             "chunk_number": chunk_num,
@@ -291,9 +283,8 @@ class IOSYSKnowledegeGraph:
                         }
                     )
 
-            # Validate and Store Triples (if parsing succeeded)
+            # Stage 3: Validate and Store Triples (if parsing succeeded)
             if parsed_json is not None:
-                print("Validating structure and extracting triples...")
                 valid_triples_in_chunk = []
                 invalid_entries = []
                 if isinstance(parsed_json, list):
@@ -317,7 +308,7 @@ class IOSYSKnowledegeGraph:
                                 {"item": item, "reason": "Incorrect structure/keys"}
                             )
                 else:
-                    print(
+                    logger.error(
                         "   ERROR: Parsed data is not a list, cannot extract triples."
                     )
                     invalid_entries.append(
@@ -332,19 +323,13 @@ class IOSYSKnowledegeGraph:
                                 "response": llm_output,
                             }
                         )
+                if valid_triples_in_chunk:
+                    all_extracted_triples.extend(valid_triples_in_chunk)
 
-            # --- Update Running Total (Visual Feedback) ---
-            print(
-                f"--- Running Total Triples Extracted: {len(all_extracted_triples)} --- "
-            )
-            print(f"--- Failed Chunks So Far: {len(failed_chunks)} --- ")
 
-        print("\nFinished processing this chunk.")
-
-        # Initialize lists and tracking variables
+        # Stage 4: Normalize, Filter, and De-duplicate Triples
         normalized_triples = []
         seen_triples = set()  # Tracks (subject, predicate, object) tuples
-        original_count = len(all_extracted_triples)
         empty_removed_count = 0
         duplicates_removed_count = 0
 
@@ -356,7 +341,6 @@ class IOSYSKnowledegeGraph:
             object_raw = triple.get("object")
             chunk_num = triple.get("chunk", "unknown")
 
-            triple_valid = False
             normalized_sub, normalized_pred, normalized_obj = None, None, None
 
             if (
@@ -390,7 +374,6 @@ class IOSYSKnowledegeGraph:
                             }
                         )
                         seen_triples.add(triple_identifier)
-                        triple_valid = True
                     else:
                         duplicates_removed_count += 1
                 else:
@@ -399,48 +382,15 @@ class IOSYSKnowledegeGraph:
                 empty_removed_count += 1  # Count non-string/missing as needing removal
             processed_count += 1
 
-        print(f"\n... Finished processing {processed_count} triples.")
+        logger.info(f"\n... Finished processing {processed_count} triples.")
+        self.knowledge_graph = normalized_triples
 
-        knowledge_graph = nx.DiGraph()
-
-        added_edges_count = 0
-        update_interval = 5  # How often to print graph info update
-
-        if not normalized_triples:
-            print("Warning: No normalized triples to add to the graph.")
-        else:
-            for i, triple in enumerate(normalized_triples):
-                subject_node = triple["subject"]
-                object_node = triple["object"]
-                predicate_label = triple["predicate"]
-
-                print(subject_node, object_node, predicate_label)
-
-                # Nodes are added automatically when adding edges, but explicit calls are fine too
-                # knowledge_graph.add_node(subject_node)
-                # knowledge_graph.add_node(object_node)
-
-                # Add the directed edge with the predicate as a 'label' attribute
-                knowledge_graph.add_edge(
-                    subject_node, object_node, label=predicate_label
-                )
-                added_edges_count += 1
-
-                # --- Visualize Graph Growth ---
-                if (i + 1) % update_interval == 0 or (i + 1) == len(normalized_triples):
-                    print(
-                        f"\n--- Graph Info after adding Triple #{i + 1} --- ({subject_node} -> {object_node})"
-                    )
-                    try:
-                        # Try the newer method first
-                        print(nx.info(knowledge_graph))
-                    except AttributeError:
-                        # Fallback for different NetworkX versions
-                        print(f"Type: {type(knowledge_graph).__name__}")
-                        print(f"Number of nodes: {knowledge_graph.number_of_nodes()}")
-                        print(f"Number of edges: {knowledge_graph.number_of_edges()}")
-                    # For very large graphs, printing info too often can be slow. Adjust interval.
-        self.knowledge_graph = knowledge_graph
+    def __str__(self) -> str:
+        """Convert a list of triples to a formatted string."""
+        text = ""
+        for triple in self.knowledge_graph:
+            text += f"{triple['subject']} {triple['object']} {triple['predicate']}\n"
+        return text
 
     def knowledge_graph_status(self):
         raise NotImplementedError("This method should be implemented in subclasses.")
