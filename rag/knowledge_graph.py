@@ -4,13 +4,13 @@ import warnings  # To suppress potential deprecation warnings
 import json  # For parsing LLM responses
 import networkx as nx  # For creating and managing the graph data structure
 import re  # For basic text cleaning (regular expressions)
+import jieba
 
 import logging
 from openai import OpenAI
 from typing import Dict, Any, Callable, List
 
 from jfs import IOSYSFileSystem, FileSystemNode
-from rag import IOSYSRAG
 
 # Configure settings for better display and fewer warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -59,20 +59,17 @@ Please extract Subject-Predicate-Object (S-P-O) triples from the text below. 对
 class IOSYSKnowledgeGraphConfig:
     llm: OpenAI
     fs: IOSYSFileSystem
-    rag: IOSYSRAG
 
     def __init__(
         self,
         llm: OpenAI,
         fs: IOSYSFileSystem,
-        rag: IOSYSRAG,
         chunk_size: int = 300,
         overlap: int = 30,
         log_level: str = "INFO",
     ):
         self.llm = llm
         self.fs = fs
-        self.rag = rag
         self.llm_api_key = os.environ["LLM_API_KEY"]
         self.llm_model = os.environ["LLM_MODEL_NAME"]
         self.llm_api_base = os.environ["LLM_BASE_URL"]
@@ -130,24 +127,28 @@ class IOSYSKnowledegeGraph:
         # TODO: Check if the file is a text file
         pure_text = name.endswith(".txt") or name.endswith(".md")
         if pure_text:
-            content = node.read()
+            content_bytes = node.read()
+            content = content_bytes.decode("utf-8", errors="ignore")
             text += f"--- File: {name} ---\n{content}\n\n"
         for child in node.children():
             text += self.get_unstructured_text(child)
         return text
 
-    def update_unstructured_text(self, new_text: str):
-        """read all text files in the directory and merge them together"""
-        self.unstructured_text = self.get_unstructured_text(self.fs.get_root())
-
     def generate_knowledge_graph(self):
-        words = self.unstructured_text.split()
+        # TODO: Load chunks streamly by files
+        self.unstructured_text = self.get_unstructured_text(self.fs.get_root())
+        print("Unstructured text loaded successfully.")
+        print(self.unstructured_text)
+
+        words = list(jieba.cut(self.unstructured_text))
         total_words = len(words)
         chunks = []
         start_index = 0
         chunk_number = 1
 
         print("Starting chunking process...")
+        print("Chunk Size: ", self.chunk_size)
+        print("Total Words: ", total_words)
 
         while start_index < total_words:
             end_index = min(start_index + self.chunk_size, total_words)
@@ -199,6 +200,7 @@ class IOSYSKnowledegeGraph:
                 )
 
                 llm_output = str(response.choices[0].message.content).strip()
+                print("Output: ", llm_output)
 
             except Exception as e:
                 error_message = str(e)
@@ -411,6 +413,8 @@ class IOSYSKnowledegeGraph:
                 subject_node = triple["subject"]
                 object_node = triple["object"]
                 predicate_label = triple["predicate"]
+
+                print(subject_node, object_node, predicate_label)
 
                 # Nodes are added automatically when adding edges, but explicit calls are fine too
                 # knowledge_graph.add_node(subject_node)
