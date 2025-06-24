@@ -7,7 +7,11 @@ from typing import List, Union, cast
 
 import juicefs  # type: ignore
 
-from . import FileSystemNode, IOSYSFileSystem, CHANGE_TYPE  # Assuming DirNode is defined elsewhere
+from . import (
+    FileSystemNode,
+    IOSYSFileSystem,
+    CHANGE_TYPE,
+)  # Assuming DirNode is defined elsewhere
 from .service import JuiceFSService
 from utils.logger import IOSYSLogger
 
@@ -53,7 +57,9 @@ class JuiceFSFileNode(FileSystemNode):
     # Hierarchy helpers
     # ------------------------------------------------------------------
     def parent(self) -> "JuiceFSDirNode":  # type: ignore[override]
-        return JuiceFSDirNode(cast("JuiceFSFileSystem", self.fs), os.path.dirname(self.path))
+        return JuiceFSDirNode(
+            cast("JuiceFSFileSystem", self.fs), os.path.dirname(self.path)
+        )
 
     def children(self) -> List[FileSystemNode]:  # type: ignore[override]
         return []  # files have no children
@@ -106,7 +112,9 @@ class JuiceFSDirNode(FileSystemNode):
     def parent(self) -> "JuiceFSDirNode":  # type: ignore[override]
         if self.path == "/":
             return self  # root's parent is itself
-        return JuiceFSDirNode(cast("JuiceFSFileSystem", self.fs), os.path.dirname(self.path))
+        return JuiceFSDirNode(
+            cast("JuiceFSFileSystem", self.fs), os.path.dirname(self.path)
+        )
 
     def children(self) -> List[FileSystemNode]:  # type: ignore[override]
         try:
@@ -228,6 +236,7 @@ class JuiceFSFileSystem(IOSYSFileSystem):
 ###########################################################################
 # Public factory hook (optional)
 ###########################################################################
+
 
 def new_fs() -> IOSYSFileSystem:  # noqa: D401 – factory method
     """Return a ready‑to‑use JuiceFS‑backed file system."""
