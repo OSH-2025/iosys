@@ -109,7 +109,6 @@ class IOSYSFileSystem(abc.ABC):
     @abc.abstractmethod
     def get_node(self, path: str) -> FileSystemNode | None: ...
 
-    
     def _notify_change(
         self,
         node: "FileSystemNode",
@@ -117,7 +116,7 @@ class IOSYSFileSystem(abc.ABC):
     ) -> None:
         """默认实现：直接转发到 invoke_on_change()"""
         self.invoke_on_change(node, change_type)
-    
+
     def get_root(self) -> FileSystemNode:
         """Get the root node of the file system"""
         root = self.get_node("/")

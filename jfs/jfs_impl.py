@@ -3,7 +3,7 @@ from __future__ import annotations
 import io
 import os
 import stat as stat_mod
-from typing import List, Union, cast
+from typing import List, Union
 
 import juicefs  # type: ignore
 
@@ -11,14 +11,14 @@ from . import FileSystemNode, IOSYSFileSystem  # Assuming DirNode is defined els
 from .service import JuiceFSService
 from utils.logger import IOSYSLogger
 
-'''
+"""
 import io
 import os
 import stat as stat_mod
 import juicefs
 from . import FileSystemNode, IOSYSFileSystem
 from .service import JuiceFSService
-'''
+"""
 '''
 class JuiceFSFileNode(FileSystemNode):
     fs: "JuiceFSFileSystem"
@@ -174,10 +174,10 @@ JuiceFS official docs.
 """
 
 
-
 ###########################################################################
 # Helper functions
 ###########################################################################
+
 
 def _norm(path: str) -> str:
     """Normalize a path to ensure leading slash *without* trailing slash (except root)."""
@@ -200,7 +200,7 @@ class JuiceFSFileNode(FileSystemNode):
     def __init__(self, fs: "JuiceFSFileSystem", path: str):
         super().__init__(fs, _norm(path))
         self.meta["type"] = "file"
-        #self.fs = cast("JuiceFSFileSystem", fs)
+        # self.fs = cast("JuiceFSFileSystem", fs)
 
     # ------------------------------------------------------------------
     # File‑specific operations
@@ -401,6 +401,7 @@ class JuiceFSFileSystem(IOSYSFileSystem):
 ###########################################################################
 # Public factory hook (optional)
 ###########################################################################
+
 
 def new_fs() -> IOSYSFileSystem:  # noqa: D401 – factory method
     """Return a ready‑to‑use JuiceFS‑backed file system."""
