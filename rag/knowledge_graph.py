@@ -3,9 +3,7 @@ import os  # For accessing environment variables (safer for API keys)
 import warnings  # To suppress potential deprecation warnings
 import json  # For parsing LLM responses
 import networkx as nx  # For creating and managing the graph data structure
-import pandas as pd  # For displaying data in tables
 import re  # For basic text cleaning (regular expressions)
-import warnings  # To suppress potential deprecation warnings
 
 import logging
 from openai import OpenAI
@@ -59,7 +57,6 @@ Please extract Subject-Predicate-Object (S-P-O) triples from the text below. 对
 
 
 class IOSYSKnowledgeGraphConfig:
-
     llm: OpenAI
     fs: IOSYSFileSystem
     rag: IOSYSRAG
@@ -107,7 +104,7 @@ class IOSYSKnowledegeGraph:
         self.unstructured_text = ""
         self.chunk_size = config.chunk_size
         self.overlap = config.overlap
-        self.knowledge_graph = None # TODO
+        self.knowledge_graph = None  # TODO
 
     def _collect_tool_configs(self) -> List[Dict[str, Any]]:
         """自动收集所有注册的工具配置"""
@@ -225,8 +222,12 @@ class IOSYSKnowledegeGraph:
 
                     # Handle if response_format={'type':'json_object'} returns a dict containing the list
                     if isinstance(parsed_data, dict):
-                        print("   Detected dictionary response, attempting to extract list...")
-                        list_values = [v for v in parsed_data.values() if isinstance(v, list)]
+                        print(
+                            "   Detected dictionary response, attempting to extract list..."
+                        )
+                        list_values = [
+                            v for v in parsed_data.values() if isinstance(v, list)
+                        ]
                         if len(list_values) == 1:
                             parsed_json = list_values[0]
                             print("      Successfully extracted list from dictionary.")
@@ -243,7 +244,9 @@ class IOSYSKnowledegeGraph:
                         )
 
                 except json.JSONDecodeError as json_err:
-                    parsing_error = f"JSONDecodeError: {json_err}. Trying regex fallback..."
+                    parsing_error = (
+                        f"JSONDecodeError: {json_err}. Trying regex fallback..."
+                    )
                     print(f"   {parsing_error}")
                     # Strategy 2: Regex fallback for arrays potentially wrapped in text/markdown
                     match = re.search(r"^\s*(\[.*?\])\s*$", llm_output, re.DOTALL)
@@ -252,19 +255,21 @@ class IOSYSKnowledegeGraph:
                         print("      Regex found potential JSON array structure.")
                         try:
                             parsed_json = json.loads(json_string_extracted)
-                            print("      Successfully parsed JSON from regex extraction.")
+                            print(
+                                "      Successfully parsed JSON from regex extraction."
+                            )
                             parsing_error = None  # Clear previous error
                         except json.JSONDecodeError as nested_err:
                             parsing_error = f"JSONDecodeError after regex: {nested_err}"
-                            print(f"      ERROR: Regex content is not valid JSON: {nested_err}")
+                            print(
+                                f"      ERROR: Regex content is not valid JSON: {nested_err}"
+                            )
                     else:
                         parsing_error = "JSONDecodeError and Regex fallback failed."
                         print("      ERROR: Regex could not find JSON array structure.")
 
                 except ValueError as val_err:
-                    parsing_error = (
-                        f"ValueError: {val_err}"  # Catches issues with unexpected structure
-                    )
+                    parsing_error = f"ValueError: {val_err}"  # Catches issues with unexpected structure
                     print(f"   ERROR: {parsing_error}")
 
                 # --- Show Parsed Result (or error) ---
@@ -310,8 +315,12 @@ class IOSYSKnowledegeGraph:
                                 {"item": item, "reason": "Incorrect structure/keys"}
                             )
                 else:
-                    print("   ERROR: Parsed data is not a list, cannot extract triples.")
-                    invalid_entries.append({"item": parsed_json, "reason": "Not a list"})
+                    print(
+                        "   ERROR: Parsed data is not a list, cannot extract triples."
+                    )
+                    invalid_entries.append(
+                        {"item": parsed_json, "reason": "Not a list"}
+                    )
                     # Also add to failed chunks if the overall structure was wrong
                     if not any(fc["chunk_number"] == chunk_num for fc in failed_chunks):
                         failed_chunks.append(
@@ -323,11 +332,12 @@ class IOSYSKnowledegeGraph:
                         )
 
             # --- Update Running Total (Visual Feedback) ---
-            print(f"--- Running Total Triples Extracted: {len(all_extracted_triples)} --- ")
+            print(
+                f"--- Running Total Triples Extracted: {len(all_extracted_triples)} --- "
+            )
             print(f"--- Failed Chunks So Far: {len(failed_chunks)} --- ")
 
         print("\nFinished processing this chunk.")
-
 
         # Initialize lists and tracking variables
         normalized_triples = []
@@ -354,12 +364,18 @@ class IOSYSKnowledegeGraph:
             ):
                 # 1. Normalize
                 normalized_sub = subject_raw.strip().lower()
-                normalized_pred = re.sub(r"\s+", " ", predicate_raw.strip().lower()).strip()
+                normalized_pred = re.sub(
+                    r"\s+", " ", predicate_raw.strip().lower()
+                ).strip()
                 normalized_obj = object_raw.strip().lower()
 
                 # 2. Filter Empty
                 if normalized_sub and normalized_pred and normalized_obj:
-                    triple_identifier = (normalized_sub, normalized_pred, normalized_obj)
+                    triple_identifier = (
+                        normalized_sub,
+                        normalized_pred,
+                        normalized_obj,
+                    )
 
                     # 3. De-duplicate
                     if triple_identifier not in seen_triples:
@@ -401,7 +417,9 @@ class IOSYSKnowledegeGraph:
                 # knowledge_graph.add_node(object_node)
 
                 # Add the directed edge with the predicate as a 'label' attribute
-                knowledge_graph.add_edge(subject_node, object_node, label=predicate_label)
+                knowledge_graph.add_edge(
+                    subject_node, object_node, label=predicate_label
+                )
                 added_edges_count += 1
 
                 # --- Visualize Graph Growth ---
@@ -419,7 +437,6 @@ class IOSYSKnowledegeGraph:
                         print(f"Number of edges: {knowledge_graph.number_of_edges()}")
                     # For very large graphs, printing info too often can be slow. Adjust interval.
         self.knowledge_graph = knowledge_graph
-
 
     def knowledge_graph_status(self):
         raise NotImplementedError("This method should be implemented in subclasses.")
