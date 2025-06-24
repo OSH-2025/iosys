@@ -11,7 +11,6 @@ from agent import IOSYSAgent
 from agent.config import AgentConfig
 from parser import IOSYSParser
 from rag import IOSYSRAG
-from rag.knowledge_graph import IOSYSKnowledegeGraph, IOSYSKnowledgeGraphConfig
 from utils.logger import all_logs
 
 
