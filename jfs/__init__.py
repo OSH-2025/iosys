@@ -1,5 +1,5 @@
 import asyncio
-from typing import Awaitable, Callable, Literal, Union
+from typing import Awaitable, Callable, Literal, Union, Any
 import abc
 import os
 import io
@@ -93,6 +93,8 @@ class IOSYSFileSystem(abc.ABC):
 
     _previous_task: asyncio.Task | None = None
 
+    client: Any
+
     def __init__(self):
         logger = IOSYSLogger("FS")
 
@@ -106,6 +108,14 @@ class IOSYSFileSystem(abc.ABC):
 
     @abc.abstractmethod
     def get_node(self, path: str) -> FileSystemNode | None: ...
+
+    def _notify_change(
+        self,
+        node: "FileSystemNode",
+        change_type: CHANGE_TYPE,
+    ) -> None:
+        """默认实现：直接转发到 invoke_on_change()"""
+        self.invoke_on_change(node, change_type)
 
     def get_root(self) -> FileSystemNode:
         """Get the root node of the file system"""
