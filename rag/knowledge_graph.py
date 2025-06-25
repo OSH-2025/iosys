@@ -191,9 +191,7 @@ class IOSYSKnowledgeGraph:
                     )
 
             except json.JSONDecodeError as json_err:
-                parsing_error = (
-                    f"JSONDecodeError: {json_err}. Trying regex fallback..."
-                )
+                parsing_error = f"JSONDecodeError: {json_err}. Trying regex fallback..."
                 logger.warning(f"   {parsing_error}")
                 # Strategy 2: Regex fallback for arrays potentially wrapped in text/markdown
                 match = re.search(r"^\s*(\[.*?\])\s*$", llm_output, re.DOTALL)
@@ -218,11 +216,13 @@ class IOSYSKnowledgeGraph:
                     )
 
             except ValueError as val_err:
-                parsing_error = f"ValueError: {val_err}"  # Catches issues with unexpected structure
+                parsing_error = (
+                    f"ValueError: {val_err}"  # Catches issues with unexpected structure
+                )
                 logger.error(f"   ERROR: {parsing_error}")
 
         return {"content": parsed_json, "error": parsing_error, "response": llm_output}
-    
+
     async def update_knowledge_graph(self):
         self.done = False
         logger.info("Starting knowledge graph extraction...")
@@ -244,7 +244,7 @@ class IOSYSKnowledgeGraph:
 
             if next_start_index <= start_index:
                 if end_index == total_words:
-                    break 
+                    break
                 next_start_index = start_index + 1
 
             start_index = next_start_index
@@ -279,7 +279,9 @@ class IOSYSKnowledgeGraph:
 
             if parsed_json is None:
                 logger.error(f"--- JSON Parsing FAILED (Chunk {chunk_num}) --- ")
-                logger.error(f"   Final Parsing Error: {raw_kg.get('error', 'Unknown error')}")
+                logger.error(
+                    f"   Final Parsing Error: {raw_kg.get('error', 'Unknown error')}"
+                )
                 logger.error("-" * 20)
             else:
                 valid_triples_in_chunk = []
