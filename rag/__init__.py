@@ -6,7 +6,7 @@ from parser import IOSYSParser
 from llama_index.llms.openai import OpenAI
 
 from .query import IOSYSQueryEngine
-from .graph import IOSYSGraphEngine
+from .file_graph import IOSYSGraphEngine
 
 
 class IOSYSRAG:
