@@ -243,13 +243,11 @@ class IOSYSKnowledgeGraph:
             words = list(jieba.cut(rawtext))
             total_words += len(words)
             buffer.extend(words)
-            while len(buffer) >= self.chunk_size or (
-                i == len(files) - 1 and len(buffer) > 0
-            ):
+            while len(buffer) >= self.chunk_size or (i == len(files) - 1 and (len(buffer) > self.overlap or i == 0)):
                 chunk_num += 1
-                end_index = min(self.chunk_size, total_words)
+                end_index = min(self.chunk_size, len(buffer))
                 chunk_text = " ".join(buffer[0:end_index])
-                buffer = buffer[end_index:]
+                buffer = buffer[max(end_index - self.overlap, 0):]
                 print(f"Chunk #{chunk_num}, Processing files:{i + 1} / {len(files)}")
                 try:
                     raw_kg = await self.chunk_to_raw_kg_json(chunk_text)
@@ -268,19 +266,12 @@ class IOSYSKnowledgeGraph:
                     valid_triples_in_chunk = []
                     if isinstance(parsed_json, list):
                         for item in parsed_json:
-                            if isinstance(item, dict) and all(
-                                k in item for k in ["subject", "predicate", "object"]
-                            ):
-                                if all(
-                                    isinstance(item[k], str)
-                                    for k in ["subject", "predicate", "object"]
-                                ):
+                            if isinstance(item, dict) and all(k in item for k in ["subject", "predicate", "object"]):
+                                if all(isinstance(item[k], str) for k in ["subject", "predicate", "object"]):
                                     item["chunk"] = chunk_num  # Add source chunk info
                                     valid_triples_in_chunk.append(item)
                     else:
-                        logger.error(
-                            "   ERROR: Parsed data is not a list, cannot extract triples."
-                        )
+                        logger.error("   ERROR: Parsed data is not a list, cannot extract triples.")
                     if valid_triples_in_chunk:
                         all_extracted_triples.extend(valid_triples_in_chunk)
             self.textfile_processed = i + 1
