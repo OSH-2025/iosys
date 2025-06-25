@@ -33,7 +33,7 @@ async_llm = AsyncOpenAI(
     api_key=os.environ["LLM_API_KEY"],
 )
 knowledge_graph = IOSYSKnowledgeGraph(
-    IOSYSKnowledgeGraphConfig(llm=async_llm, fs=fs, chunk_size=400)
+    IOSYSKnowledgeGraphConfig(llm=async_llm, fs=fs, chunk_size=200)
 )
 
 app = FastAPI()

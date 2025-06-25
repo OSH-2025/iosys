@@ -228,6 +228,7 @@ class IOSYSKnowledgeGraph:
         files = self.get_text_file_list(self.fs.get_root())
 
         buffer = []
+        file_index_buffer = []
         total_words = 0
         chunk_num = 0
         all_extracted_triples = []
@@ -242,6 +243,7 @@ class IOSYSKnowledgeGraph:
             rawtext = f"**File: {name}**\n{content}\n\n"
             words = list(jieba.cut(rawtext))
             total_words += len(words)
+            file_index_buffer += [i] * len(words)
             buffer.extend(words)
             while len(buffer) >= self.chunk_size or (
                 i == len(files) - 1 and (len(buffer) > self.overlap or i == 0)
@@ -249,7 +251,14 @@ class IOSYSKnowledgeGraph:
                 chunk_num += 1
                 end_index = min(self.chunk_size, len(buffer))
                 chunk_text = " ".join(buffer[0:end_index])
-                buffer = buffer[max(end_index - self.overlap, 0) :]
+                file_indices = file_index_buffer[0:end_index]
+                cut_index = max(end_index - self.overlap, 0)
+                buffer = buffer[cut_index:]
+                file_index_buffer = file_index_buffer[cut_index:]
+
+                file_indices = list(set(file_indices))
+                file_names = [files[idx].path for idx in file_indices if idx < len(files)]
+
                 print(f"Chunk #{chunk_num}, Processing files:{i + 1} / {len(files)}")
                 try:
                     raw_kg = await self.chunk_to_raw_kg_json(chunk_text)
@@ -276,6 +285,7 @@ class IOSYSKnowledgeGraph:
                                     for k in ["subject", "predicate", "object"]
                                 ):
                                     item["chunk"] = chunk_num  # Add source chunk info
+                                    item["related_files"] = file_names  # Add related files info
                                     valid_triples_in_chunk.append(item)
                     else:
                         logger.error(
@@ -298,6 +308,7 @@ class IOSYSKnowledgeGraph:
             predicate_raw = triple.get("predicate")
             object_raw = triple.get("object")
             chunk_num = triple.get("chunk", "unknown")
+            related_files = triple.get("related_files", [])
 
             normalized_sub, normalized_pred, normalized_obj = None, None, None
 
@@ -329,6 +340,7 @@ class IOSYSKnowledgeGraph:
                                 "predicate": normalized_pred,
                                 "object": normalized_obj,
                                 "source_chunk": chunk_num,
+                                "related_files": related_files,
                             }
                         )
                         seen_triples.add(triple_identifier)
