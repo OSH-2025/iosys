@@ -257,7 +257,9 @@ class IOSYSKnowledgeGraph:
                 file_index_buffer = file_index_buffer[cut_index:]
 
                 file_indices = list(set(file_indices))
-                file_names = [files[idx].path for idx in file_indices if idx < len(files)]
+                file_names = [
+                    files[idx].path for idx in file_indices if idx < len(files)
+                ]
 
                 print(f"Chunk #{chunk_num}, Processing files:{i + 1} / {len(files)}")
                 try:
@@ -285,7 +287,9 @@ class IOSYSKnowledgeGraph:
                                     for k in ["subject", "predicate", "object"]
                                 ):
                                     item["chunk"] = chunk_num  # Add source chunk info
-                                    item["related_files"] = file_names  # Add related files info
+                                    item["related_files"] = (
+                                        file_names  # Add related files info
+                                    )
                                     valid_triples_in_chunk.append(item)
                     else:
                         logger.error(
