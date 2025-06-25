@@ -106,10 +106,14 @@ class IOSYSKnowledgeGraph:
         self.unstructured_text = ""
         self.chunk_size = config.chunk_size
         self.overlap = config.overlap
-        self.knowledge_graph = []
-        self.chunk_total = 0
-        self.chunk_processed = 0
-        self.done = False
+        # Try to load from meta
+        kg_data = self.fs.get_root().meta.get("knowledge_graph", "{}")
+        kg_dict = json.loads(str(kg_data))
+        self.chunk_total = kg_dict.get("chunk_total", 0)
+        self.knowledge_graph = kg_dict.get("content", [])
+        self.chunk_processed = self.chunk_total
+        self.done = True
+
 
     def _collect_tool_configs(self) -> List[Dict[str, Any]]:
         """自动收集所有注册的工具配置"""
@@ -391,6 +395,7 @@ class IOSYSKnowledgeGraph:
 
         logger.info(f"\n... Finished processing {processed_count} triples.")
         self.knowledge_graph = normalized_triples
+        self.fs.get_root().update_meta(knowledge_graph=self.to_dict())
         self.done = True
 
     def __str__(self) -> str:
@@ -401,7 +406,7 @@ class IOSYSKnowledgeGraph:
         return text
 
     def to_dict(self) -> Dict[str, Any]:
-        return {"content": self.knowledge_graph}
+        return {"chunk_total": self.chunk_total, "content": self.knowledge_graph}
 
     def knowledge_graph_status(self):
         return {
