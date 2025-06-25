@@ -68,18 +68,20 @@ class IOSYSKnowledgeGraphConfig:
     def __init__(
         self,
         llm: AsyncOpenAI,
-        fs: IOSYSFileSystem,
         chunk_size: int = 300,
         overlap: int = 30,
         log_level: str = "INFO",
+        system_prompt: str = extraction_system_prompt,
+        user_prompt_template: str = extraction_user_prompt_template,
     ):
         self.llm = llm
-        self.fs = fs
         self.llm_api_key = os.environ["LLM_API_KEY"]
         self.llm_model = os.environ["KG_LLM_MODEL_NAME"]
         self.llm_api_base = os.environ["LLM_BASE_URL"]
         self.chunk_size = chunk_size
         self.overlap = overlap
+        self.system_prompt = system_prompt
+        self.user_prompt_template = user_prompt_template
 
         # 设置日志级别
         numeric_level = getattr(logging, log_level.upper(), None)
@@ -92,9 +94,9 @@ class IOSYSKnowledgeGraphConfig:
 
 
 class IOSYSKnowledgeGraph:
-    def __init__(self, config: IOSYSKnowledgeGraphConfig):
+    def __init__(self, node: FileSystemNode, config: IOSYSKnowledgeGraphConfig):
         self.config = config
-        self.fs = config.fs
+        self.node = node
         self.llm_client = config.llm
         self.llm_model_name = config.llm_model
         self.llm_api_base = config.llm_api_base
@@ -106,13 +108,18 @@ class IOSYSKnowledgeGraph:
         self.unstructured_text = ""
         self.chunk_size = config.chunk_size
         self.overlap = config.overlap
+        self.system_prompt = config.system_prompt
+        self.user_prompt_template = config.user_prompt_template
         # Try to load from meta
-        kg_data = self.fs.get_root().meta.get("knowledge_graph", "{}")
+        kg_data = self.node.meta.get("knowledge_graph", "{}")
         kg_dict = json.loads(str(kg_data))
-        self.textfile_total = kg_dict.get("textfile_total", 0)
-        self.textfile_processed = self.textfile_total
-        self.knowledge_graph = kg_dict.get("content", [])
-        self.done = True
+        self.content = kg_dict.get("content", [])
+        status = kg_dict.get("status", "not_generated")
+        self.done = status == "done"
+        self.error = status != "done"
+        self.error_message = kg_dict.get("error_message", f"{self.node.path}:\n")
+        if(status == "not_generated"):
+            self.error_message += "Knowledge graph has not been generated yet.\n"
 
     def _collect_tool_configs(self) -> List[Dict[str, Any]]:
         """自动收集所有注册的工具配置"""
@@ -178,15 +185,13 @@ class IOSYSKnowledgeGraph:
                         parsed_json = list_values[0]
                     else:
                         logger.error(f"LLM raw output: {llm_output}")
-                        raise ValueError(
-                            "JSON object received, but doesn't contain a single list of triples."
-                        )
+                        self.error_message += "JSON object received, but doesn't contain a single list of triples."
+                        raise ValueError(self.error_message)
                 elif isinstance(parsed_data, list):
                     parsed_json = parsed_data
                 else:
-                    raise ValueError(
-                        "Parsed JSON is not a list or expected dictionary wrapper."
-                    )
+                    self.error_message += "Parsed JSON is not a list or expected dictionary wrapper."
+                    raise ValueError("Parsed JSON is not a list or expected dictionary wrapper.")
 
             except json.JSONDecodeError as json_err:
                 parsing_error = f"JSONDecodeError: {json_err}. Trying regex fallback..."
@@ -220,96 +225,91 @@ class IOSYSKnowledgeGraph:
                 logger.error(f"   ERROR: {parsing_error}")
 
         return {"content": parsed_json, "error": parsing_error, "response": llm_output}
-
-    async def update_knowledge_graph(self):
+    
+    def clear(self, update_meta: bool = True):
+        """Clear the knowledge graph content and reset status."""
         self.done = False
-        logger.info("Starting knowledge graph extraction...")
+        self.error = True
+        self.error_message = f"{self.node.path}:\nNo knowledge graph content available."
+        self.content = []
+        if update_meta:
+            self.node.update_meta(knowledge_graph=json.dumps(self.to_dict()))
 
-        files = self.get_text_file_list(self.fs.get_root())
+    async def update(self):
+        self.clear(False)
+        self.error_message = f"{self.node.path}:\n"
 
+        node = self.node
+        logger.info(f"File {node.path} Starting knowledge graph extraction...")
+
+        name = node.name
+        content = ""
+        # TODO: Read as text (Markitdown part)
+        if name.endswith(".txt") and not name.endswith(".md"):
+            content_bytes = node.read()
+            content = content_bytes.decode("utf-8", errors="ignore")
+        rawtext = f"**File: {node.path}**\n{content}\n\n"
+        words = list(jieba.cut(rawtext))
+        total_words = len(words)
+        total_chunks = (total_words // (self.chunk_size - self.overlap)) + 1
         total_words = 0
         chunk_num = 0
         all_extracted_triples = []
-        self.textfile_total = len(files)
-
-        # Process files to knowledge graph
-        for i in range(len(files)):
-            node = files[i]
-            # TODO: Read as text (Markitdown part)
-            content_bytes = node.read()
-            name = node.name
-            content = content_bytes.decode("utf-8", errors="ignore")
-            rawtext = f"**File: {name}**\n{content}\n\n"
-            words = list(jieba.cut(rawtext))
-            total_words += len(words)
-            for j in range(len(words)):
-                chunk_num += 1
-                end_index = min(self.chunk_size, len(words))
-                chunk_text = " ".join(words[0:end_index])
-                cut_index = max(end_index - self.overlap, 0)
-                words = words[cut_index:]
-
-                print(f"Chunk #{chunk_num}, Processing files:{i + 1} / {len(files)}")
-                try:
-                    raw_kg = await self.chunk_to_raw_kg_json(chunk_text)
-                    parsed_json = raw_kg.get("content", None)
-                except Exception as e:
-                    error_message = str(e)
-                    logger.error(f"   ERROR during API call: {error_message}")
-
-                if parsed_json is None:
-                    logger.error(f"--- JSON Parsing FAILED (Chunk {chunk_num}) --- ")
-                    logger.error(
-                        f"   Final Parsing Error: {raw_kg.get('error', 'Unknown error')}"
-                    )
-                    logger.error("-" * 20)
-                else:
-                    valid_triples_in_chunk = []
-                    if isinstance(parsed_json, list):
-                        for item in parsed_json:
-                            if isinstance(item, dict) and all(
-                                k in item for k in ["subject", "predicate", "object"]
-                            ):
-                                if all(
-                                    isinstance(item[k], str)
-                                    for k in ["subject", "predicate", "object"]
-                                ):
-                                    item["chunk"] = chunk_num  # Add source chunk info
-                                    item["related_file"] = (
-                                        node.path
-                                    )  # Add related files info
-                                    valid_triples_in_chunk.append(item)
-                    else:
-                        logger.error(
-                            "   ERROR: Parsed data is not a list, cannot extract triples."
-                        )
-                    if valid_triples_in_chunk:
-                        all_extracted_triples.extend(valid_triples_in_chunk)
-                if len(words) <= self.overlap:
-                    break
-            self.textfile_processed = i + 1
-
-        # Normalize, Filter, and De-duplicate Triples
         normalized_triples = []
         seen_triples = set()  # Tracks (subject, predicate, object) tuples
-        empty_removed_count = 0
-        duplicates_removed_count = 0
 
-        processed_count = 0
+        for j in range(len(words)):
+            chunk_num += 1
+            end_index = min(self.chunk_size, len(words))
+            chunk_text = " ".join(words[0:end_index])
+            cut_index = max(end_index - self.overlap, 0)
+            words = words[cut_index:]
 
-        for i, triple in enumerate(all_extracted_triples):
-            subject_raw = triple.get("subject")
-            predicate_raw = triple.get("predicate")
-            object_raw = triple.get("object")
-            related_file = triple.get("related_file", "unknown")
+            logger.info(f"File {node.path} is processing Chunk {chunk_num}/{total_chunks}")
+            try:
+                raw_kg = await self.chunk_to_raw_kg_json(chunk_text)
+                parsed_json = raw_kg.get("content", None)
+            except Exception as e:
+                error_message = str(e)
+                logger.error(f"   ERROR during API call: {error_message}")
 
-            normalized_sub, normalized_pred, normalized_obj = None, None, None
+            if parsed_json is None:
+                logger.error(f"--- JSON Parsing FAILED (Chunk {chunk_num}) --- ")
+                logger.error(
+                    f"   Final Parsing Error: {raw_kg.get('error', 'Unknown error')}"
+                )
+                logger.error("-" * 20)
+            else:
+                valid_triples_in_chunk = []
+                if isinstance(parsed_json, list):
+                    for item in parsed_json:
+                        if isinstance(item, dict) and all(
+                            k in item for k in ["subject", "predicate", "object"]
+                        ):
+                            if all(
+                                isinstance(item[k], str)
+                                for k in ["subject", "predicate", "object"]
+                            ):
+                                item["chunk"] = chunk_num  # Add source chunk info
+                                valid_triples_in_chunk.append(item)
+                else:
+                    logger.error(
+                        "   ERROR: Parsed data is not a list, cannot extract triples."
+                    )
+                if valid_triples_in_chunk:
+                    all_extracted_triples.extend(valid_triples_in_chunk)
 
-            if (
-                isinstance(subject_raw, str)
-                and isinstance(predicate_raw, str)
-                and isinstance(object_raw, str)
-            ):
+            # Normalize, Filter, and De-duplicate Triples
+            for i, triple in enumerate(all_extracted_triples):
+                subject_raw = triple.get("subject")
+                predicate_raw = triple.get("predicate")
+                object_raw = triple.get("object")
+
+                normalized_sub, normalized_pred, normalized_obj = None, None, None
+
+                if not ( isinstance(subject_raw, str) and isinstance(predicate_raw, str) and isinstance(object_raw, str)):
+                    continue
+
                 # 1. Normalize
                 normalized_sub = subject_raw.strip().lower()
                 normalized_pred = re.sub(
@@ -318,60 +318,62 @@ class IOSYSKnowledgeGraph:
                 normalized_obj = object_raw.strip().lower()
 
                 # 2. Filter Empty
-                if normalized_sub and normalized_pred and normalized_obj:
-                    triple_identifier = (
-                        normalized_sub,
-                        normalized_pred,
-                        normalized_obj,
+                if not (normalized_sub and normalized_pred and normalized_obj):
+                    continue
+                triple_identifier = (
+                    normalized_sub,
+                    normalized_pred,
+                    normalized_obj,
+                )
+
+                # 3. De-duplicate
+                if triple_identifier not in seen_triples:
+                    normalized_triples.append(
+                        {
+                            "subject": normalized_sub,
+                            "predicate": normalized_pred,
+                            "object": normalized_obj,
+                        }
                     )
+                    seen_triples.add(triple_identifier)
+            self.content = normalized_triples
+            if len(words) <= self.overlap:
+                break
 
-                    # 3. De-duplicate
-                    if triple_identifier not in seen_triples:
-                        normalized_triples.append(
-                            {
-                                "subject": normalized_sub,
-                                "predicate": normalized_pred,
-                                "object": normalized_obj,
-                                "related_files": [related_file],
-                            }
-                        )
-                        seen_triples.add(triple_identifier)
-                    else:
-                        for existing_triple in normalized_triples:
-                            if (
-                                existing_triple["subject"] == normalized_sub
-                                and existing_triple["predicate"] == normalized_pred
-                                and existing_triple["object"] == normalized_obj
-                            ):
-                                if related_file not in existing_triple["related_files"]:
-                                    existing_triple["related_files"].append(
-                                        related_file
-                                    )
-                        duplicates_removed_count += 1
-                else:
-                    empty_removed_count += 1
-            else:
-                empty_removed_count += 1  # Count non-string/missing as needing removal
-            processed_count += 1
-
-        logger.info(f"\n... Finished processing {processed_count} triples.")
-        self.knowledge_graph = normalized_triples
-        self.fs.get_root().update_meta(knowledge_graph=json.dumps(self.to_dict()))
         self.done = True
+        self.error = False
+
+        self.node.update_meta(knowledge_graph=json.dumps(self.to_dict()))
 
     def __str__(self) -> str:
-        """Convert a list of triples to a formatted string."""
-        text = ""
-        for triple in self.knowledge_graph:
-            text += f"{triple['subject']} {triple['object']} {triple['predicate']}\n"
-        return text
+        return str(self.to_dict())
+    
+    @classmethod
+    def merge_status_string(cls, a: str, b: str) -> str:
+        if a == "error" or b == "error":
+            return "error"
+        elif a == "done" and b == "done":
+            return "done"
+        else:
+            return "in_progress"
+
+    def status_string(self) -> str:
+        if self.error:
+            return "error"
+        if self.done:
+            return "done"
+        else:
+            return "in_progress"
 
     def to_dict(self) -> Dict[str, Any]:
-        return {"textfile_total": self.textfile_total, "content": self.knowledge_graph}
-
-    def knowledge_graph_status(self):
         return {
-            "textfile_processed": self.textfile_processed,
-            "textfile_total": self.textfile_total,
-            "done": self.done,
+            "status": self.status_string(),
+            "error_message": self.error_message,
+            "content": self.content
+        }
+
+    def status(self):
+        return {
+            "status": self.status_string(),
+            "error_message": self.error_message
         }

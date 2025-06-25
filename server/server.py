@@ -6,7 +6,7 @@ from openai import OpenAI, AsyncOpenAI
 import os
 from fastapi.responses import Response
 
-from jfs import new_fs
+from jfs import new_fs, FileSystemNode
 from agent import IOSYSAgent
 from agent.config import AgentConfig
 from parser import IOSYSParser
@@ -32,9 +32,7 @@ async_llm = AsyncOpenAI(
     base_url=os.environ["LLM_BASE_URL"],
     api_key=os.environ["LLM_API_KEY"],
 )
-knowledge_graph = IOSYSKnowledgeGraph(
-    IOSYSKnowledgeGraphConfig(llm=async_llm, fs=fs, chunk_size=400)
-)
+kg_config = IOSYSKnowledgeGraphConfig(llm=async_llm, chunk_size=400)
 
 app = FastAPI()
 app.add_middleware(
@@ -156,13 +154,46 @@ async def logs_endpoint():
     return [log.to_dict() for log in all_logs]
 
 
+# Example of KG Generator
+def traverse_read_kg(node: FileSystemNode):
+    children_data = []
+    status = "done"
+    for child in node.children():
+        content = traverse_read_kg(child)
+        ch_status = content.get("status", "error")
+        print(f"Child status: {ch_status} for {child.path}")
+        children_data.append(content)
+        status = IOSYSKnowledgeGraph.merge_status_string(status, ch_status)
+    knowledge_graph = IOSYSKnowledgeGraph(node, kg_config)
+    self_status = knowledge_graph.status()["status"]
+    status = IOSYSKnowledgeGraph.merge_status_string(status, self_status)
+    return {"file": node.path, "status": status, "knowledge graph": knowledge_graph.to_dict(), "children": children_data}
+
 @app.get("/kg")
 async def kg_endpoint():
-    return knowledge_graph.to_dict()
+    return traverse_read_kg(fs.get_root())
 
+async def traverse_update_kg(node: FileSystemNode):
+    knowledge_graph = IOSYSKnowledgeGraph(node, kg_config)
+    await knowledge_graph.update()
+    children_data = []
+    for child in node.children():
+        children_data.append(await traverse_update_kg(child))
+    return {"file": node.path, "status": knowledge_graph.status(), "children": children_data}
 
 @app.get("/update_kg")
 @app.post("/update_kg")
 async def update_kg_endpoint():
-    await knowledge_graph.update_knowledge_graph()
-    return knowledge_graph.to_dict()
+    return await traverse_update_kg(fs.get_root())
+
+def traverse_clear_kg(node: FileSystemNode):
+    knowledge_graph = IOSYSKnowledgeGraph(node, kg_config)
+    knowledge_graph.clear()
+    for child in node.children():
+        traverse_clear_kg(child)
+
+@app.get("/clear_kg")
+@app.post("/clear_kg")
+async def clear_kg_endpoint():
+    traverse_clear_kg(fs.get_root())
+    return traverse_read_kg(fs.get_root())
