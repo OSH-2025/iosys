@@ -119,7 +119,7 @@ class IOSYSKnowledgeGraph:
         self.error = status != "done"
         self.error_message = kg_dict.get("error_message", f"{self.node.path}:\n")
         if status == "not_generated":
-            self.error_message += "Knowledge graph has not been generated yet.\n"
+            self.error_message = f"{self.node.path}:\nNo knowledge graph content available."
 
     def _collect_tool_configs(self) -> List[Dict[str, Any]]:
         """自动收集所有注册的工具配置"""
@@ -185,17 +185,13 @@ class IOSYSKnowledgeGraph:
                         parsed_json = list_values[0]
                     else:
                         logger.error(f"LLM raw output: {llm_output}")
-                        self.error_message += "JSON object received, but doesn't contain a single list of triples."
+                        self.error_message += "JSON object received, but doesn't contain a single list of triples.\n"
                         raise ValueError(self.error_message)
                 elif isinstance(parsed_data, list):
                     parsed_json = parsed_data
                 else:
-                    self.error_message += (
-                        "Parsed JSON is not a list or expected dictionary wrapper."
-                    )
-                    raise ValueError(
-                        "Parsed JSON is not a list or expected dictionary wrapper."
-                    )
+                    self.error_message += "Parsed JSON is not a list or expected dictionary wrapper.\n"
+                    raise ValueError(self.error_message)
 
             except json.JSONDecodeError as json_err:
                 parsing_error = f"JSONDecodeError: {json_err}. Trying regex fallback..."
@@ -213,21 +209,19 @@ class IOSYSKnowledgeGraph:
                         parsing_error = None  # Clear previous error
                     except json.JSONDecodeError as nested_err:
                         parsing_error = f"JSONDecodeError after regex: {nested_err}"
-                        logger.error(
-                            f"      ERROR: Regex content is not valid JSON: {nested_err}"
-                        )
+                        self.error_message += f"      ERROR: Regex content is not valid JSON: {nested_err}\n"
+                        logger.error(self.error_message)
                 else:
                     parsing_error = "JSONDecodeError and Regex fallback failed."
-                    logger.error(
-                        "      ERROR: Regex could not find JSON array structure."
-                    )
+                    self.error_message += "      ERROR: Regex could not find JSON array structure.\n"
+                    logger.error(self.error_message)
 
             except ValueError as val_err:
                 parsing_error = (
                     f"ValueError: {val_err}"  # Catches issues with unexpected structure
                 )
-                logger.error(f"   ERROR: {parsing_error}")
-
+                self.error_message += f"      ERROR: {parsing_error}\n"
+                logger.error(self.error_message)
         return {"content": parsed_json, "error": parsing_error, "response": llm_output}
 
     def clear(self, update_meta: bool = True):
@@ -299,9 +293,8 @@ class IOSYSKnowledgeGraph:
                                 item["chunk"] = chunk_num  # Add source chunk info
                                 valid_triples_in_chunk.append(item)
                 else:
-                    logger.error(
-                        "   ERROR: Parsed data is not a list, cannot extract triples."
-                    )
+                    self.error_message += "   ERROR: Parsed data is not a list, cannot extract triples.\n"
+                    logger.error(self.error_message)
                 if valid_triples_in_chunk:
                     all_extracted_triples.extend(valid_triples_in_chunk)
 
