@@ -12,7 +12,6 @@ from . import (
     IOSYSFileSystem,
     CHANGE_TYPE,
 )  # Assuming DirNode is defined elsewhere
-from .service import JuiceFSService
 from utils.logger import IOSYSLogger
 
 
@@ -174,8 +173,8 @@ class JuiceFSFileSystem(IOSYSFileSystem):
         self.logger = IOSYSLogger("JuiceFS")
 
         # Spawn side‑car service if needed (e.g., HTTP API to remote JFS).
-        #self.service = JuiceFSService()
-        #self.service.start()
+        # self.service = JuiceFSService()
+        # self.service.start()
 
         # Initialise client – supports either native conf or explicit meta URL.
         name = os.getenv("JFS_NAME")
@@ -198,10 +197,10 @@ class JuiceFSFileSystem(IOSYSFileSystem):
     # ------------------------------------------------------------------
     # IOSYSFileSystem interface
     # ------------------------------------------------------------------
-    '''
+    """
     def is_running(self) -> bool:  # type: ignore[override]
         return self.service.is_running()
-    '''
+    """
 
     def is_running(self) -> bool:  # type: ignore[override]
         try:
