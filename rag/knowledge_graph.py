@@ -5,10 +5,9 @@ import json  # For parsing LLM responses
 import re  # For basic text cleaning (regular expressions)
 import jieba
 import logging
-
-from openai import OpenAI
+import asyncio
+from openai import AsyncOpenAI
 from typing import Dict, Any, Callable, List
-
 from jfs import IOSYSFileSystem, FileSystemNode
 
 # Configure settings for better display and fewer warnings
@@ -64,12 +63,12 @@ Please extract Subject-Predicate-Object (S-P-O) triples from the text below. 对
 
 
 class IOSYSKnowledgeGraphConfig:
-    llm: OpenAI
+    llm: AsyncOpenAI
     fs: IOSYSFileSystem
 
     def __init__(
         self,
-        llm: OpenAI,
+        llm: AsyncOpenAI,
         fs: IOSYSFileSystem,
         chunk_size: int = 300,
         overlap: int = 30,
@@ -93,7 +92,7 @@ class IOSYSKnowledgeGraphConfig:
         )
 
 
-class IOSYSKnowledegeGraph:
+class IOSYSKnowledgeGraph:
     def __init__(self, config: IOSYSKnowledgeGraphConfig):
         self.config = config
         self.fs = config.fs
@@ -109,6 +108,9 @@ class IOSYSKnowledegeGraph:
         self.chunk_size = config.chunk_size
         self.overlap = config.overlap
         self.knowledge_graph = []
+        self.chunk_total = 0
+        self.chunk_processed = 0
+        self.done = False
 
     def _collect_tool_configs(self) -> List[Dict[str, Any]]:
         """自动收集所有注册的工具配置"""
@@ -141,7 +143,9 @@ class IOSYSKnowledegeGraph:
             text += self.get_unstructured_text(child)
         return text
 
-    def update_knowledge_graph(self):
+    async def update_knowledge_graph(self):
+        self.done = False
+        logger.info("Starting knowledge graph extraction...")
         # Stage 1: Initialize Chunks
 
         # TODO: Load chunks streamly by files, merge stage 1 & 2
@@ -171,6 +175,8 @@ class IOSYSKnowledegeGraph:
             if chunk_number > total_words:  # Simple safety
                 logger.warning("Chunking loop exceeded total word count, breaking.")
                 break
+        
+        self.chunk_total = len(chunks)
 
         all_extracted_triples = []
         failed_chunks = []
@@ -180,6 +186,7 @@ class IOSYSKnowledegeGraph:
             chunk_info = chunks[chunk_index]
             chunk_text = chunk_info["text"]
             chunk_num = chunk_info["chunk_number"]
+            self.chunk_processed = chunk_num - 1
 
             logger.info(f"Processing Chunks ({chunk_num}/{len(chunks)})")
 
@@ -189,7 +196,7 @@ class IOSYSKnowledegeGraph:
             error_message = None
 
             try:
-                response = self.llm_client.chat.completions.create(
+                response = await self.llm_client.chat.completions.create(
                     model=self.llm_model_name,
                     messages=[
                         {"role": "system", "content": extraction_system_prompt},
@@ -385,6 +392,7 @@ class IOSYSKnowledegeGraph:
 
         logger.info(f"\n... Finished processing {processed_count} triples.")
         self.knowledge_graph = normalized_triples
+        self.done = True
 
     def __str__(self) -> str:
         """Convert a list of triples to a formatted string."""
@@ -393,5 +401,12 @@ class IOSYSKnowledegeGraph:
             text += f"{triple['subject']} {triple['object']} {triple['predicate']}\n"
         return text
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {"content": self.knowledge_graph}
+
     def knowledge_graph_status(self):
-        raise NotImplementedError("This method should be implemented in subclasses.")
+        return {
+            "chunk_processed": self.chunk_processed,
+            "chunk_total": self.chunk_total,
+            "done": self.done
+        }

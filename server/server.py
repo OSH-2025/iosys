@@ -2,8 +2,9 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from openai import OpenAI
+from openai import OpenAI, AsyncOpenAI
 import os
+import asyncio
 from fastapi.responses import Response
 
 from jfs import new_fs
@@ -11,6 +12,7 @@ from agent import IOSYSAgent
 from agent.config import AgentConfig
 from parser import IOSYSParser
 from rag import IOSYSRAG
+from rag.knowledge_graph import IOSYSKnowledgeGraph, IOSYSKnowledgeGraphConfig
 from utils.logger import all_logs
 
 
@@ -27,10 +29,11 @@ parser = IOSYSParser(llm=llm)
 rag = IOSYSRAG(fs=fs, parser=parser)
 agent = IOSYSAgent(AgentConfig(llm=llm, fs=fs, rag=rag))
 
-# An example to use IOSYSKnowledgeGraph
-# knowledge_graph = IOSYSKnowledegeGraph(IOSYSKnowledgeGraphConfig(llm=llm, fs=fs, chunk_size=400))
-# knowledge_graph.update_knowledge_graph()
-# print(knowledge_graph)
+async_llm = AsyncOpenAI(
+    base_url=os.environ["LLM_BASE_URL"],
+    api_key=os.environ["LLM_API_KEY"],
+)
+knowledge_graph = IOSYSKnowledgeGraph(IOSYSKnowledgeGraphConfig(llm=async_llm, fs=fs, chunk_size=400))
 
 app = FastAPI()
 app.add_middleware(
@@ -150,3 +153,13 @@ async def sync_mcp_server(request: MCPServerRequest):
 @app.post("/logs")
 async def logs_endpoint():
     return [log.to_dict() for log in all_logs]
+
+@app.get("/kg")
+async def kg_endpoint():
+    return knowledge_graph.to_dict()
+
+@app.get("/update_kg")
+@app.post("/update_kg")
+async def update_kg_endpoint():
+    await knowledge_graph.update_knowledge_graph()
+    return knowledge_graph.to_dict()
