@@ -301,7 +301,6 @@ class IOSYSKnowledgeGraph:
             subject_raw = triple.get("subject")
             predicate_raw = triple.get("predicate")
             object_raw = triple.get("object")
-            chunk_num = triple.get("chunk", "unknown")
             related_file = triple.get("related_file", "unknown")
 
             normalized_sub, normalized_pred, normalized_obj = None, None, None
@@ -333,7 +332,6 @@ class IOSYSKnowledgeGraph:
                                 "subject": normalized_sub,
                                 "predicate": normalized_pred,
                                 "object": normalized_obj,
-                                "source_chunks": [chunk_num],
                                 "related_files": [related_file],
                             }
                         )
@@ -345,8 +343,6 @@ class IOSYSKnowledgeGraph:
                                 and existing_triple["predicate"] == normalized_pred
                                 and existing_triple["object"] == normalized_obj
                             ):
-                                if chunk_num not in existing_triple["source_chunks"]:
-                                    existing_triple["source_chunks"].append(chunk_num)
                                 if related_file not in existing_triple["related_files"]:
                                     existing_triple["related_files"].append(
                                         related_file
