@@ -119,7 +119,9 @@ class IOSYSKnowledgeGraph:
         self.error = status != "done"
         self.error_message = kg_dict.get("error_message", f"{self.node.path}:\n")
         if status == "not_generated":
-            self.error_message = f"{self.node.path}:\nNo knowledge graph content available."
+            self.error_message = (
+                f"{self.node.path}:\nNo knowledge graph content available."
+            )
 
     def _collect_tool_configs(self) -> List[Dict[str, Any]]:
         """自动收集所有注册的工具配置"""
@@ -190,7 +192,9 @@ class IOSYSKnowledgeGraph:
                 elif isinstance(parsed_data, list):
                     parsed_json = parsed_data
                 else:
-                    self.error_message += "Parsed JSON is not a list or expected dictionary wrapper.\n"
+                    self.error_message += (
+                        "Parsed JSON is not a list or expected dictionary wrapper.\n"
+                    )
                     raise ValueError(self.error_message)
 
             except json.JSONDecodeError as json_err:
@@ -213,7 +217,9 @@ class IOSYSKnowledgeGraph:
                         logger.error(self.error_message)
                 else:
                     parsing_error = "JSONDecodeError and Regex fallback failed."
-                    self.error_message += "      ERROR: Regex could not find JSON array structure.\n"
+                    self.error_message += (
+                        "      ERROR: Regex could not find JSON array structure.\n"
+                    )
                     logger.error(self.error_message)
 
             except ValueError as val_err:
@@ -293,7 +299,9 @@ class IOSYSKnowledgeGraph:
                                 item["chunk"] = chunk_num  # Add source chunk info
                                 valid_triples_in_chunk.append(item)
                 else:
-                    self.error_message += "   ERROR: Parsed data is not a list, cannot extract triples.\n"
+                    self.error_message += (
+                        "   ERROR: Parsed data is not a list, cannot extract triples.\n"
+                    )
                     logger.error(self.error_message)
                 if valid_triples_in_chunk:
                     all_extracted_triples.extend(valid_triples_in_chunk)
