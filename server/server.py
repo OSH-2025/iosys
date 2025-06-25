@@ -4,7 +4,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from openai import OpenAI, AsyncOpenAI
 import os
-import asyncio
 from fastapi.responses import Response
 
 from jfs import new_fs
@@ -33,7 +32,9 @@ async_llm = AsyncOpenAI(
     base_url=os.environ["LLM_BASE_URL"],
     api_key=os.environ["LLM_API_KEY"],
 )
-knowledge_graph = IOSYSKnowledgeGraph(IOSYSKnowledgeGraphConfig(llm=async_llm, fs=fs, chunk_size=400))
+knowledge_graph = IOSYSKnowledgeGraph(
+    IOSYSKnowledgeGraphConfig(llm=async_llm, fs=fs, chunk_size=400)
+)
 
 app = FastAPI()
 app.add_middleware(
@@ -154,9 +155,11 @@ async def sync_mcp_server(request: MCPServerRequest):
 async def logs_endpoint():
     return [log.to_dict() for log in all_logs]
 
+
 @app.get("/kg")
 async def kg_endpoint():
     return knowledge_graph.to_dict()
+
 
 @app.get("/update_kg")
 @app.post("/update_kg")

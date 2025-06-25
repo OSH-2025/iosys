@@ -5,7 +5,6 @@ import json  # For parsing LLM responses
 import re  # For basic text cleaning (regular expressions)
 import jieba
 import logging
-import asyncio
 from openai import AsyncOpenAI
 from typing import Dict, Any, Callable, List
 from jfs import IOSYSFileSystem, FileSystemNode
@@ -175,7 +174,7 @@ class IOSYSKnowledgeGraph:
             if chunk_number > total_words:  # Simple safety
                 logger.warning("Chunking loop exceeded total word count, breaking.")
                 break
-        
+
         self.chunk_total = len(chunks)
 
         all_extracted_triples = []
@@ -408,5 +407,5 @@ class IOSYSKnowledgeGraph:
         return {
             "chunk_processed": self.chunk_processed,
             "chunk_total": self.chunk_total,
-            "done": self.done
+            "done": self.done,
         }
