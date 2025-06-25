@@ -136,7 +136,7 @@ class IOSYSFileSystem(abc.ABC):
         if node:
             node.write(content)
             return node
-        segmented_path = self._normalize_path(path).split("/")
+        segmented_path = self.normalize_path(path).split("/")
         if not segmented_path:
             raise ValueError("Cannot write to root directory.")
         dir_name = "/".join(segmented_path[:-1]) + "/"
@@ -154,7 +154,7 @@ class IOSYSFileSystem(abc.ABC):
             if node.meta.get("type", "directory") != "directory":
                 raise ValueError(f"Path {path} is not a directory.")
             return node
-        segmented_path = self._normalize_path(path).split("/")
+        segmented_path = self.normalize_path(path).split("/")
         dir_path = ""
         dir_node = self.get_root()
         for segment in segmented_path:
@@ -188,7 +188,7 @@ class IOSYSFileSystem(abc.ABC):
 
         self._previous_task = asyncio.create_task(execute_callbacks())
 
-    def _normalize_path(self, path: str) -> str:
+    def normalize_path(self, path: str) -> str:
         path = path.strip().replace("\\", "/").replace("//", "/")
         while "//" in path:
             path = path.replace("//", "/")

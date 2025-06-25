@@ -58,7 +58,7 @@ class TestIOSYSFileSystem(unittest.TestCase):
 
     def test_normalize_path(self):
         """Test path normalization."""
-        normalized_path = self.fs._normalize_path("///test//path/")
+        normalized_path = self.fs.normalize_path("///test//path/")
         self.assertEqual(normalized_path, "/test/path", "Path should be normalized.")
 
 

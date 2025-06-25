@@ -135,7 +135,7 @@ class OSFileSystem(IOSYSFileSystem):
         return True
 
     def get_node(self, path: str) -> OSFileSystemNode | None:
-        path = self._normalize_path(path)
+        path = self.normalize_path(path)
         real_path = self._get_real_path(path)
         # Case 1: The file just exists
         if os.path.exists(real_path):
