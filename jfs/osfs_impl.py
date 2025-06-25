@@ -10,7 +10,6 @@ class OSFileSystemNode(FileSystemNode):
     fs: "OSFileSystem"
 
     def read_stream(self) -> io.BytesIO:
-        """Open the file and read bytes"""
         if self.meta.get("type") == "embedded":
             real_path = self.fs._get_embedded_path(self.path)
             with open(real_path, "rb") as f:
@@ -24,7 +23,6 @@ class OSFileSystemNode(FileSystemNode):
             return io.BytesIO(f.read())
 
     def write(self, content: bytes):
-        """Write bytes to file (overwrite)"""
         if self.meta.get("type") == "embedded":
             raise ValueError("Cannot write to an embedded file directly.")
         real_path = self.fs._get_real_path(self.path)
@@ -41,7 +39,6 @@ class OSFileSystemNode(FileSystemNode):
         self.fs.invoke_on_change(self, "update")
 
     def makedir(self):
-        """Create a directory node"""
         node_type = self.meta.get("type")
         if node_type and not node_type == "directory":
             raise ValueError(
@@ -57,7 +54,6 @@ class OSFileSystemNode(FileSystemNode):
         self.fs.invoke_on_change(self, "create")
 
     def remove(self):
-        """Remove the file"""
         if self.meta.get("type") == "embedded":
             raise ValueError("Cannot remove an embedded file directly.")
         real_path = self.fs._get_real_path(self.path)

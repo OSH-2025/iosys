@@ -40,12 +40,12 @@ class FileSystemNode(abc.ABC):
 
     @abc.abstractmethod
     def write(self, content: bytes):
-        """Write bytes to file (overwrite)"""
+        """Make the node a file node, and write bytes to file (overwrite)"""
         pass
 
     @abc.abstractmethod
     def makedir(self):
-        """Create a directory node"""
+        """Make the node a directory node"""
         pass
 
     @abc.abstractmethod
@@ -55,16 +55,17 @@ class FileSystemNode(abc.ABC):
 
     @abc.abstractmethod
     def parent(self) -> Union["FileSystemNode", None]:
+        """Get the parent node of this node"""
         pass
 
     @abc.abstractmethod
     def children(self) -> list["FileSystemNode"]:
-        """List children of this node, if applicable"""
+        """List children of this node"""
         pass
 
     @abc.abstractmethod
     def create_child(self, name: str) -> "FileSystemNode":
-        """Create a new node in this directory"""
+        """Create a new child node (may be a file or directory)"""
         pass
 
     def update_meta(self, **kwargs):
@@ -181,7 +182,8 @@ class IOSYSFileSystem(abc.ABC):
             if previous_task and not previous_task.done():
                 await previous_task
             await asyncio.gather(
-                *[callback(node, change_type) for callback in self.on_change]
+                *[callback(node, change_type) for callback in self.on_change],
+                return_exceptions=False,
             )
 
         self._previous_task = asyncio.create_task(execute_callbacks())
