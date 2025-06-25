@@ -175,6 +175,8 @@ class OSFileSystem(IOSYSFileSystem):
         return real_path
 
     def _get_meta_path(self, path: str) -> str:
+        if path == "/":
+            return self._get_real_path("/.meta")
         return self._get_real_path(f"/.meta{path}")
 
     def _get_embedded_path(self, path: str) -> str:
