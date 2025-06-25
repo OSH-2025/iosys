@@ -1,6 +1,7 @@
 import unittest
 from jfs import new_fs, FileSystemNode
 
+
 class TestIOSYSFileSystem(unittest.TestCase):
     def setUp(self):
         """Initialize the file system."""
@@ -32,7 +33,9 @@ class TestIOSYSFileSystem(unittest.TestCase):
 
         # Create directory
         dir_node = self.fs.ensure_directory(dir_path)
-        self.assertIsInstance(dir_node, FileSystemNode, "Directory node should be created.")
+        self.assertIsInstance(
+            dir_node, FileSystemNode, "Directory node should be created."
+        )
         self.assertEqual(dir_node.path, dir_path, "Directory path should match.")
 
         # Remove directory
@@ -54,6 +57,7 @@ class TestIOSYSFileSystem(unittest.TestCase):
         """Test path normalization."""
         normalized_path = self.fs._normalize_path("///test//path/")
         self.assertEqual(normalized_path, "/test/path", "Path should be normalized.")
+
 
 if __name__ == "__main__":
     unittest.main()
