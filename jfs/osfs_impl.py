@@ -111,8 +111,6 @@ class OSFileSystemNode(FileSystemNode):
         return node
 
     def _sync_metadata(self):
-        if self.path == "/":
-            return
         meta_dir = self.fs._get_meta_path(self.path)
         os.makedirs(meta_dir, exist_ok=True)
         meta_json = os.path.join(meta_dir, ".meta.json")
