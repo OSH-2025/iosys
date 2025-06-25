@@ -94,7 +94,9 @@ class IOSYSKnowledgeGraphConfig:
 
 
 class IOSYSKnowledgeGraph:
-    def __init__(self, node: FileSystemNode, config: IOSYSKnowledgeGraphConfig, autoload = True):
+    def __init__(
+        self, node: FileSystemNode, config: IOSYSKnowledgeGraphConfig, autoload=True
+    ):
         self.config = config
         self.node = node
         self.llm_client = config.llm
@@ -114,7 +116,7 @@ class IOSYSKnowledgeGraph:
         self.done = False
         self.error = False
         self.error_message = ""
-        if(autoload):
+        if autoload:
             self.load()
 
     def _collect_tool_configs(self) -> List[Dict[str, Any]]:
