@@ -1,10 +1,12 @@
 import unittest
 from jfs import new_fs, FileSystemNode
-
+import asyncio
 
 class TestIOSYSFileSystem(unittest.TestCase):
     def setUp(self):
         """Initialize the file system."""
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
         self.fs = new_fs()  # Initialize the file system using new_fs()
 
     def test_root_exists(self):
