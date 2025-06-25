@@ -147,6 +147,8 @@ class IOSYSFileSystem(abc.ABC):
 
     def ensure_directory(self, path: str) -> FileSystemNode:
         node = self.get_node(path)
+        if not node:
+            raise FileNotFoundError(f"Directory {path} not found.")
         if node:
             if node.meta.get("type", "directory") != "directory":
                 raise ValueError(f"Path {path} is not a directory.")
@@ -186,6 +188,8 @@ class IOSYSFileSystem(abc.ABC):
 
     def _normalize_path(self, path: str) -> str:
         path = path.strip().replace("\\", "/").replace("//", "/")
+        while "//" in path:
+            path = path.replace("//", "/")
         path = path.rstrip("/")
         if not path.startswith("/"):
             path = "/" + path

@@ -86,7 +86,11 @@ class JuiceFSDirNode(FileSystemNode):
         raise IsADirectoryError(self.path)
 
     def write(self, content: bytes):  # type: ignore[override]
-        raise IsADirectoryError(self.path)
+        if self.meta.get("type") != "file":
+            raise IsADirectoryError(self.path)
+        with self.fs.client.open(self.path, "wb") as fp:
+            fp.write(content)
+        self.fs._notify_change(self, "update")
 
     def makedir(self):  # type: ignore[override]
         if not self.fs.client.exists(self.path):
@@ -155,7 +159,7 @@ class JuiceFSDirNode(FileSystemNode):
         return node
 
     # ------------------------------------------------------------------
-    def _sync_metadata(self):  # type: ignore[override]
+    def _sync_metadata(self):
         # TODO: write directory metadata via xattrs when JuiceFS supports it
         pass
 
