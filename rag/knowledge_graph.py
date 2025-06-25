@@ -145,10 +145,87 @@ class IOSYSKnowledgeGraph:
             text += self.get_unstructured_text(child)
         return text
 
+    async def chunk_to_raw_kg_json(self, text: str):
+        user_prompt = extraction_user_prompt_template.format(text_chunk=text)
+        llm_output = None
+
+        response = await self.llm_client.chat.completions.create(
+            model=self.llm_model_name,
+            messages=[
+                {"role": "system", "content": extraction_system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=self.llm_temperature,
+            max_tokens=self.llm_max_tokens,
+            # Request JSON output format - helps models that support it
+            response_format={"type": "json_object"},
+        )
+
+        llm_output = str(response.choices[0].message.content).strip()
+
+        # Parse JSON (if API call succeeded)
+        parsed_json = None
+        parsing_error = None
+        if llm_output is not None:
+            try:
+                # Strategy 1: Direct parsing (ideal)
+                parsed_data = json.loads(llm_output)
+
+                # Handle if response_format={'type':'json_object'} returns a dict containing the list
+                if isinstance(parsed_data, dict):
+                    list_values = [
+                        v for v in parsed_data.values() if isinstance(v, list)
+                    ]
+                    if len(list_values) == 1:
+                        parsed_json = list_values[0]
+                    else:
+                        logger.error(f"LLM raw output: {llm_output}")
+                        raise ValueError(
+                            "JSON object received, but doesn't contain a single list of triples."
+                        )
+                elif isinstance(parsed_data, list):
+                    parsed_json = parsed_data
+                else:
+                    raise ValueError(
+                        "Parsed JSON is not a list or expected dictionary wrapper."
+                    )
+
+            except json.JSONDecodeError as json_err:
+                parsing_error = (
+                    f"JSONDecodeError: {json_err}. Trying regex fallback..."
+                )
+                logger.warning(f"   {parsing_error}")
+                # Strategy 2: Regex fallback for arrays potentially wrapped in text/markdown
+                match = re.search(r"^\s*(\[.*?\])\s*$", llm_output, re.DOTALL)
+                if match:
+                    json_string_extracted = match.group(1)
+                    logger.info("      Regex found potential JSON array structure.")
+                    try:
+                        parsed_json = json.loads(json_string_extracted)
+                        logger.info(
+                            "      Successfully parsed JSON from regex extraction."
+                        )
+                        parsing_error = None  # Clear previous error
+                    except json.JSONDecodeError as nested_err:
+                        parsing_error = f"JSONDecodeError after regex: {nested_err}"
+                        logger.error(
+                            f"      ERROR: Regex content is not valid JSON: {nested_err}"
+                        )
+                else:
+                    parsing_error = "JSONDecodeError and Regex fallback failed."
+                    logger.error(
+                        "      ERROR: Regex could not find JSON array structure."
+                    )
+
+            except ValueError as val_err:
+                parsing_error = f"ValueError: {val_err}"  # Catches issues with unexpected structure
+                logger.error(f"   ERROR: {parsing_error}")
+
+        return {"content": parsed_json, "error": parsing_error, "response": llm_output}
+    
     async def update_knowledge_graph(self):
         self.done = False
         logger.info("Starting knowledge graph extraction...")
-        # Stage 1: Initialize Chunks
 
         # TODO: Load chunks streamly by files, merge stage 1 & 2
         self.unstructured_text = self.get_unstructured_text(self.fs.get_root())
@@ -167,23 +244,17 @@ class IOSYSKnowledgeGraph:
 
             if next_start_index <= start_index:
                 if end_index == total_words:
-                    break  # Already processed the last part
+                    break 
                 next_start_index = start_index + 1
 
             start_index = next_start_index
             chunk_number += 1
-
-            # Safety break (optional)
-            if chunk_number > total_words:  # Simple safety
-                logger.warning("Chunking loop exceeded total word count, breaking.")
-                break
 
         self.chunk_total = len(chunks)
 
         all_extracted_triples = []
         failed_chunks = []
 
-        # Stage 2: Process Each Chunk with LLM
         for chunk_index in range(len(chunks)):
             chunk_info = chunks[chunk_index]
             chunk_text = chunk_info["text"]
@@ -192,26 +263,9 @@ class IOSYSKnowledgeGraph:
 
             logger.info(f"Processing Chunks ({chunk_num}/{len(chunks)})")
 
-            # Format the User Prompt
-            user_prompt = extraction_user_prompt_template.format(text_chunk=chunk_text)
-            llm_output = None
-            error_message = None
-
             try:
-                response = await self.llm_client.chat.completions.create(
-                    model=self.llm_model_name,
-                    messages=[
-                        {"role": "system", "content": extraction_system_prompt},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                    temperature=self.llm_temperature,
-                    max_tokens=self.llm_max_tokens,
-                    # Request JSON output format - helps models that support it
-                    response_format={"type": "json_object"},
-                )
-
-                llm_output = str(response.choices[0].message.content).strip()
-
+                raw_kg = await self.chunk_to_raw_kg_json(chunk_text)
+                parsed_json = raw_kg.get("content", None)
             except Exception as e:
                 error_message = str(e)
                 logger.error(f"   ERROR during API call: {error_message}")
@@ -223,79 +277,11 @@ class IOSYSKnowledgeGraph:
                     }
                 )
 
-            # Parse JSON (if API call succeeded)
-            parsed_json = None
-            parsing_error = None
-            if llm_output is not None:
-                try:
-                    # Strategy 1: Direct parsing (ideal)
-                    parsed_data = json.loads(llm_output)
-
-                    # Handle if response_format={'type':'json_object'} returns a dict containing the list
-                    if isinstance(parsed_data, dict):
-                        list_values = [
-                            v for v in parsed_data.values() if isinstance(v, list)
-                        ]
-                        if len(list_values) == 1:
-                            parsed_json = list_values[0]
-                        else:
-                            logger.error(f"LLM raw output: {llm_output}")
-                            raise ValueError(
-                                "JSON object received, but doesn't contain a single list of triples."
-                            )
-                    elif isinstance(parsed_data, list):
-                        parsed_json = parsed_data
-                    else:
-                        raise ValueError(
-                            "Parsed JSON is not a list or expected dictionary wrapper."
-                        )
-
-                except json.JSONDecodeError as json_err:
-                    parsing_error = (
-                        f"JSONDecodeError: {json_err}. Trying regex fallback..."
-                    )
-                    logger.warning(f"   {parsing_error}")
-                    # Strategy 2: Regex fallback for arrays potentially wrapped in text/markdown
-                    match = re.search(r"^\s*(\[.*?\])\s*$", llm_output, re.DOTALL)
-                    if match:
-                        json_string_extracted = match.group(1)
-                        logger.info("      Regex found potential JSON array structure.")
-                        try:
-                            parsed_json = json.loads(json_string_extracted)
-                            logger.info(
-                                "      Successfully parsed JSON from regex extraction."
-                            )
-                            parsing_error = None  # Clear previous error
-                        except json.JSONDecodeError as nested_err:
-                            parsing_error = f"JSONDecodeError after regex: {nested_err}"
-                            logger.error(
-                                f"      ERROR: Regex content is not valid JSON: {nested_err}"
-                            )
-                    else:
-                        parsing_error = "JSONDecodeError and Regex fallback failed."
-                        logger.error(
-                            "      ERROR: Regex could not find JSON array structure."
-                        )
-
-                except ValueError as val_err:
-                    parsing_error = f"ValueError: {val_err}"  # Catches issues with unexpected structure
-                    logger.error(f"   ERROR: {parsing_error}")
-
-                # --- Show Parsed Result (or error) ---
-                if parsed_json is None:
-                    logger.error(f"--- JSON Parsing FAILED (Chunk {chunk_num}) --- ")
-                    logger.error(f"   Final Parsing Error: {parsing_error}")
-                    logger.error("-" * 20)
-                    failed_chunks.append(
-                        {
-                            "chunk_number": chunk_num,
-                            "error": f"Parsing Failed: {parsing_error}",
-                            "response": llm_output,
-                        }
-                    )
-
-            # Stage 3: Validate and Store Triples (if parsing succeeded)
-            if parsed_json is not None:
+            if parsed_json is None:
+                logger.error(f"--- JSON Parsing FAILED (Chunk {chunk_num}) --- ")
+                logger.error(f"   Final Parsing Error: {raw_kg.get('error', 'Unknown error')}")
+                logger.error("-" * 20)
+            else:
                 valid_triples_in_chunk = []
                 invalid_entries = []
                 if isinstance(parsed_json, list):
@@ -331,13 +317,13 @@ class IOSYSKnowledgeGraph:
                             {
                                 "chunk_number": chunk_num,
                                 "error": "Parsed data not a list",
-                                "response": llm_output,
+                                "response": raw_kg.get("response", ""),
                             }
                         )
                 if valid_triples_in_chunk:
                     all_extracted_triples.extend(valid_triples_in_chunk)
 
-        # Stage 4: Normalize, Filter, and De-duplicate Triples
+        # Normalize, Filter, and De-duplicate Triples
         normalized_triples = []
         seen_triples = set()  # Tracks (subject, predicate, object) tuples
         empty_removed_count = 0
