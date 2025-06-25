@@ -167,11 +167,18 @@ def traverse_read_kg(node: FileSystemNode):
     knowledge_graph = IOSYSKnowledgeGraph(node, kg_config)
     self_status = knowledge_graph.status()["status"]
     status = IOSYSKnowledgeGraph.merge_status_string(status, self_status)
-    return {"file": node.path, "status": status, "knowledge graph": knowledge_graph.to_dict(), "children": children_data}
+    return {
+        "file": node.path,
+        "status": status,
+        "knowledge graph": knowledge_graph.to_dict(),
+        "children": children_data,
+    }
+
 
 @app.get("/kg")
 async def kg_endpoint():
     return traverse_read_kg(fs.get_root())
+
 
 async def traverse_update_kg(node: FileSystemNode):
     knowledge_graph = IOSYSKnowledgeGraph(node, kg_config)
@@ -179,18 +186,25 @@ async def traverse_update_kg(node: FileSystemNode):
     children_data = []
     for child in node.children():
         children_data.append(await traverse_update_kg(child))
-    return {"file": node.path, "status": knowledge_graph.status(), "children": children_data}
+    return {
+        "file": node.path,
+        "status": knowledge_graph.status(),
+        "children": children_data,
+    }
+
 
 @app.get("/update_kg")
 @app.post("/update_kg")
 async def update_kg_endpoint():
     return await traverse_update_kg(fs.get_root())
 
+
 def traverse_clear_kg(node: FileSystemNode):
     knowledge_graph = IOSYSKnowledgeGraph(node, kg_config)
     knowledge_graph.clear()
     for child in node.children():
         traverse_clear_kg(child)
+
 
 @app.get("/clear_kg")
 @app.post("/clear_kg")

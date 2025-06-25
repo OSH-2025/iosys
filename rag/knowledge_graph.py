@@ -118,7 +118,7 @@ class IOSYSKnowledgeGraph:
         self.done = status == "done"
         self.error = status != "done"
         self.error_message = kg_dict.get("error_message", f"{self.node.path}:\n")
-        if(status == "not_generated"):
+        if status == "not_generated":
             self.error_message += "Knowledge graph has not been generated yet.\n"
 
     def _collect_tool_configs(self) -> List[Dict[str, Any]]:
@@ -190,8 +190,12 @@ class IOSYSKnowledgeGraph:
                 elif isinstance(parsed_data, list):
                     parsed_json = parsed_data
                 else:
-                    self.error_message += "Parsed JSON is not a list or expected dictionary wrapper."
-                    raise ValueError("Parsed JSON is not a list or expected dictionary wrapper.")
+                    self.error_message += (
+                        "Parsed JSON is not a list or expected dictionary wrapper."
+                    )
+                    raise ValueError(
+                        "Parsed JSON is not a list or expected dictionary wrapper."
+                    )
 
             except json.JSONDecodeError as json_err:
                 parsing_error = f"JSONDecodeError: {json_err}. Trying regex fallback..."
@@ -225,7 +229,7 @@ class IOSYSKnowledgeGraph:
                 logger.error(f"   ERROR: {parsing_error}")
 
         return {"content": parsed_json, "error": parsing_error, "response": llm_output}
-    
+
     def clear(self, update_meta: bool = True):
         """Clear the knowledge graph content and reset status."""
         self.done = False
@@ -265,7 +269,9 @@ class IOSYSKnowledgeGraph:
             cut_index = max(end_index - self.overlap, 0)
             words = words[cut_index:]
 
-            logger.info(f"File {node.path} is processing Chunk {chunk_num}/{total_chunks}")
+            logger.info(
+                f"File {node.path} is processing Chunk {chunk_num}/{total_chunks}"
+            )
             try:
                 raw_kg = await self.chunk_to_raw_kg_json(chunk_text)
                 parsed_json = raw_kg.get("content", None)
@@ -307,7 +313,11 @@ class IOSYSKnowledgeGraph:
 
                 normalized_sub, normalized_pred, normalized_obj = None, None, None
 
-                if not ( isinstance(subject_raw, str) and isinstance(predicate_raw, str) and isinstance(object_raw, str)):
+                if not (
+                    isinstance(subject_raw, str)
+                    and isinstance(predicate_raw, str)
+                    and isinstance(object_raw, str)
+                ):
                     continue
 
                 # 1. Normalize
@@ -347,7 +357,7 @@ class IOSYSKnowledgeGraph:
 
     def __str__(self) -> str:
         return str(self.to_dict())
-    
+
     @classmethod
     def merge_status_string(cls, a: str, b: str) -> str:
         if a == "error" or b == "error":
@@ -369,11 +379,8 @@ class IOSYSKnowledgeGraph:
         return {
             "status": self.status_string(),
             "error_message": self.error_message,
-            "content": self.content
+            "content": self.content,
         }
 
     def status(self):
-        return {
-            "status": self.status_string(),
-            "error_message": self.error_message
-        }
+        return {"status": self.status_string(), "error_message": self.error_message}
