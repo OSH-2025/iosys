@@ -174,8 +174,8 @@ class JuiceFSFileSystem(IOSYSFileSystem):
         self.logger = IOSYSLogger("JuiceFS")
 
         # Spawn side‑car service if needed (e.g., HTTP API to remote JFS).
-        self.service = JuiceFSService()
-        self.service.start()
+        #self.service = JuiceFSService()
+        #self.service.start()
 
         # Initialise client – supports either native conf or explicit meta URL.
         name = os.getenv("JFS_NAME")
@@ -198,8 +198,17 @@ class JuiceFSFileSystem(IOSYSFileSystem):
     # ------------------------------------------------------------------
     # IOSYSFileSystem interface
     # ------------------------------------------------------------------
+    '''
     def is_running(self) -> bool:  # type: ignore[override]
         return self.service.is_running()
+    '''
+
+    def is_running(self) -> bool:  # type: ignore[override]
+        try:
+            return self.client.exists("/")
+        except Exception as e:
+            self.logger.error(f"Failed to check JuiceFS service status: {e}")
+            return False
 
     def get_node(self, path: str) -> Union[FileSystemNode, None]:  # type: ignore[override]
         norm = _norm(path)
