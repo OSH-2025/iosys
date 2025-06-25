@@ -114,7 +114,6 @@ class IOSYSKnowledgeGraph:
         self.chunk_processed = self.chunk_total
         self.done = True
 
-
     def _collect_tool_configs(self) -> List[Dict[str, Any]]:
         """自动收集所有注册的工具配置"""
         tools = []
