@@ -394,7 +394,7 @@ class IOSYSKnowledgeGraph:
 
         logger.info(f"\n... Finished processing {processed_count} triples.")
         self.knowledge_graph = normalized_triples
-        self.fs.get_root().update_meta(knowledge_graph=self.to_dict())
+        self.fs.get_root().update_meta(knowledge_graph=json.dumps(self.to_dict()))
         self.done = True
 
     def __str__(self) -> str:
