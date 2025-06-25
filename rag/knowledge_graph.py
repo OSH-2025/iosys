@@ -109,9 +109,9 @@ class IOSYSKnowledgeGraph:
         # Try to load from meta
         kg_data = self.fs.get_root().meta.get("knowledge_graph", "{}")
         kg_dict = json.loads(str(kg_data))
-        self.chunk_total = kg_dict.get("chunk_total", 0)
+        self.textfile_total = kg_dict.get("textfile_total", 0)
+        self.textfile_processed = self.textfile_total
         self.knowledge_graph = kg_dict.get("content", [])
-        self.chunk_processed = self.chunk_total
         self.done = True
 
     def _collect_tool_configs(self) -> List[Dict[str, Any]]:
@@ -132,18 +132,16 @@ class IOSYSKnowledgeGraph:
                 handlers[attr._tool_name] = attr
         return handlers
 
-    def get_unstructured_text(self, node: FileSystemNode) -> str:
-        text = ""
+    def get_text_file_list(self, node: FileSystemNode) -> list[FileSystemNode]:
+        ls = []
         name = node.name
         # TODO: Check if the file is a text file
         pure_text = name.endswith(".txt") or name.endswith(".md")
         if pure_text:
-            content_bytes = node.read()
-            content = content_bytes.decode("utf-8", errors="ignore")
-            text += f"--- File: {name} ---\n{content}\n\n"
+            ls.append(node)
         for child in node.children():
-            text += self.get_unstructured_text(child)
-        return text
+            ls.extend(self.get_text_file_list(child))
+        return ls
 
     async def chunk_to_raw_kg_json(self, text: str):
         user_prompt = extraction_user_prompt_template.format(text_chunk=text)
@@ -227,103 +225,56 @@ class IOSYSKnowledgeGraph:
         self.done = False
         logger.info("Starting knowledge graph extraction...")
 
-        # TODO: Load chunks streamly by files, merge stage 1 & 2
-        self.unstructured_text = self.get_unstructured_text(self.fs.get_root())
-        words = list(jieba.cut(self.unstructured_text))
-        total_words = len(words)
-        chunks = []
-        start_index = 0
-        chunk_number = 1
+        files = self.get_text_file_list(self.fs.get_root())
 
-        while start_index < total_words:
-            end_index = min(start_index + self.chunk_size, total_words)
-            chunk_text = " ".join(words[start_index:end_index])
-            chunks.append({"text": chunk_text, "chunk_number": chunk_number})
-
-            next_start_index = start_index + self.chunk_size - self.overlap
-
-            if next_start_index <= start_index:
-                if end_index == total_words:
-                    break
-                next_start_index = start_index + 1
-
-            start_index = next_start_index
-            chunk_number += 1
-
-        self.chunk_total = len(chunks)
-
+        buffer = []
+        total_words = 0
+        chunk_num = 0
         all_extracted_triples = []
-        failed_chunks = []
+        self.textfile_total = len(files)
 
-        for chunk_index in range(len(chunks)):
-            chunk_info = chunks[chunk_index]
-            chunk_text = chunk_info["text"]
-            chunk_num = chunk_info["chunk_number"]
-            self.chunk_processed = chunk_num - 1
+        # Process files to knowledge graph
+        for i in range(len(files)):
+            node = files[i]
+            content_bytes = node.read()
+            name = node.name
+            content = content_bytes.decode("utf-8", errors="ignore")
+            rawtext = f"**File: {name}**\n{content}\n\n"
+            words = list(jieba.cut(rawtext))
+            total_words += len(words)
+            buffer.extend(words)
+            while len(buffer) >= self.chunk_size or (i == len(files) - 1 and len(buffer) > 0):
+                chunk_num += 1
+                end_index = min(self.chunk_size, total_words)
+                chunk_text = " ".join(buffer[0:end_index])
+                buffer = buffer[end_index:]
+                print(f"Chunk #{chunk_num}, Processing files:{i + 1} / {len(files)}")
+                try:
+                    raw_kg = await self.chunk_to_raw_kg_json(chunk_text)
+                    parsed_json = raw_kg.get("content", None)
+                except Exception as e:
+                    error_message = str(e)
+                    logger.error(f"   ERROR during API call: {error_message}")
 
-            logger.info(f"Processing Chunks ({chunk_num}/{len(chunks)})")
-
-            try:
-                raw_kg = await self.chunk_to_raw_kg_json(chunk_text)
-                parsed_json = raw_kg.get("content", None)
-            except Exception as e:
-                error_message = str(e)
-                logger.error(f"   ERROR during API call: {error_message}")
-                failed_chunks.append(
-                    {
-                        "chunk_number": chunk_num,
-                        "error": f"API/Processing Error: {error_message}",
-                        "response": "",
-                    }
-                )
-
-            if parsed_json is None:
-                logger.error(f"--- JSON Parsing FAILED (Chunk {chunk_num}) --- ")
-                logger.error(
-                    f"   Final Parsing Error: {raw_kg.get('error', 'Unknown error')}"
-                )
-                logger.error("-" * 20)
-            else:
-                valid_triples_in_chunk = []
-                invalid_entries = []
-                if isinstance(parsed_json, list):
-                    for item in parsed_json:
-                        if isinstance(item, dict) and all(
-                            k in item for k in ["subject", "predicate", "object"]
-                        ):
-                            # Basic check: ensure values are strings (can be refined)
-                            if all(
-                                isinstance(item[k], str)
-                                for k in ["subject", "predicate", "object"]
-                            ):
-                                item["chunk"] = chunk_num  # Add source chunk info
-                                valid_triples_in_chunk.append(item)
-                            else:
-                                invalid_entries.append(
-                                    {"item": item, "reason": "Non-string value"}
-                                )
-                        else:
-                            invalid_entries.append(
-                                {"item": item, "reason": "Incorrect structure/keys"}
-                            )
-                else:
+                if parsed_json is None:
+                    logger.error(f"--- JSON Parsing FAILED (Chunk {chunk_num}) --- ")
                     logger.error(
-                        "   ERROR: Parsed data is not a list, cannot extract triples."
+                        f"   Final Parsing Error: {raw_kg.get('error', 'Unknown error')}"
                     )
-                    invalid_entries.append(
-                        {"item": parsed_json, "reason": "Not a list"}
-                    )
-                    # Also add to failed chunks if the overall structure was wrong
-                    if not any(fc["chunk_number"] == chunk_num for fc in failed_chunks):
-                        failed_chunks.append(
-                            {
-                                "chunk_number": chunk_num,
-                                "error": "Parsed data not a list",
-                                "response": raw_kg.get("response", ""),
-                            }
-                        )
-                if valid_triples_in_chunk:
-                    all_extracted_triples.extend(valid_triples_in_chunk)
+                    logger.error("-" * 20)
+                else:
+                    valid_triples_in_chunk = []
+                    if isinstance(parsed_json, list):
+                        for item in parsed_json:
+                            if isinstance(item, dict) and all(k in item for k in ["subject", "predicate", "object"]):
+                                if all(isinstance(item[k], str) for k in ["subject", "predicate", "object"]):
+                                    item["chunk"] = chunk_num  # Add source chunk info
+                                    valid_triples_in_chunk.append(item)
+                    else:
+                        logger.error("   ERROR: Parsed data is not a list, cannot extract triples.")
+                    if valid_triples_in_chunk:
+                        all_extracted_triples.extend(valid_triples_in_chunk)
+            self.textfile_processed = i + 1
 
         # Normalize, Filter, and De-duplicate Triples
         normalized_triples = []
@@ -393,11 +344,11 @@ class IOSYSKnowledgeGraph:
         return text
 
     def to_dict(self) -> Dict[str, Any]:
-        return {"chunk_total": self.chunk_total, "content": self.knowledge_graph}
+        return {"textfile_total": self.textfile_total, "content": self.knowledge_graph}
 
     def knowledge_graph_status(self):
         return {
-            "chunk_processed": self.chunk_processed,
-            "chunk_total": self.chunk_total,
+            "textfile_processed": self.textfile_processed,
+            "textfile_total": self.textfile_total,
             "done": self.done,
         }
