@@ -227,8 +227,6 @@ class IOSYSKnowledgeGraph:
 
         files = self.get_text_file_list(self.fs.get_root())
 
-        buffer = []
-        file_index_buffer = []
         total_words = 0
         chunk_num = 0
         all_extracted_triples = []
@@ -237,29 +235,19 @@ class IOSYSKnowledgeGraph:
         # Process files to knowledge graph
         for i in range(len(files)):
             node = files[i]
+            # TODO: Read as text (Markitdown part)
             content_bytes = node.read()
             name = node.name
             content = content_bytes.decode("utf-8", errors="ignore")
             rawtext = f"**File: {name}**\n{content}\n\n"
             words = list(jieba.cut(rawtext))
             total_words += len(words)
-            file_index_buffer += [i] * len(words)
-            buffer.extend(words)
-            while len(buffer) >= self.chunk_size or (
-                i == len(files) - 1 and (len(buffer) > self.overlap or i == 0)
-            ):
+            for j in range(len(words)):
                 chunk_num += 1
-                end_index = min(self.chunk_size, len(buffer))
-                chunk_text = " ".join(buffer[0:end_index])
-                file_indices = file_index_buffer[0:end_index]
+                end_index = min(self.chunk_size, len(words))
+                chunk_text = " ".join(words[0:end_index])
                 cut_index = max(end_index - self.overlap, 0)
-                buffer = buffer[cut_index:]
-                file_index_buffer = file_index_buffer[cut_index:]
-
-                file_indices = list(set(file_indices))
-                file_names = [
-                    files[idx].path for idx in file_indices if idx < len(files)
-                ]
+                words = words[cut_index:]
 
                 print(f"Chunk #{chunk_num}, Processing files:{i + 1} / {len(files)}")
                 try:
@@ -287,9 +275,7 @@ class IOSYSKnowledgeGraph:
                                     for k in ["subject", "predicate", "object"]
                                 ):
                                     item["chunk"] = chunk_num  # Add source chunk info
-                                    item["related_files"] = (
-                                        file_names  # Add related files info
-                                    )
+                                    item["related_file"] = node.path  # Add related files info
                                     valid_triples_in_chunk.append(item)
                     else:
                         logger.error(
@@ -297,6 +283,8 @@ class IOSYSKnowledgeGraph:
                         )
                     if valid_triples_in_chunk:
                         all_extracted_triples.extend(valid_triples_in_chunk)
+                if len(words) <= self.overlap:
+                    break
             self.textfile_processed = i + 1
 
         # Normalize, Filter, and De-duplicate Triples
@@ -312,7 +300,7 @@ class IOSYSKnowledgeGraph:
             predicate_raw = triple.get("predicate")
             object_raw = triple.get("object")
             chunk_num = triple.get("chunk", "unknown")
-            related_files = triple.get("related_files", [])
+            related_file = triple.get("related_file", "unknown")
 
             normalized_sub, normalized_pred, normalized_obj = None, None, None
 
@@ -343,12 +331,22 @@ class IOSYSKnowledgeGraph:
                                 "subject": normalized_sub,
                                 "predicate": normalized_pred,
                                 "object": normalized_obj,
-                                "source_chunk": chunk_num,
-                                "related_files": related_files,
+                                "source_chunks": [chunk_num],
+                                "related_files": [related_file],
                             }
                         )
                         seen_triples.add(triple_identifier)
                     else:
+                        for existing_triple in normalized_triples:
+                            if (
+                                existing_triple["subject"] == normalized_sub
+                                and existing_triple["predicate"] == normalized_pred
+                                and existing_triple["object"] == normalized_obj
+                            ):
+                                if chunk_num not in existing_triple["source_chunks"]:
+                                    existing_triple["source_chunks"].append(chunk_num)
+                                if related_file not in existing_triple["related_files"]:
+                                    existing_triple["related_files"].append(related_file)
                         duplicates_removed_count += 1
                 else:
                     empty_removed_count += 1
