@@ -94,7 +94,7 @@ class IOSYSKnowledgeGraphConfig:
 
 
 class IOSYSKnowledgeGraph:
-    def __init__(self, node: FileSystemNode, config: IOSYSKnowledgeGraphConfig):
+    def __init__(self, node: FileSystemNode, config: IOSYSKnowledgeGraphConfig, autoload = True):
         self.config = config
         self.node = node
         self.llm_client = config.llm
@@ -110,18 +110,12 @@ class IOSYSKnowledgeGraph:
         self.overlap = config.overlap
         self.system_prompt = config.system_prompt
         self.user_prompt_template = config.user_prompt_template
-        # Try to load from meta
-        kg_data = self.node.meta.get("knowledge_graph", "{}")
-        kg_dict = json.loads(str(kg_data))
-        self.content = kg_dict.get("content", [])
-        status = kg_dict.get("status", "not_generated")
-        self.done = status == "done"
-        self.error = status != "done"
-        self.error_message = kg_dict.get("error_message", f"{self.node.path}:\n")
-        if status == "not_generated":
-            self.error_message = (
-                f"{self.node.path}:\nNo knowledge graph content available."
-            )
+        self.content = False
+        self.done = False
+        self.error = False
+        self.error_message = ""
+        if(autoload):
+            self.load()
 
     def _collect_tool_configs(self) -> List[Dict[str, Any]]:
         """自动收集所有注册的工具配置"""
@@ -141,16 +135,18 @@ class IOSYSKnowledgeGraph:
                 handlers[attr._tool_name] = attr
         return handlers
 
-    def get_text_file_list(self, node: FileSystemNode) -> list[FileSystemNode]:
-        ls = []
-        name = node.name
-        # TODO: Check if the file is a text file
-        pure_text = name.endswith(".txt") or name.endswith(".md")
-        if pure_text:
-            ls.append(node)
-        for child in node.children():
-            ls.extend(self.get_text_file_list(child))
-        return ls
+    def load(self):
+        kg_data = self.node.meta.get("knowledge_graph", "{}")
+        kg_dict = json.loads(str(kg_data))
+        self.content = kg_dict.get("content", [])
+        status = kg_dict.get("status", "not_generated")
+        self.done = status == "done"
+        self.error = status != "done"
+        self.error_message = kg_dict.get("error_message", f"{self.node.path}:\n")
+        if status == "not_generated":
+            self.error_message = (
+                f"{self.node.path}:\nNo knowledge graph content available."
+            )
 
     async def chunk_to_raw_kg_json(self, text: str):
         user_prompt = extraction_user_prompt_template.format(text_chunk=text)
