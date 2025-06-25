@@ -275,7 +275,9 @@ class IOSYSKnowledgeGraph:
                                     for k in ["subject", "predicate", "object"]
                                 ):
                                     item["chunk"] = chunk_num  # Add source chunk info
-                                    item["related_file"] = node.path  # Add related files info
+                                    item["related_file"] = (
+                                        node.path
+                                    )  # Add related files info
                                     valid_triples_in_chunk.append(item)
                     else:
                         logger.error(
@@ -346,7 +348,9 @@ class IOSYSKnowledgeGraph:
                                 if chunk_num not in existing_triple["source_chunks"]:
                                     existing_triple["source_chunks"].append(chunk_num)
                                 if related_file not in existing_triple["related_files"]:
-                                    existing_triple["related_files"].append(related_file)
+                                    existing_triple["related_files"].append(
+                                        related_file
+                                    )
                         duplicates_removed_count += 1
                 else:
                     empty_removed_count += 1
