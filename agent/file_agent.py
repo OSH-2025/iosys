@@ -171,7 +171,15 @@ class FileAgent:
             }
 
         # 创建目录节点
-        self.fs.ensure_directory(dir_path)
+        # self.fs.ensure_directory(dir_path)
+        # return {
+        #     "status": "success",
+        #     "message": f"目录创建成功: {dir_path}",
+        #     "data": {"path": dir_path},
+        # }
+
+        # 手动创建目录结构
+        self.fs.create_directory(dir_path)
         return {
             "status": "success",
             "message": f"目录创建成功: {dir_path}",
@@ -231,7 +239,8 @@ class FileAgent:
         dir_id = self._normalize_path(params["directory_path"])
 
         # 检查目录是否存在
-        dir_node = self.fs.get_dir_node(dir_id)
+        # dir_node = self.fs.get_dir_node(dir_id)
+        dir_node = self.fs.get_node(dir_id)
         if not dir_node:
             return {
                 "status": "error",
@@ -270,7 +279,8 @@ class FileAgent:
         dst_id = self._normalize_path(params["destination_path"])
 
         # 检查源文件是否存在
-        src_node = self.fs.get_file_node(src_id)
+        # src_node = self.fs.get_file_node(src_id)
+        src_node = self.fs.get_node(src_id)
         if not src_node:
             return {
                 "status": "error",
@@ -278,7 +288,8 @@ class FileAgent:
             }
 
         # 检查目标文件是否已存在
-        if self.fs.exists(dst_id):
+        # if self.fs.exists(dst_id):
+        if self.fs.get_node(dst_id):
             return {
                 "status": "error",
                 "message": f"目标文件已存在: {params['destination_path']}",
@@ -329,7 +340,8 @@ class FileAgent:
         dst_id = self._normalize_path(params["destination_path"])
 
         # 检查源目录是否存在
-        src_node = self.fs.get_dir_node(src_id)
+        # src_node = self.fs.get_dir_node(src_id)
+        src_node = self.fs.get_node(src_id)
         if not src_node:
             return {
                 "status": "error",
@@ -337,7 +349,8 @@ class FileAgent:
             }
 
         # 检查目标目录是否已存在
-        if self.fs.exists(dst_id):
+        # if self.fs.exists(dst_id):
+        if self.fs.get_node(dst_id):
             return {
                 "status": "error",
                 "message": f"目标目录已存在: {params['destination_path']}",
@@ -381,7 +394,8 @@ class FileAgent:
         new_id = self._normalize_path(new_path)
 
         # 检查源文件是否存在
-        file_node = self.fs.get_file_node(file_id)
+        # file_node = self.fs.get_file_node(file_id)
+        file_node = self.fs.get_node(file_id)
         if not file_node:
             return {
                 "status": "error",
@@ -389,7 +403,8 @@ class FileAgent:
             }
 
         # 检查新文件名是否已存在
-        if self.fs.exists(new_id):
+        # if self.fs.exists(new_id):
+        if self.fs.get_node(new_id):
             return {
                 "status": "error",
                 "message": f"文件已存在: {params['new_name']}",
@@ -445,7 +460,8 @@ class FileAgent:
         new_id = self._normalize_path(new_path)
 
         # 检查源目录是否存在
-        dir_node = self.fs.get_dir_node(dir_id)
+        # dir_node = self.fs.get_dir_node(dir_id)
+        dir_node = self.fs.get_node(dir_id)
         if not dir_node:
             return {
                 "status": "error",
@@ -453,7 +469,8 @@ class FileAgent:
             }
 
         # 检查新目录名是否已存在
-        if self.fs.exists(new_id):
+        # if self.fs.exists(new_id):
+        if self.fs.get_node(new_id):
             return {
                 "status": "error",
                 "message": f"目录已存在: {params['new_name']}",
@@ -523,7 +540,8 @@ class FileAgent:
     def _read_file(self, params: Dict[str, Any]) -> ToolCallResult:
         """读取文件内容"""
         if "file_path" not in params:
-            return {"status": "error", "message": "缺少必要参数: file_path"}
+            params["file_path"] = params.get("file_name", "/")
+            # return {"status": "error", "message": "缺少必要参数: file_path"}
 
         file_id = self._normalize_path(params["file_path"])
 
@@ -577,7 +595,8 @@ class FileAgent:
         content = params["content"]
         append = params.get("append", False)
 
-        if append and self.fs.exists(file_id):
+        # if append and self.fs.exists(file_id):
+        if append and self.fs.get_node(file_id):
             # 追加模式：先读取现有内容，然后追加
             existing_content = self.fs.read(file_id).decode("utf-8")
             content = existing_content + content

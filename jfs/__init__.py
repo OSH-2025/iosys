@@ -165,6 +165,18 @@ class IOSYSFileSystem(abc.ABC):
             node.makedir()
             dir_node = node
         return dir_node
+    
+    def create_directory(self, path: str) -> FileSystemNode:
+        """Create a directory at the specified path."""
+        segmented_path = self.normalize_path(path).split("/")
+        if not segmented_path:
+            raise ValueError("Cannot write to root directory.")
+        dir_name = "/".join(segmented_path[:-1]) + "/"
+        create_dir_name = segmented_path[-1]
+        dir_node = self.ensure_directory(dir_name)
+        node = dir_node.create_child(create_dir_name)
+        node.makedir()
+        return node
 
     def remove(self, path: str):
         node = self.get_node(path)
