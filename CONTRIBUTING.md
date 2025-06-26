@@ -47,6 +47,8 @@ pnpm install
 
 ```powershell
 cd <project_root>/ui
+# If you meet issues with run 'pnpm dev' directly, try to run the following command before it:
+fnm env --shell powershell | Out-String | Invoke-Expression
 pnpm dev
 ```
 
@@ -80,5 +82,7 @@ pnpm install
 
 ```powershell
 cd <project_root>/docs
+# If you meet issues with run 'pnpm dev' directly, try to run the following command before it:
+fnm env --shell powershell | Out-String | Invoke-Expression
 pnpm dev
 ```
