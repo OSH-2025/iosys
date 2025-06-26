@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import io
 import os
-import stat as stat_mod
-from typing import List, Union, cast
+from typing import Union
 import time
 import json
 import juicefs  # type: ignore
@@ -11,10 +10,8 @@ import juicefs  # type: ignore
 from . import (
     FileSystemNode,
     IOSYSFileSystem,
-    CHANGE_TYPE,
 )  # Assuming DirNode is defined elsewhere
 from utils.logger import IOSYSLogger
-
 
 
 class JuiceFSFileSystemNode(FileSystemNode):
@@ -30,7 +27,7 @@ class JuiceFSFileSystemNode(FileSystemNode):
         if node_type == "directory":
             raise IsADirectoryError(f"Cannot write to a directory: {self.path}")
         # 如果是新建的占位节点或嵌入节点，可能需要在JuiceFS创建文件
-        self.fs.client.write_file(self.path, content)  
+        self.fs.client.write_file(self.path, content)
         # 更新元数据类型为文件，记录修改时间
         self.update_meta(type="file", modified_at=int(time.time()))
         self.fs.invoke_on_change(self, "update")
@@ -39,10 +36,14 @@ class JuiceFSFileSystemNode(FileSystemNode):
         node_type = self.meta.get("type")
         if node_type and node_type != "directory":
             # 已存在且不是目录，不能转换为目录
-            raise ValueError(f"Cannot make directory at {self.path}, node is {node_type}")
+            raise ValueError(
+                f"Cannot make directory at {self.path}, node is {node_type}"
+            )
         self.fs.client.make_dir(self.path)  # 在JuiceFS创建目录
         # 设置元数据为目录类型
-        self.update_meta(type="directory", created_at=int(time.time()), modified_at=int(time.time()))
+        self.update_meta(
+            type="directory", created_at=int(time.time()), modified_at=int(time.time())
+        )
         self.fs.invoke_on_change(self, "create")
 
     def remove(self):
@@ -94,7 +95,11 @@ class JuiceFSFileSystemNode(FileSystemNode):
         node = JuiceFSFileSystemNode(self.fs, child_path)
         # 如果当前节点是文件，则子节点标记为嵌入类型
         if self.meta.get("type") == "file":
-            node.update_meta(type="embedded", created_at=int(time.time()), modified_at=int(time.time()))
+            node.update_meta(
+                type="embedded",
+                created_at=int(time.time()),
+                modified_at=int(time.time()),
+            )
         else:
             # 父为目录，新子节点暂不赋类型，等待实际操作决定
             node.update_meta(created_at=int(time.time()), modified_at=int(time.time()))
@@ -107,10 +112,16 @@ class JuiceFSFileSystemNode(FileSystemNode):
         if self.fs.client.exists(meta_json_path):
             old_meta = json.loads(self.fs.client.read_file(meta_json_path).decode())
         # 合并旧meta和新meta（新meta优先）
-        merged_meta = {**old_meta, **{k: v for k, v in self.meta.items() if v is not None}}
+        merged_meta = {
+            **old_meta,
+            **{k: v for k, v in self.meta.items() if v is not None},
+        }
         self.meta = merged_meta  # 更新当前内存中的meta
-        self.fs.client.write_file(meta_json_path, json.dumps(merged_meta, indent=2).encode())
+        self.fs.client.write_file(
+            meta_json_path, json.dumps(merged_meta, indent=2).encode()
+        )
         # 不调用invoke_on_change这里，以免重复，多数情况下调用update_meta时会触发
+
 
 class JuiceFSFileSystem(IOSYSFileSystem):
     def __init__(self):
@@ -164,7 +175,7 @@ class JuiceFSFileSystem(IOSYSFileSystem):
             node.update_meta(type="embedded")
             return node
         return None  # 路径不存在
-    
+
     def _get_meta_path(self, path: str) -> str:
         # 类似OSFS，把虚拟路径转换为元数据实际路径
         if path == "/":
