@@ -165,7 +165,7 @@ class IOSYSFileSystem(abc.ABC):
             node.makedir()
             dir_node = node
         return dir_node
-    
+
     def create_directory(self, path: str) -> FileSystemNode:
         """Create a directory at the specified path."""
         segmented_path = self.normalize_path(path).split("/")
