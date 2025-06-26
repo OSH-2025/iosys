@@ -76,7 +76,7 @@ class FileAgent:
         """将路径转换为文件系统节点ID"""
         # if not path:
         #     return "/"
-            
+
         path = path.strip()
         # 移除前导的"./"或"."
         if path.startswith("./"):
@@ -114,7 +114,7 @@ class FileAgent:
         # 构建完整的文件路径
         path = self._normalize_path(f"{parent_path}/{file_name}")
         print(f"创建文件: {path}")
-        
+
         # 检查文件是否已存在
         if self.fs.get_node(path):
             return {
@@ -158,7 +158,7 @@ class FileAgent:
         """创建目录"""
         parent_path = self._normalize_path(params.get("path", "/"))
         directory_name = params.get("directory_name", "new_directory")
-        
+
         if not directory_name:
             return {"status": "error", "message": "目录名不能为空"}
         dir_path = self._normalize_path(f"{parent_path}/{directory_name}")
@@ -673,9 +673,7 @@ class FileAgent:
         description="获取文件或目录信息",
         parameters={
             "type": "object",
-            "properties": {
-                "path": {"type": "string", "description": "文件或目录路径"}
-            },
+            "properties": {"path": {"type": "string", "description": "文件或目录路径"}},
             "required": ["path"],
         },
     )
@@ -699,7 +697,7 @@ class FileAgent:
             "path": node.path,
             "name": node.name,
             "type": node.meta.get("type", "unknown"),
-            "metadata": node.meta.copy()
+            "metadata": node.meta.copy(),
         }
 
         # 如果是目录，添加子项数量
