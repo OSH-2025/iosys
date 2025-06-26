@@ -4,7 +4,8 @@ import io
 import os
 import stat as stat_mod
 from typing import List, Union, cast
-
+import time
+import json
 import juicefs  # type: ignore
 
 from . import (
@@ -15,163 +16,103 @@ from . import (
 from utils.logger import IOSYSLogger
 
 
-def _norm(path: str) -> str:
-    """Normalize a path to ensure leading slash *without* trailing slash (except root)."""
-    path = path.strip().replace("\\", "/").replace("//", "/")
-    if not path.startswith("/"):
-        path = "/" + path
-    if path != "/":
-        path = path.rstrip("/")
-    return path or "/"
 
+class JuiceFSFileSystemNode(FileSystemNode):
+    def read_stream(self) -> io.BytesIO:
+        if self.meta.get("type") == "directory":
+            raise IsADirectoryError(f"Cannot read a directory: {self.path}")
+        # 对于文件或嵌入节点，从JuiceFS读取内容
+        content_bytes = self.fs.client.read_file(self.path)
+        return io.BytesIO(content_bytes)
 
-class JuiceFSFileNode(FileSystemNode):
-    """A file node stored in JuiceFS."""
+    def write(self, content: bytes):
+        node_type = self.meta.get("type")
+        if node_type == "directory":
+            raise IsADirectoryError(f"Cannot write to a directory: {self.path}")
+        # 如果是新建的占位节点或嵌入节点，可能需要在JuiceFS创建文件
+        self.fs.client.write_file(self.path, content)  
+        # 更新元数据类型为文件，记录修改时间
+        self.update_meta(type="file", modified_at=int(time.time()))
+        self.fs.invoke_on_change(self, "update")
 
-    def __init__(self, fs: "JuiceFSFileSystem", path: str):
-        super().__init__(fs, _norm(path))
-        self.meta["type"] = "file"
+    def makedir(self):
+        node_type = self.meta.get("type")
+        if node_type and node_type != "directory":
+            # 已存在且不是目录，不能转换为目录
+            raise ValueError(f"Cannot make directory at {self.path}, node is {node_type}")
+        self.fs.client.make_dir(self.path)  # 在JuiceFS创建目录
+        # 设置元数据为目录类型
+        self.update_meta(type="directory", created_at=int(time.time()), modified_at=int(time.time()))
+        self.fs.invoke_on_change(self, "create")
 
-    # ------------------------------------------------------------------
-    # File‑specific operations
-    # ------------------------------------------------------------------
-    def read_stream(self) -> io.BytesIO:  # type: ignore[override]
-        if not self.fs.client.exists(self.path):
-            raise FileNotFoundError(self.path)
-        return self.fs.client.open(self.path, "rb")
-
-    def write(self, content: bytes):  # type: ignore[override]
-        with self.fs.client.open(self.path, "wb") as fp:
-            fp.write(content)
-        self.fs._notify_change(self, "update")
-
-    def makedir(self):  # type: ignore[override]
-        raise IsADirectoryError(self.path)
-
-    def remove(self):  # type: ignore[override]
-        self.fs.client.remove(self.path)
-        self.fs._notify_change(self, "delete")
-
-    # ------------------------------------------------------------------
-    # Hierarchy helpers
-    # ------------------------------------------------------------------
-    def parent(self) -> "JuiceFSDirNode":  # type: ignore[override]
-        return JuiceFSDirNode(
-            cast("JuiceFSFileSystem", self.fs), os.path.dirname(self.path)
-        )
-
-    def children(self) -> List[FileSystemNode]:  # type: ignore[override]
-        return []  # files have no children
-
-    def create_child(self, name: str):  # type: ignore[override]
-        raise IsADirectoryError(self.path)
-
-    # ------------------------------------------------------------------
-    def _sync_metadata(self):  # type: ignore[override]
-        # Metadata persistence can be done via extended attributes later.
-        pass
-
-
-class JuiceFSDirNode(FileSystemNode):
-    """A directory node in JuiceFS."""
-
-    def __init__(self, fs: "JuiceFSFileSystem", path: str):
-        super().__init__(fs, _norm(path))
-        self.meta["type"] = "directory"
-
-    # ------------------------------------------------------------------
-    # Directory‑specific ops
-    # ------------------------------------------------------------------
-    def read_stream(self):  # type: ignore[override]
-        raise IsADirectoryError(self.path)
-
-    def write(self, content: bytes):  # type: ignore[override]
-        if self.meta.get("type") != "file":
-            raise IsADirectoryError(self.path)
-        with self.fs.client.open(self.path, "wb") as fp:
-            fp.write(content)
-        self.fs._notify_change(self, "update")
-
-    def makedir(self):  # type: ignore[override]
-        if not self.fs.client.exists(self.path):
-            self.fs.client.makedirs(self.path)
-            self.fs._notify_change(self, "create")
-
-    def remove(self):  # type: ignore[override]
-        # SDK 5.2+ provides rmr (recursive remove); fall back otherwise.
-        if hasattr(self.fs.client, "rmr"):
-            self.fs.client.rmr(self.path)
+    def remove(self):
+        node_type = self.meta.get("type")
+        if node_type == "embedded":
+            raise ValueError("Cannot remove embedded content directly")
+        # 根据类型删除
+        if node_type == "directory":
+            self.fs.client.remove_dir(self.path)  # 可能需要确保目录为空
         else:
-            # Manual recursive deletion
-            for child in self.children():
-                child.remove()
-            if self.path != "/":
-                self.fs.client.remove(self.path)
-        self.fs._notify_change(self, "delete")
+            self.fs.client.remove_file(self.path)
+        # 删除元数据文件
+        meta_path = self.fs._get_meta_path(self.path)
+        self.fs.client.remove_file(meta_path + "/.meta.json")
+        self.fs.invoke_on_change(self, "delete")
 
-    # ------------------------------------------------------------------
-    # Hierarchy helpers
-    # ------------------------------------------------------------------
-    def parent(self) -> "JuiceFSDirNode":  # type: ignore[override]
+    def parent(self) -> Union["JuiceFSFileSystemNode", None]:
+        """Return the parent directory node."""
         if self.path == "/":
-            return self  # root's parent is itself
-        return JuiceFSDirNode(
-            cast("JuiceFSFileSystem", self.fs), os.path.dirname(self.path)
-        )
+            return None
+        parent_path = os.path.dirname(self.path.rstrip("/"))
+        return JuiceFSFileSystemNode(self.fs, parent_path)
 
-    def children(self) -> List[FileSystemNode]:  # type: ignore[override]
-        try:
-            names = self.fs.client.listdir(self.path)
-        except FileNotFoundError:
-            return []
-        nodes: List[FileSystemNode] = []
-        for name in names:
-            full_path = os.path.join(self.path if self.path != "/" else "", name)
-            node = self.fs.get_node(full_path)
-            if node:
-                nodes.append(node)
-        return nodes
+    def children(self) -> list[FileSystemNode]:
+        node_type = self.meta.get("type")
+        children_nodes = []
+        if node_type == "directory":
+            for name in self.fs.client.list_dir(self.path):
+                child_path = f"{self.path}/{name}"
+                child_node = self.fs.get_node(child_path)
+                if child_node:
+                    children_nodes.append(child_node)
+        elif node_type == "file":
+            # 列出嵌入内容
+            meta_dir = self.fs._get_meta_path(self.path)
+            for name in self.fs.client.list_dir(meta_dir):
+                child_path = f"{self.path}/{name}"
+                child_node = self.fs.get_node(child_path)
+                if child_node:
+                    children_nodes.append(child_node)
+        return children_nodes
 
-    def create_child(self, name: str) -> FileSystemNode:  # type: ignore[override]
-        child_path = os.path.join(self.path if self.path != "/" else "", name)
-        # Return node *without* creating it physically; caller will decide.
-        return JuiceFSDirNode(cast("JuiceFSFileSystem", self.fs), child_path)
-
-    # ------------------------------------------------------------------
-    def insert_file(self, name: str) -> "JuiceFSFileNode":
-        """Convenience helper mirroring original API."""
-        file_path = os.path.join(self.path if self.path != "/" else "", name)
-        if self.fs.client.exists(file_path):
-            raise FileExistsError(file_path)
-        with self.fs.client.open(file_path, "wb"):
-            pass  # create empty file
-        node = JuiceFSFileNode(cast("JuiceFSFileSystem", self.fs), file_path)
-        self.fs._notify_change(node, "create")
+    def create_child(self, name: str) -> "JuiceFSFileSystemNode":
+        # 禁止在嵌入节点上再创建子节点，避免无限嵌套
+        if self.meta.get("type") == "embedded":
+            raise ValueError("Cannot create child in an embedded file node.")
+        # 生成子节点路径
+        child_path = self.path.rstrip("/") + "/" + name
+        node = JuiceFSFileSystemNode(self.fs, child_path)
+        # 如果当前节点是文件，则子节点标记为嵌入类型
+        if self.meta.get("type") == "file":
+            node.update_meta(type="embedded", created_at=int(time.time()), modified_at=int(time.time()))
+        else:
+            # 父为目录，新子节点暂不赋类型，等待实际操作决定
+            node.update_meta(created_at=int(time.time()), modified_at=int(time.time()))
         return node
 
-    def insert_dir(self, name: str) -> "JuiceFSDirNode":
-        dir_path = os.path.join(self.path if self.path != "/" else "", name)
-        if self.fs.client.exists(dir_path):
-            raise FileExistsError(dir_path)
-        self.fs.client.makedirs(dir_path)
-        node = JuiceFSDirNode(cast("JuiceFSFileSystem", self.fs), dir_path)
-        self.fs._notify_change(node, "create")
-        return node
-
-    # ------------------------------------------------------------------
     def _sync_metadata(self):
-        # TODO: write directory metadata via xattrs when JuiceFS supports it
-        pass
-
-
-###########################################################################
-# File system wrapper
-###########################################################################
-
+        # 将元数据写入JuiceFS的元数据存储，比如.path/.meta.json
+        meta_json_path = self.fs._get_meta_path(self.path) + "/.meta.json"
+        old_meta = {}
+        if self.fs.client.exists(meta_json_path):
+            old_meta = json.loads(self.fs.client.read_file(meta_json_path).decode())
+        # 合并旧meta和新meta（新meta优先）
+        merged_meta = {**old_meta, **{k: v for k, v in self.meta.items() if v is not None}}
+        self.meta = merged_meta  # 更新当前内存中的meta
+        self.fs.client.write_file(meta_json_path, json.dumps(merged_meta, indent=2).encode())
+        # 不调用invoke_on_change这里，以免重复，多数情况下调用update_meta时会触发
 
 class JuiceFSFileSystem(IOSYSFileSystem):
-    """IOSYSFileSystem implementation backed by JuiceFS Python SDK."""
-
     def __init__(self):
         super().__init__()
         self.logger = IOSYSLogger("JuiceFS")
@@ -198,58 +139,34 @@ class JuiceFSFileSystem(IOSYSFileSystem):
 
         self.client = juicefs.Client(name, **kwargs)  # type: ignore[arg-type]
 
-    # ------------------------------------------------------------------
-    # IOSYSFileSystem interface
-    # ------------------------------------------------------------------
-    """
-    def is_running(self) -> bool:  # type: ignore[override]
-        return self.service.is_running()
-    """
-
-    def is_running(self) -> bool:  # type: ignore[override]
+    def is_running(self) -> bool:
         try:
             return self.client.exists("/")
         except Exception as e:
             self.logger.error(f"Failed to check JuiceFS service status: {e}")
             return False
 
-    def get_node(self, path: str) -> Union[FileSystemNode, None]:  # type: ignore[override]
-        norm = _norm(path)
-        if not self.client.exists(norm):
-            return None
-        st = self.client.stat(norm)
-        if stat_mod.S_ISDIR(st.st_mode):
-            return JuiceFSDirNode(self, norm)
-        return JuiceFSFileNode(self, norm)
-
-    def exists(self, path: str) -> bool:
-        return self.client.exists(_norm(path))
-
-    # ------------------------------------------------------------------
-    # Change notification helpers (mirrors original call_* helpers)
-    # ------------------------------------------------------------------
-    def _notify_change(self, node: FileSystemNode, change_type: CHANGE_TYPE):
-        self.invoke_on_change(node, change_type)  # inherited
-
-    # Aliases for compatibility with earlier codebase
-    def call_file_update(self, node: FileSystemNode):
-        self._notify_change(node, "update")
-
-    def call_file_delete(self, node: FileSystemNode):
-        self._notify_change(node, "delete")
-
-    def call_dir_update(self, node: FileSystemNode):
-        self._notify_change(node, "update")
-
-    def call_dir_delete(self, node: FileSystemNode):
-        self._notify_change(node, "delete")
-
-
-###########################################################################
-# Public factory hook (optional)
-###########################################################################
-
-
-def new_fs() -> IOSYSFileSystem:  # noqa: D401 – factory method
-    """Return a ready‑to‑use JuiceFS‑backed file system."""
-    return JuiceFSFileSystem()
+    def get_node(self, path: str) -> JuiceFSFileSystemNode | None:
+        path = self.normalize_path(path)
+        # 查询JuiceFS元数据或文件状态
+        if self.client.is_file(path):
+            node = JuiceFSFileSystemNode(self, path)
+            node.update_meta(type="file")
+            return node
+        if self.client.is_dir(path):
+            node = JuiceFSFileSystemNode(self, path)
+            node.update_meta(type="directory")
+            return node
+        # 检查是否存在元数据目录表示嵌入文件
+        meta_path = self._get_meta_path(path)
+        if self.client.is_dir(meta_path):
+            node = JuiceFSFileSystemNode(self, path)
+            node.update_meta(type="embedded")
+            return node
+        return None  # 路径不存在
+    
+    def _get_meta_path(self, path: str) -> str:
+        # 类似OSFS，把虚拟路径转换为元数据实际路径
+        if path == "/":
+            return "/.meta"  # 假设JuiceFS也采用类似隐藏目录
+        return f"/.meta{path}"

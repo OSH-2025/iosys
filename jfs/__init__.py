@@ -110,6 +110,9 @@ class IOSYSFileSystem(abc.ABC):
     @abc.abstractmethod
     def get_node(self, path: str) -> FileSystemNode | None: ...
 
+    @abc.abstractmethod
+    def _get_meta_path(self, path: str) -> str: ...
+
     def _notify_change(
         self,
         node: "FileSystemNode",
