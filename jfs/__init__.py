@@ -209,7 +209,6 @@ class IOSYSFileSystem(abc.ABC):
         if not node:
             raise FileNotFoundError(f"Node {dir_id} not found.")
         node.rename_dir(new_id)
-        
 
     def invoke_on_change(self, node: FileSystemNode, change_type: CHANGE_TYPE):
         if not self.on_change:

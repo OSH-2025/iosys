@@ -360,7 +360,7 @@ class FileAgent:
             }
 
         self.fs.move_dir(src_id, dst_id)
-        
+
         return {
             "status": "success",
             "message": f"目录移动成功: {params['source_path']} -> {params['destination_path']}",
