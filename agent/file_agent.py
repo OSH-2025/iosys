@@ -74,6 +74,9 @@ class FileAgent:
 
     def _normalize_path(self, path: str) -> str:
         """将路径转换为文件系统节点ID"""
+        # if not path:
+        #     return "/"
+            
         path = path.strip()
         # 移除前导的"./"或"."
         if path.startswith("./"):
@@ -82,6 +85,10 @@ class FileAgent:
             path = ""
         # 使用路径作为ID，可以根据实际需要调整
         return ("/" + path).replace("\\", "/").replace("//", "/").rstrip("/")
+
+    def get_tool_configs(self) -> List[Dict[str, Any]]:
+        """获取所有工具配置"""
+        return self.tool_configs
 
     # ------------------------------------ 工具函数定义 ------------------------------------
 
@@ -104,22 +111,36 @@ class FileAgent:
         file_name = params.get("file_name", "new_file.txt")
         content = params.get("content", "")
 
-        # 检查文件是否已存在
+        # 构建完整的文件路径
         path = self._normalize_path(f"{parent_path}/{file_name}")
         print(f"创建文件: {path}")
+        
+        # 检查文件是否已存在
         if self.fs.get_node(path):
             return {
                 "status": "error",
                 "message": f"文件已存在: {path}",
             }
 
-        self.fs.write_file(path, content.encode("utf-8"))
+        # self.fs.write_file(path, content.encode("utf-8"))
 
-        return {
-            "status": "success",
-            "message": f"文件创建成功: {params['file_name']}",
-            "data": {"path": path},
-        }
+        # return {
+        #     "status": "success",
+        #     "message": f"文件创建成功: {params['file_name']}",
+        #     "data": {"path": path},
+        # }
+        try:
+            self.fs.write_file(path, content.encode("utf-8"))
+            return {
+                "status": "success",
+                "message": f"文件创建成功: {params['file_name']}",
+                "data": {"path": path},
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"文件创建失败: {str(e)}",
+            }
 
     @tool(
         name="create_directory",
@@ -137,6 +158,7 @@ class FileAgent:
         """创建目录"""
         parent_path = self._normalize_path(params.get("path", "/"))
         directory_name = params.get("directory_name", "new_directory")
+        
         if not directory_name:
             return {"status": "error", "message": "目录名不能为空"}
         dir_path = self._normalize_path(f"{parent_path}/{directory_name}")
@@ -625,4 +647,61 @@ class FileAgent:
             "status": "success",
             "message": f"搜索完成，共找到 {len(result.nodes)} 个相关文件。具体回复：{result.response}",
             "data": result.to_dict(),
+        }
+
+    @tool(
+        name="get_file_info",
+        description="获取文件或目录信息",
+        parameters={
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "文件或目录路径"}
+            },
+            "required": ["path"],
+        },
+    )
+    def _get_file_info(self, params: Dict[str, Any]) -> ToolCallResult:
+        """获取文件或目录信息"""
+        if "path" not in params:
+            return {"status": "error", "message": "缺少必要参数: path"}
+
+        path_id = self._normalize_path(params["path"])
+
+        # 检查节点是否存在
+        node = self.fs.get_node(path_id)
+        if not node:
+            return {
+                "status": "error",
+                "message": f"路径不存在: {params['path']}",
+            }
+
+        # 获取节点信息
+        info = {
+            "path": node.path,
+            "name": node.name,
+            "type": node.meta.get("type", "unknown"),
+            "metadata": node.meta.copy()
+        }
+
+        # 如果是目录，添加子项数量
+        if node.meta.get("type") == "directory":
+            try:
+                children = node.children()
+                info["children_count"] = len(children)
+                info["children_names"] = [child.name for child in children]
+            except Exception:
+                info["children_count"] = 0
+                info["children_names"] = []
+        else:
+            # 如果是文件，添加文件大小
+            try:
+                content = node.read()
+                info["size_bytes"] = len(content)
+            except Exception:
+                info["size_bytes"] = 0
+
+        return {
+            "status": "success",
+            "message": f"成功获取路径信息: {params['path']}",
+            "data": info,
         }
