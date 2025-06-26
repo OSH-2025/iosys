@@ -336,6 +336,9 @@ class FileAgent:
                 "message": "缺少必要参数: source_path 或 destination_path",
             }
 
+        # 需要手动把源目录名添加到路径中
+        # params["destination_path"] += "/" + params["source_path"].split("/")[-1]
+
         src_id = self._normalize_path(params["source_path"])
         dst_id = self._normalize_path(params["destination_path"])
 
@@ -356,11 +359,19 @@ class FileAgent:
                 "message": f"目标目录已存在: {params['destination_path']}",
             }
 
-        # 目录移动功能需要文件系统的具体支持
+        self.fs.move_dir(src_id, dst_id)
+        
         return {
-            "status": "error",
-            "message": "目录移动功能需要文件系统支持",
+            "status": "success",
+            "message": f"目录移动成功: {params['source_path']} -> {params['destination_path']}",
+            "data": {"new_path": dst_id},
         }
+
+        # 目录移动功能需要文件系统的具体支持
+        # return {
+        #     "status": "error",
+        #     "message": "目录移动功能需要文件系统支持",
+        # }
 
     @tool(
         name="rename_file",
@@ -477,9 +488,15 @@ class FileAgent:
             }
 
         # 目录重命名功能需要文件系统的具体支持
+        # return {
+        #     "status": "error",
+        #     "message": "目录重命名功能需要文件系统支持",
+        # }
+        self.fs.rename_dir(dir_id, new_id)
         return {
-            "status": "error",
-            "message": "目录重命名功能需要文件系统支持",
+            "status": "success",
+            "message": f"目录重命名成功: {params['directory_path']} -> {params['new_name']}",
+            "data": {"new_path": new_id},
         }
 
     @tool(

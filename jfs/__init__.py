@@ -54,6 +54,16 @@ class FileSystemNode(abc.ABC):
         pass
 
     @abc.abstractmethod
+    def move_dir(self, dst_id: str):
+        """Move the node to a new directory (may be a file or directory)"""
+        pass
+
+    @abc.abstractmethod
+    def rename_dir(self, new_id: str):
+        """Rename the directory"""
+        pass
+
+    @abc.abstractmethod
     def parent(self) -> Union["FileSystemNode", None]:
         """Get the parent node of this node"""
         pass
@@ -110,8 +120,8 @@ class IOSYSFileSystem(abc.ABC):
     @abc.abstractmethod
     def get_node(self, path: str) -> FileSystemNode | None: ...
 
-    @abc.abstractmethod
-    def _get_meta_path(self, path: str) -> str: ...
+    # @abc.abstractmethod
+    # def _get_meta_path(self, path: str) -> str: ...
 
     def _notify_change(
         self,
@@ -186,6 +196,20 @@ class IOSYSFileSystem(abc.ABC):
         if not node:
             raise FileNotFoundError(f"Node {path} not found.")
         node.remove()
+
+    def move_dir(self, src_id: str, dst_id: str):
+        src_node = self.get_node(src_id)
+        if not src_node:
+            raise FileNotFoundError(f"Source node {src_id} not found.")
+        src_node.move_dir(dst_id)
+
+    def rename_dir(self, dir_id: str, new_id: str):
+        """Rename the directory"""
+        node = self.get_node(dir_id)
+        if not node:
+            raise FileNotFoundError(f"Node {dir_id} not found.")
+        node.rename_dir(new_id)
+        
 
     def invoke_on_change(self, node: FileSystemNode, change_type: CHANGE_TYPE):
         if not self.on_change:
