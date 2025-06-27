@@ -11,12 +11,12 @@ class OSFileSystemNode(FileSystemNode):
     fs: "OSFileSystem"
 
     def read_stream(self) -> io.BytesIO:
-        if self.meta.get("type") == "embedded":
+        if self._meta.get("type") == "embedded":
             real_path = self.fs._get_embedded_path(self.path)
             with open(real_path, "rb") as f:
                 return io.BytesIO(f.read())
         real_path = self.fs._get_real_path(self.path)
-        if self.meta.get("type") == "directory":
+        if self._meta.get("type") == "directory":
             raise IsADirectoryError(f"Cannot read a directory as a file: {self.path}")
         if not os.path.exists(real_path):
             return io.BytesIO()
@@ -24,10 +24,10 @@ class OSFileSystemNode(FileSystemNode):
             return io.BytesIO(f.read())
 
     def write(self, content: bytes):
-        if self.meta.get("type") == "embedded":
+        if self._meta.get("type") == "embedded":
             raise ValueError("Cannot write to an embedded file directly.")
         real_path = self.fs._get_real_path(self.path)
-        if self.meta.get("type") == "directory":
+        if self._meta.get("type") == "directory":
             raise IsADirectoryError(
                 f"Cannot write to a directory as a file: {self.path}"
             )
@@ -37,10 +37,10 @@ class OSFileSystemNode(FileSystemNode):
             type="file",
             modified_at=int(time.time()),
         )
-        self.fs.invoke_on_change(self, "update")
+        self.fs.fire_event("update", self)
 
     def makedir(self):
-        node_type = self.meta.get("type")
+        node_type = self._meta.get("type")
         if node_type and not node_type == "directory":
             raise ValueError(
                 f"Wrong node type for makedir at {self.path}, got '{node_type}'"
@@ -52,10 +52,10 @@ class OSFileSystemNode(FileSystemNode):
             created_at=int(time.time()),
             modified_at=int(time.time()),
         )
-        self.fs.invoke_on_change(self, "create")
+        self.fs.fire_event("create", self)
 
     def remove(self):
-        if self.meta.get("type") == "embedded":
+        if self._meta.get("type") == "embedded":
             raise ValueError("Cannot remove an embedded file directly.")
         real_path = self.fs._get_real_path(self.path)
         if os.path.exists(real_path):
@@ -66,7 +66,7 @@ class OSFileSystemNode(FileSystemNode):
         meta_path = self.fs._get_meta_path(self.path)
         if os.path.exists(meta_path):
             shutil.rmtree(meta_path)
-        self.fs.invoke_on_change(self, "delete")
+        self.fs.fire_event("delete", self)
 
     def move_to(self, dst_path: str):
         src_real_path = self.fs._get_real_path(self.path)
@@ -78,7 +78,7 @@ class OSFileSystemNode(FileSystemNode):
         if os.path.exists(src_meta_path):
             shutil.move(src_meta_path, dst_meta_path)
         self.path = dst_path
-        self.fs.invoke_on_change(self, "update")
+        self.fs.fire_event("update", self)
 
     def parent(self) -> Union["OSFileSystemNode", None]:
         if self.path == "/":
@@ -108,7 +108,7 @@ class OSFileSystemNode(FileSystemNode):
             return []
 
     def create_child(self, name: str) -> "OSFileSystemNode":
-        if self.meta.get("embedded") == "embedded":
+        if self._meta.get("embedded") == "embedded":
             raise ValueError("Cannot insert node into an embedded file.")
         if self.path == "/":
             path = f"/{name}"
@@ -116,7 +116,7 @@ class OSFileSystemNode(FileSystemNode):
             path = f"{self.path}/{name}"
         node = OSFileSystemNode(self.fs, path)
         node.update_meta(
-            type="embedded" if self.meta.get("type") == "file" else None,
+            type="embedded" if self._meta.get("type") == "file" else None,
             created_at=int(time.time()),
             modified_at=int(time.time()),
         )
@@ -132,13 +132,13 @@ class OSFileSystemNode(FileSystemNode):
         else:
             old_meta = None
         if old_meta and old_meta != "{}":
-            self.meta = {
+            self._meta = {
                 **json.loads(old_meta),
-                **{k: v for k, v in self.meta.items() if v is not None},
+                **{k: v for k, v in self._meta.items() if v is not None},
             }
-            self.fs.invoke_on_change(self, "metadata")
+            self.fs.fire_event("metadata", self)
         with open(meta_json, "w") as f:
-            f.write(json.dumps(self.meta, indent=2))
+            f.write(json.dumps(self._meta, indent=2))
 
 
 class OSFileSystem(IOSYSFileSystem):

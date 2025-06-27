@@ -7,13 +7,15 @@ import jieba
 import logging
 from openai import AsyncOpenAI
 from typing import Dict, Any, Callable, List
+
 from fs import IOSYSFileSystem, FileSystemNode
+from utils.logger import IOSYSLogger
 
 # Configure settings for better display and fewer warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 pd.set_option("display.max_rows", 100)  # Show more rows in pandas tables
 pd.set_option("display.max_colwidth", 150)  # Show more text width in pandas tables
-logger = logging.getLogger(__name__)
+logger = IOSYSLogger("KG")
 # jieba.setLogLevel(logging.INFO)
 
 # --- System Prompt: Sets the context/role for the LLM ---
@@ -138,7 +140,7 @@ class IOSYSKnowledgeGraph:
         return handlers
 
     def load(self):
-        kg_data = self.node.meta.get("knowledge_graph", "{}")
+        kg_data = self.node.get_meta("knowledge_graph", "{}")
         kg_dict = json.loads(str(kg_data))
         self.content = kg_dict.get("content", [])
         status = kg_dict.get("status", "not_generated")
@@ -357,22 +359,23 @@ class IOSYSKnowledgeGraph:
     def __str__(self) -> str:
         return str(self.to_dict())
 
-    @classmethod
-    def merge_status_string(cls, a: str, b: str) -> str:
-        if a == "error" or b == "error":
-            return "error"
-        elif a == "done" and b == "done":
-            return "done"
-        else:
-            return "in_progress"
-
-    def status_string(self) -> str:
+    def status_string(self):
         if self.error:
-            return "error"
+            return {
+                "status": "error",
+                "message": self.error_message,
+            }
         if self.done:
-            return "done"
+            return {
+                "status": "done",
+                "path": self.node.path,
+                "content": self.content,
+            }
         else:
-            return "in_progress"
+            return {
+                "status": "in_progress",
+                "path": self.node.path,
+            }
 
     def to_dict(self) -> Dict[str, Any]:
         return {

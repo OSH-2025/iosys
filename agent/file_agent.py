@@ -713,12 +713,12 @@ class FileAgent:
         info = {
             "path": node.path,
             "name": node.name,
-            "type": node.meta.get("type", "unknown"),
-            "metadata": node.meta.copy(),
+            "type": node.get_meta("type", "unknown"),
+            "metadata": node._meta.copy(),
         }
 
         # 如果是目录，添加子项数量
-        if node.meta.get("type") == "directory":
+        if node.get_meta("type") == "directory":
             try:
                 children = node.children()
                 info["children_count"] = len(children)

@@ -1,5 +1,5 @@
 import asyncio
-from typing import Awaitable, Callable, Literal, Union
+from typing import Awaitable, Callable, Literal, Union, overload
 import abc
 import os
 import io
@@ -13,13 +13,13 @@ class FileSystemNode(abc.ABC):
     # Must use forward slashes
     # e.g. "/path/to/file.txt" or "/path/to/directory"
     path: str
-    meta: dict[str, str | int | float | bool]
+    _meta: dict[str, str | int | float | bool]
 
     def __init__(self, fs: "IOSYSFileSystem", path: str):
         self.path = path
         self.fs = fs
         self.path = path
-        self.meta = {}
+        self._meta = {}
 
     @property
     def name(self) -> str:
@@ -73,9 +73,21 @@ class FileSystemNode(abc.ABC):
         """Create a new child node (may be a file or directory)"""
         pass
 
+    @overload
+    def get_meta(self, key: str) -> Union[str, int, float, bool, None]: ...
+    @overload
+    def get_meta(
+        self, key: str, default: Union[str, int, float, bool]
+    ) -> Union[str, int, float, bool]: ...
+    def get_meta(
+        self, key: str, default: Union[str, int, float, bool, None] = None
+    ) -> Union[str, int, float, bool, None]:
+        """Get metadata of the node"""
+        return self._meta.get(key, default)
+
     def update_meta(self, **kwargs):
         """Update metadata of the node"""
-        self.meta.update(kwargs)
+        self._meta.update(kwargs)
         self._sync_metadata()
 
     @abc.abstractmethod
@@ -87,7 +99,7 @@ class FileSystemNode(abc.ABC):
         return {
             "path": self.path,
             "name": self.name,
-            "meta": self.meta,
+            "meta": self._meta,
         }
 
 
@@ -146,7 +158,7 @@ class IOSYSFileSystem(abc.ABC):
         """A convenience method to ensure a directory exists at the specified path."""
         node = self.get_node(path)
         if node:
-            if node.meta.get("type", "directory") != "directory":
+            if node.get_meta("type", "directory") != "directory":
                 raise ValueError(f"Path {path} is not a directory.")
             return node
         segmented_path = self.normalize_path(path).split("/")
@@ -187,7 +199,7 @@ class IOSYSFileSystem(abc.ABC):
             raise FileNotFoundError(f"Source node {src_path} not found.")
         src_node.move_to(dst_path)
 
-    def invoke_on_change(self, node: FileSystemNode, change_type: CHANGE_TYPE):
+    def fire_event(self, change_type: CHANGE_TYPE, node: FileSystemNode):
         if not self.on_change:
             return
 

@@ -18,24 +18,24 @@ class JuiceFSFileSystemNode(FileSystemNode):
     fs: "JuiceFSFileSystem"
 
     def read_stream(self) -> io.BytesIO:
-        if self.meta.get("type") == "directory":
+        if self._meta.get("type") == "directory":
             raise IsADirectoryError(f"Cannot read a directory: {self.path}")
         # 对于文件或嵌入节点，从JuiceFS读取内容
         content_bytes = self.fs.client.read_file(self.path)
         return io.BytesIO(content_bytes)
 
     def write(self, content: bytes):
-        node_type = self.meta.get("type")
+        node_type = self._meta.get("type")
         if node_type == "directory":
             raise IsADirectoryError(f"Cannot write to a directory: {self.path}")
         # 如果是新建的占位节点或嵌入节点，可能需要在JuiceFS创建文件
         self.fs.client.write_file(self.path, content)
         # 更新元数据类型为文件，记录修改时间
         self.update_meta(type="file", modified_at=int(time.time()))
-        self.fs.invoke_on_change(self, "update")
+        self.fs.fire_event("update", self)
 
     def makedir(self):
-        node_type = self.meta.get("type")
+        node_type = self._meta.get("type")
         if node_type and node_type != "directory":
             # 已存在且不是目录，不能转换为目录
             raise ValueError(
@@ -46,10 +46,10 @@ class JuiceFSFileSystemNode(FileSystemNode):
         self.update_meta(
             type="directory", created_at=int(time.time()), modified_at=int(time.time())
         )
-        self.fs.invoke_on_change(self, "create")
+        self.fs.fire_event("create", self)
 
     def remove(self):
-        node_type = self.meta.get("type")
+        node_type = self._meta.get("type")
         if node_type == "embedded":
             raise ValueError("Cannot remove embedded content directly")
         # 根据类型删除
@@ -60,7 +60,7 @@ class JuiceFSFileSystemNode(FileSystemNode):
         # 删除元数据文件
         meta_path = self.fs._get_meta_path(self.path)
         self.fs.client.remove_file(meta_path + "/.meta.json")
-        self.fs.invoke_on_change(self, "delete")
+        self.fs.fire_event("delete", self)
 
     def parent(self) -> Union["JuiceFSFileSystemNode", None]:
         """Return the parent directory node."""
@@ -70,7 +70,7 @@ class JuiceFSFileSystemNode(FileSystemNode):
         return JuiceFSFileSystemNode(self.fs, parent_path)
 
     def children(self) -> list[FileSystemNode]:
-        node_type = self.meta.get("type")
+        node_type = self._meta.get("type")
         children_nodes = []
         if node_type == "directory":
             for name in self.fs.client.list_dir(self.path):
@@ -90,13 +90,13 @@ class JuiceFSFileSystemNode(FileSystemNode):
 
     def create_child(self, name: str) -> "JuiceFSFileSystemNode":
         # 禁止在嵌入节点上再创建子节点，避免无限嵌套
-        if self.meta.get("type") == "embedded":
+        if self._meta.get("type") == "embedded":
             raise ValueError("Cannot create child in an embedded file node.")
         # 生成子节点路径
         child_path = self.path.rstrip("/") + "/" + name
         node = JuiceFSFileSystemNode(self.fs, child_path)
         # 如果当前节点是文件，则子节点标记为嵌入类型
-        if self.meta.get("type") == "file":
+        if self._meta.get("type") == "file":
             node.update_meta(
                 type="embedded",
                 created_at=int(time.time()),
@@ -116,9 +116,9 @@ class JuiceFSFileSystemNode(FileSystemNode):
         # 合并旧meta和新meta（新meta优先）
         merged_meta = {
             **old_meta,
-            **{k: v for k, v in self.meta.items() if v is not None},
+            **{k: v for k, v in self._meta.items() if v is not None},
         }
-        self.meta = merged_meta  # 更新当前内存中的meta
+        self._meta = merged_meta  # 更新当前内存中的meta
         self.fs.client.write_file(
             meta_json_path, json.dumps(merged_meta, indent=2).encode()
         )

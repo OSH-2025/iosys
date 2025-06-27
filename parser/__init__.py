@@ -173,8 +173,8 @@ class IOSYSParser:
         return IOSYSParsedFile(
             path=node.path,
             name=node.name,
-            created_at=int(node.meta.get("created_at", 0)),
-            updated_at=int(node.meta.get("modified_at", 0)),
+            created_at=int(node.get_meta("created_at", 0)),
+            updated_at=int(node.get_meta("modified_at", 0)),
             parent_path=parent.path,
             verbose_text=verbose_text,
             brief_text=brief_text,

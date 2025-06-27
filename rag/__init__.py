@@ -31,7 +31,7 @@ class IOSYSRAG:
         self.graph = IOSYSGraphEngine(llm)
 
     async def on_fs_change(self, node: FileSystemNode, change_type: CHANGE_TYPE):
-        match node.meta.get("type"):
+        match node.get_meta("type"):
             case "file":
                 await self.on_file_change(node, change_type)
             case "directory":
@@ -39,7 +39,7 @@ class IOSYSRAG:
             case "embedded":
                 await self.on_embedded_change(node, change_type)
             case _:
-                raise ValueError(f"Unsupported node type: {node.meta.get('type')}")
+                raise ValueError(f"Unsupported node type: {node.get_meta('type')}")
 
     async def on_file_change(self, node: FileSystemNode, change_type: CHANGE_TYPE):
         print(f"[RAG] File change detected: {node.path}, type: {change_type}")
