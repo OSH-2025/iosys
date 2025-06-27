@@ -59,7 +59,7 @@
       </div>
 
       <!-- Right Main Content -->
-      <main class="relative flex-1 bg-white">
+      <main class="relative w-0 flex-grow bg-white">
         <!-- Main content will go here -->
         <FilePreview />
         <GraphView v-show="panel === 'graph'" />

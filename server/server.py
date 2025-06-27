@@ -119,12 +119,13 @@ async def graph_endpoint():
     return rag.graph.to_dict()
 
 
-@app.get("/preview")
-async def preview_endpoint(path: str):
-    return Response(
-        media_type="text/html",
-        content=render_preview_html(fs, path),
-    )
+class PreviewRequest(BaseModel):
+    path: str
+
+
+@app.post("/preview")
+async def preview_endpoint(request: PreviewRequest):
+    return render_preview_html(fs, request.path)
 
 
 @app.get("/raw")
