@@ -3,7 +3,7 @@ import shutil
 import time
 import json
 import datetime
-from typing import Tuple, Optional
+from typing import List, Tuple, Optional
 
 from llama_index.core.graph_stores import (
     PropertyGraphStore,
@@ -85,12 +85,46 @@ class IOSYSGraphEngine:
 
     async def delete_file(self, path: str):
         try:
-            await self.graph_store.adelete_llama_nodes(node_ids=[path])
+            self.delete_llama_nodes(node_ids=[path])
             # await self.connect_event(path, "deleted")
             self.commit()
         except Exception as e:
             print(f"Error removing file {path}: ", e)
             raise e
+
+    def delete_llama_nodes(
+        self,
+        node_ids: Optional[List[str]] = None,
+        ref_doc_ids: Optional[List[str]] = None,
+    ) -> None:
+        """
+        Delete llama-index nodes.
+
+        Intended to delete any nodes in the graph store associated
+        with the given llama-index node_ids or ref_doc_ids.
+        """
+        nodes = []
+
+        node_ids = node_ids or []
+        for id_ in node_ids:
+            nodes.extend(self.graph_store.get(properties={"triplet_source_id": id_}))
+
+        if len(node_ids) > 0:
+            nodes.extend(self.graph_store.get(ids=node_ids))
+
+        ref_doc_ids = ref_doc_ids or []
+        for id_ in ref_doc_ids:
+            nodes.extend(self.graph_store.get(properties={"ref_doc_id": id_}))
+
+        if len(ref_doc_ids) > 0:
+            nodes.extend(self.graph_store.get(ids=ref_doc_ids))
+
+        # self.graph_store.delete(ids=[node.id for node in nodes])
+        for node in nodes:
+            self.graph_store.delete(
+                entity_names=[node.label],
+                ids=[node.id],
+            )
 
     async def create_directory(self, path: str, parent_path: str):
         return await self.update_directory(path, parent_path)
@@ -123,7 +157,7 @@ class IOSYSGraphEngine:
     async def delete_directory(self, path: str):
         # raise NotImplementedError("Delete directory is not implemented yet.")
         try:
-            await self.graph_store.adelete_llama_nodes(node_ids=[path])
+            self.delete_llama_nodes(node_ids=[path])
             # await self.connect_event(path, "deleted")
             self.commit()
         except Exception as e:
