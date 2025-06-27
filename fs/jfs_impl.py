@@ -126,6 +126,7 @@ class JuiceFSFileSystemNode(FileSystemNode):
         else:
             # 父为目录，新子节点暂不赋类型，等待实际操作决定
             node.update_meta(created_at=_now(), modified_at=_now())
+            self.fs.client.open(child_path, "wb").close()
         return node
 
     def move_to(self, target_path: str) -> None:
@@ -149,7 +150,23 @@ class JuiceFSFileSystemNode(FileSystemNode):
             meta_path = self.path
             meta_name = "user.iosys.meta"
 
-        old_meta = self.fs.client.getxattr(meta_path, meta_name)
+        old_meta = None
+        if self.fs.client.exists(meta_path):
+            try:
+                raw = self.fs.client.getxattr(meta_path, meta_name)
+                if raw:
+                    old_meta = json.loads(raw.decode())
+            except FileNotFoundError:
+                # xattr 尚未写过：忽略
+                pass
+        else:
+            # 确保目录存在
+            dir_path = os.path.dirname(meta_path)
+            if dir_path and not self.fs.client.exists(dir_path):
+                self.fs.client.makedirs(dir_path, exist_ok=True)
+
+            # “touch” 文件：用 open(path, "a") 创建空文件后立即关闭
+            self.fs.client.open(meta_path, "a").close()
         if old_meta and old_meta != "{}":
             self._meta = {
                 **json.loads(old_meta),

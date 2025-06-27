@@ -7,7 +7,10 @@ def main():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     fs = new_fs()
+    loop.run_until_complete(run_tests(fs))
 
+
+async def run_tests(fs):
     # Test if the root directory exists
     print("Testing root directory existence...")
     root_node = fs.get_root()

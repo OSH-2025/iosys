@@ -1,6 +1,6 @@
 <template>
   <!-- Mode Toggle -->
-  <div class="mb-3 mx-4">
+  <!-- <div class="mb-3 mx-4">
     <div class="flex bg-gray-100 rounded-md p-1">
       <button @click="chatMode = 'chat'" :class="['flex-1 py-2 px-3 rounded text-sm transition-colors',
         chatMode === 'chat' ? 'bg-white text-black shadow-sm' : 'text-gray-600 hover:text-black']">
@@ -11,7 +11,7 @@
         🤖 Agent
       </button>
     </div>
-  </div>
+  </div> -->
 
   <!-- Input and Submit Button -->
   <div class="m-4 mt-0">
@@ -32,7 +32,7 @@ import rpc from '../rpc';
 import { messages, refreshStatus } from '../states';
 
 const inputText = ref('');
-const chatMode = useLocalStorage<'chat' | 'agent'>('iosys.mode', 'chat');
+const chatMode = ref('agent'); // useLocalStorage<'chat' | 'agent'>('iosys.mode', 'chat');
 
 const handleSubmit = async () => {
   const input = inputText.value.trim();

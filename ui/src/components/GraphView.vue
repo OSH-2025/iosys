@@ -1,56 +1,82 @@
 <script setup lang="ts">
 import { onMounted, ref, watchEffect } from 'vue';
-import { Network, DataSet } from 'vis-network/standalone/esm/vis-network';
-import type { Node, Edge, Options } from 'vis-network/standalone/esm/vis-network';
-import { graphEdges, graphNodes } from '../graph';
-
-const options: Options = {
-  nodes: {
-    shape: 'dot',
-    size: 16,
-  },
-  edges: {
-    arrows: {
-      to: { enabled: true, scaleFactor: 1 },
-    },
-    smooth: false,
-  },
-  physics: {
-    forceAtlas2Based: {
-      gravitationalConstant: -26,
-      centralGravity: 0.005,
-      springLength: 230,
-      springConstant: 0.18,
-    },
-    maxVelocity: 146,
-    solver: 'forceAtlas2Based',
-    timestep: 0.35,
-    stabilization: { iterations: 150 },
-  },
-  groups: {
-    document: { color: { background: '#FFC107' }, borderWidth: 2 }, // Amber
-    chunk: { color: { background: '#4CAF50' }, borderWidth: 2 },    // Green
-    query: { color: { background: '#2196F3' }, borderWidth: 2 },     // Blue
-    answer: { color: { background: '#9C27B0' }, borderWidth: 2 },    // Purple
-  },
-};
+import * as echarts from 'echarts';
+import { graphNodes, graphEdges, echartsCategories } from '../graph';
 
 const container = ref<HTMLDivElement | null>(null);
+let myChart: echarts.ECharts | null = null;
 
-const nodes = new DataSet<Node>(graphNodes.value);
-const edges = new DataSet<Edge>(graphEdges.value);
+function updateChart() {
+  if (!myChart) return;
 
-watchEffect(() => {
-  nodes.clear();
-  nodes.update(graphNodes.value);
-  edges.clear();
-  edges.update(graphEdges.value);
-});
+  if (graphNodes.value.length === 0) {
+    myChart.clear();
+    return;
+  }
+
+  myChart.showLoading();
+
+  const option = {
+    tooltip: {
+      trigger: 'item',
+      formatter: (params: any) => {
+        if (params.dataType === 'node') {
+          return `${params.data.name}`;
+        } else {
+          return `${params.data.label?.formatter || ''}`;
+        }
+      }
+    },
+    legend: [{
+      data: echartsCategories.map(cat => cat.name),
+      orient: 'vertical',
+      left: 'left',
+      top: 'top'
+    }],
+    animationDuration: 1500,
+    animationEasingUpdate: 'quinticInOut',
+    series: [{
+      type: 'graph',
+      layout: 'force',
+      nodes: graphNodes.value,
+      edges: graphEdges.value,
+      categories: echartsCategories,
+      roam: true,
+      force: {
+        repulsion: 1000,
+        gravity: 0.1,
+        edgeLength: 200,
+        layoutAnimation: true
+      },
+      label: {
+        show: true,
+        position: 'right',
+        formatter: '{b}'
+      },
+      lineStyle: {
+        color: 'source',
+        curveness: 0.1,
+        width: 2
+      },
+      emphasis: {
+        focus: 'adjacency',
+        scale: 1.2,
+        lineStyle: {
+          width: 4
+        }
+      }
+    }]
+  } satisfies echarts.EChartsCoreOption;
+
+  myChart.setOption(option, true);
+  myChart.hideLoading();
+};
+
 
 onMounted(() => {
   if (container.value) {
-    const data = { nodes, edges };
-    new Network(container.value, data, options);
+    myChart = echarts.init(container.value);
+    watchEffect(updateChart);
   } else {
     console.error('Container is not available');
   }
