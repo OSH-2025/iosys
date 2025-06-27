@@ -151,7 +151,6 @@ class JuiceFSFileSystemNode(FileSystemNode):
             meta_path = self.path
             meta_name = "user.iosys.meta"
 
-
         if not self.fs.client.exists(meta_path):
             return
 
@@ -159,25 +158,30 @@ class JuiceFSFileSystemNode(FileSystemNode):
             raw = self.fs.client.getxattr(meta_path, meta_name)
             old_meta = json.loads(raw.decode()) if raw else None
         except OSError as e:
-            if e.errno not in (getattr(errno, "ENODATA", 61),
-                           getattr(errno, "ENOATTR", 61)):
+            if e.errno not in (
+                getattr(errno, "ENODATA", 61),
+                getattr(errno, "ENOATTR", 61),
+            ):
                 raise
             old_meta = None
         except json.JSONDecodeError as exc:
             self.fs.logger.warning(
-            f"Corrupted metadata in {meta_path} ({meta_name}): {exc}"
+                f"Corrupted metadata in {meta_path} ({meta_name}): {exc}"
             )
             old_meta = None
 
-        merged = {**(old_meta or {}),
-              **{k: v for k, v in self._meta.items() if v is not None}}
+        merged = {
+            **(old_meta or {}),
+            **{k: v for k, v in self._meta.items() if v is not None},
+        }
 
         if merged != old_meta:
             self._meta = merged
             self.fs.fire_event("metadata", self)
             self.fs.client.setxattr(
-                meta_path, meta_name,
-                json.dumps(self._meta, separators=(",", ":")).encode()
+                meta_path,
+                meta_name,
+                json.dumps(self._meta, separators=(",", ":")).encode(),
             )
 
 
