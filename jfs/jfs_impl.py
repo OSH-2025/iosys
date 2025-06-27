@@ -15,6 +15,8 @@ from utils.logger import IOSYSLogger
 
 
 class JuiceFSFileSystemNode(FileSystemNode):
+    fs: "JuiceFSFileSystem"
+
     def read_stream(self) -> io.BytesIO:
         if self.meta.get("type") == "directory":
             raise IsADirectoryError(f"Cannot read a directory: {self.path}")

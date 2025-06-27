@@ -1,5 +1,5 @@
 import asyncio
-from typing import Awaitable, Callable, Literal, Union, Any
+from typing import Awaitable, Callable, Literal, Union
 import abc
 import os
 import io
@@ -54,13 +54,8 @@ class FileSystemNode(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def move_dir(self, dst_id: str):
+    def move_to(self, dst_path: str):
         """Move the node to a new directory (may be a file or directory)"""
-        pass
-
-    @abc.abstractmethod
-    def rename_dir(self, new_id: str):
-        """Rename the directory"""
         pass
 
     @abc.abstractmethod
@@ -104,8 +99,6 @@ class IOSYSFileSystem(abc.ABC):
 
     _previous_task: asyncio.Task | None = None
 
-    client: Any
-
     def __init__(self):
         logger = IOSYSLogger("FS")
 
@@ -119,17 +112,6 @@ class IOSYSFileSystem(abc.ABC):
 
     @abc.abstractmethod
     def get_node(self, path: str) -> FileSystemNode | None: ...
-
-    # @abc.abstractmethod
-    # def _get_meta_path(self, path: str) -> str: ...
-
-    def _notify_change(
-        self,
-        node: "FileSystemNode",
-        change_type: CHANGE_TYPE,
-    ) -> None:
-        """默认实现：直接转发到 invoke_on_change()"""
-        self.invoke_on_change(node, change_type)
 
     def get_root(self) -> FileSystemNode:
         """Get the root node of the file system"""
@@ -145,6 +127,7 @@ class IOSYSFileSystem(abc.ABC):
         return node.read()
 
     def write_file(self, path: str, content: bytes) -> FileSystemNode:
+        """A convenience method to write bytes to a file. If the file does not exist, it will be created."""
         node = self.get_node(path)
         if node:
             node.write(content)
@@ -160,9 +143,8 @@ class IOSYSFileSystem(abc.ABC):
         return node
 
     def ensure_directory(self, path: str) -> FileSystemNode:
+        """A convenience method to ensure a directory exists at the specified path."""
         node = self.get_node(path)
-        if not node:
-            raise FileNotFoundError(f"Directory {path} not found.")
         if node:
             if node.meta.get("type", "directory") != "directory":
                 raise ValueError(f"Path {path} is not a directory.")
@@ -192,23 +174,18 @@ class IOSYSFileSystem(abc.ABC):
         return node
 
     def remove(self, path: str):
+        """A convenience method to remove a file or directory at the specified path."""
         node = self.get_node(path)
         if not node:
             raise FileNotFoundError(f"Node {path} not found.")
         node.remove()
 
-    def move_dir(self, src_id: str, dst_id: str):
-        src_node = self.get_node(src_id)
+    def move(self, src_path: str, dst_path: str):
+        """Move a directory to a new location"""
+        src_node = self.get_node(src_path)
         if not src_node:
-            raise FileNotFoundError(f"Source node {src_id} not found.")
-        src_node.move_dir(dst_id)
-
-    def rename_dir(self, dir_id: str, new_id: str):
-        """Rename the directory"""
-        node = self.get_node(dir_id)
-        if not node:
-            raise FileNotFoundError(f"Node {dir_id} not found.")
-        node.rename_dir(new_id)
+            raise FileNotFoundError(f"Source node {src_path} not found.")
+        src_node.move_to(dst_path)
 
     def invoke_on_change(self, node: FileSystemNode, change_type: CHANGE_TYPE):
         if not self.on_change:
@@ -228,8 +205,6 @@ class IOSYSFileSystem(abc.ABC):
 
     def normalize_path(self, path: str) -> str:
         path = path.strip().replace("\\", "/").replace("//", "/")
-        while "//" in path:
-            path = path.replace("//", "/")
         path = path.rstrip("/")
         if not path.startswith("/"):
             path = "/" + path

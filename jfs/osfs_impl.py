@@ -59,45 +59,25 @@ class OSFileSystemNode(FileSystemNode):
             raise ValueError("Cannot remove an embedded file directly.")
         real_path = self.fs._get_real_path(self.path)
         if os.path.exists(real_path):
-            # os.remove(real_path)
             if os.path.isfile(real_path):
                 os.remove(real_path)
             if os.path.isdir(real_path):
-                # os.rmdir(real_path) # just remove the directory if empty
                 shutil.rmtree(real_path)
         meta_path = self.fs._get_meta_path(self.path)
         if os.path.exists(meta_path):
-            # os.remove(meta_path)
-            if os.path.isfile(meta_path):
-                os.remove(meta_path)
-            if os.path.isdir(meta_path):
-                shutil.rmtree(meta_path)
+            shutil.rmtree(meta_path)
         self.fs.invoke_on_change(self, "delete")
 
-    def move_dir(self, dst_id: str):
-        real_path = self.fs._get_real_path(self.path)
-        dst_real_path = self.fs._get_real_path(dst_id)
-        if os.path.exists(real_path):
-            shutil.move(real_path, dst_real_path)
-        meta_path = self.fs._get_meta_path(self.path)
-        dst_meta_path = self.fs._get_meta_path(dst_id)
-        if os.path.exists(meta_path):
-            shutil.move(meta_path, dst_meta_path)
-        self.path = dst_id
-        self.fs.invoke_on_change(self, "update")
-
-    def rename_dir(self, new_id: str):
-        real_path = self.fs._get_real_path(self.path)
-        new_real_path = self.fs._get_real_path(new_id)
-        if os.path.exists(new_real_path):
-            raise FileExistsError(f"Directory {new_id} already exists.")
-        os.rename(real_path, new_real_path)
-        meta_path = self.fs._get_meta_path(self.path)
-        new_meta_path = self.fs._get_meta_path(new_id)
-        if os.path.exists(new_meta_path):
-            raise FileExistsError(f"Meta directory {new_meta_path} already exists.")
-        os.rename(meta_path, new_meta_path)
-        self.path = new_id
+    def move_to(self, dst_path: str):
+        src_real_path = self.fs._get_real_path(self.path)
+        dst_real_path = self.fs._get_real_path(dst_path)
+        if os.path.exists(src_real_path):
+            shutil.move(src_real_path, dst_real_path)
+        src_meta_path = self.fs._get_meta_path(self.path)
+        dst_meta_path = self.fs._get_meta_path(dst_path)
+        if os.path.exists(src_meta_path):
+            shutil.move(src_meta_path, dst_meta_path)
+        self.path = dst_path
         self.fs.invoke_on_change(self, "update")
 
     def parent(self) -> Union["OSFileSystemNode", None]:

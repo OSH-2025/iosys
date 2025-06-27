@@ -359,7 +359,7 @@ class FileAgent:
                 "message": f"目标目录已存在: {params['destination_path']}",
             }
 
-        self.fs.move_dir(src_id, dst_id)
+        self.fs.move(src_id, dst_id)
 
         return {
             "status": "success",
@@ -492,7 +492,7 @@ class FileAgent:
         #     "status": "error",
         #     "message": "目录重命名功能需要文件系统支持",
         # }
-        self.fs.rename_dir(dir_id, new_id)
+        self.fs.move(dir_id, new_id)
         return {
             "status": "success",
             "message": f"目录重命名成功: {params['directory_path']} -> {params['new_name']}",
