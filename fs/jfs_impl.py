@@ -15,11 +15,9 @@ from utils.logger import IOSYSLogger
 
 _XATTR_PREFIX = "user.iosys."
 
-
 def _now() -> int:
     """Get current time in seconds since epoch."""
     return int(time.time())
-
 
 class JuiceFSFileSystemNode(FileSystemNode):
     fs: "JuiceFSFileSystem"
@@ -28,7 +26,7 @@ class JuiceFSFileSystemNode(FileSystemNode):
         if self._meta.get("type") == "directory":
             raise IsADirectoryError(f"Cannot read a directory: {self.path}")
         # 对于文件或嵌入节点，从JuiceFS读取内容
-        filecode = self.fs.client.open(self.path, "rb")
+        filecode = self.fs.client.open(self.path,"rb")
         try:
             content_bytes = filecode.read()
         finally:
@@ -58,7 +56,9 @@ class JuiceFSFileSystemNode(FileSystemNode):
             )
         self.fs.client.makedirs(self.path, exist_ok=True)  # 在JuiceFS创建目录
         # 设置元数据为目录类型
-        self.update_meta(type="directory", created_at=_now(), modified_at=_now())
+        self.update_meta(
+            type="directory", created_at=_now(), modified_at=_now()
+        )
         self.fs.fire_event("create", self)
 
     def remove(self):
@@ -112,18 +112,6 @@ class JuiceFSFileSystemNode(FileSystemNode):
     def _xa_key(key: str) -> str:
         return _XATTR_PREFIX + key
 
-    def _load_meta(self) -> None:
-        """Populate ``self._meta`` from xattrs (best‑effort)."""
-        for key in ("type", "created_at", "modified_at"):
-            try:
-                raw = self.fs.client.getxattr(self.path, self._xa_key(key))
-                if raw is not None:
-                    self._meta[key] = json.loads(raw.decode())
-            except Exception:
-                # Ignore silently: attribute might be missing or FS may not
-                # support xattrs – we fall back to heuristics elsewhere.
-                pass
-
     def update_meta(self, **changes: Any) -> None:
         """Merge *changes* into cached meta **and** persist via xattr."""
         if not changes:
@@ -150,9 +138,22 @@ class JuiceFSFileSystemNode(FileSystemNode):
 
     def _sync_metadata(self) -> None:
         """Reload metadata from JuiceFS xattrs."""
-        # clear current meta and reload
-        self._meta.clear()
-        self._load_meta()
+        for k in self.fs.client.listxattr(self.path):
+            if k.startswith(_XATTR_PREFIX):
+                k = k[len(_XATTR_PREFIX):]
+                if self._meta.get(k) is None:
+                    try:
+                        value = self.fs.client.getxattr(self.path, k)
+                        
+        old_meta = self.fs.client.getxattr(self.path, self._xa_key("meta"))
+        if old_meta and old_meta != "{}":
+            self._meta = {
+                **json.loads(old_meta),
+                **{k: v for k, v in self._meta.items() if v is not None},
+            }
+            self.fs.fire_event("metadata", self)
+        with open(meta_json, "w") as f:
+            f.write(json.dumps(self._meta, indent=2))
 
 
 class JuiceFSFileSystem(IOSYSFileSystem):
@@ -194,21 +195,3 @@ class JuiceFSFileSystem(IOSYSFileSystem):
         if not self.client.exists(path):
             return None
         return JuiceFSFileSystemNode(self, path)
-        """
-        # 查询JuiceFS元数据或文件状态
-        if self.client.is_file(path):
-            node = JuiceFSFileSystemNode(self, path)
-            node.update_meta(type="file")
-            return node
-        if self.client.is_dir(path):
-            node = JuiceFSFileSystemNode(self, path)
-            node.update_meta(type="directory")
-            return node
-        # 检查是否存在元数据目录表示嵌入文件
-        meta_path = self._get_meta_path(path)
-        if self.client.is_dir(meta_path):
-            node = JuiceFSFileSystemNode(self, path)
-            node.update_meta(type="embedded")
-            return node
-        return None  # 路径不存在
-        """
