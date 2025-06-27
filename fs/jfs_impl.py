@@ -15,9 +15,11 @@ from utils.logger import IOSYSLogger
 
 _XATTR_PREFIX = "user.iosys."
 
+
 def _now() -> int:
     """Get current time in seconds since epoch."""
     return int(time.time())
+
 
 class JuiceFSFileSystemNode(FileSystemNode):
     fs: "JuiceFSFileSystem"
@@ -26,7 +28,7 @@ class JuiceFSFileSystemNode(FileSystemNode):
         if self._meta.get("type") == "directory":
             raise IsADirectoryError(f"Cannot read a directory: {self.path}")
         # 对于文件或嵌入节点，从JuiceFS读取内容
-        filecode = self.fs.client.open(self.path,"rb")
+        filecode = self.fs.client.open(self.path, "rb")
         try:
             content_bytes = filecode.read()
         finally:
@@ -56,9 +58,7 @@ class JuiceFSFileSystemNode(FileSystemNode):
             )
         self.fs.client.makedirs(self.path, exist_ok=True)  # 在JuiceFS创建目录
         # 设置元数据为目录类型
-        self.update_meta(
-            type="directory", created_at=_now(), modified_at=_now()
-        )
+        self.update_meta(type="directory", created_at=_now(), modified_at=_now())
         self.fs.fire_event("create", self)
 
     def remove(self):
@@ -194,7 +194,7 @@ class JuiceFSFileSystem(IOSYSFileSystem):
         if not self.client.exists(path):
             return None
         return JuiceFSFileSystemNode(self, path)
-        '''
+        """
         # 查询JuiceFS元数据或文件状态
         if self.client.is_file(path):
             node = JuiceFSFileSystemNode(self, path)
@@ -211,4 +211,4 @@ class JuiceFSFileSystem(IOSYSFileSystem):
             node.update_meta(type="embedded")
             return node
         return None  # 路径不存在
-        '''
+        """
