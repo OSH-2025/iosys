@@ -17,6 +17,13 @@ const contextMenu = ref({
   nodeId: null as string | null
 });
 
+// Confirmation dialog state
+const confirmDialog = ref({
+  visible: false,
+  nodeId: null as string | null,
+  nodeName: ''
+});
+
 // Focus state
 const focusedNodeId = ref<string | null>(null);
 const focusedNodeType = ref<string | null>(null);
@@ -156,7 +163,39 @@ function handleContextMenu(params: any) {
 
 // Delete node and related edges
 function deleteNode() {
+  const nodeId = contextMenu.value.nodeId || focusedNodeId.value;
+  if (!nodeId) return;
+
+  // Show confirmation dialog
+  confirmDialog.value = {
+    visible: true,
+    nodeId: nodeId,
+    nodeName: nodeId.split('/').pop() || nodeId
+  };
   
+  // Hide context menu
+  contextMenu.value.visible = false;
+}
+
+function confirmDelete() {
+  if (!confirmDialog.value.nodeId) return;
+
+  // TODO: Implement actual deletion logic here
+  // This should call your API to delete the file/node
+  console.log('Deleting node:', confirmDialog.value.nodeId);
+  
+  // Clear focus if the deleted node was focused
+  if (focusedNodeId.value === confirmDialog.value.nodeId) {
+    focusedNodeId.value = null;
+    updateNodeFocus(null);
+  }
+  
+  // Hide dialog
+  confirmDialog.value.visible = false;
+}
+
+function cancelDelete() {
+  confirmDialog.value.visible = false;
 }
 
 function downloadNode(ev: Event) {
@@ -229,6 +268,40 @@ const previewHtml = usePreviewHtml(computed(() => focusedNodeType.value === 'fil
         </div>
       </div>
       <div v-if="previewHtml" v-html="previewHtml" class="border-0 w-full flex-grow my-2 border-t pt-2" />
+    </div>
+
+    <!-- Confirmation Dialog -->
+    <div v-if="confirmDialog.visible" 
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
+      <div class="bg-white rounded-lg shadow-xl border border-gray-200 p-6 max-w-md w-full mx-4">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
+            <div class="i-carbon-warning w-5 h-5 text-red-600"></div>
+          </div>
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900">Delete File</h3>
+            <p class="text-sm text-gray-600">This action cannot be undone.</p>
+          </div>
+        </div>
+        
+        <div class="mb-6">
+          <p class="text-sm text-gray-700">
+            Are you sure you want to delete 
+            <span class="font-mono bg-gray-100 px-1 py-0.5 rounded text-xs">{{ confirmDialog.nodeName }}</span>?
+          </p>
+        </div>
+        
+        <div class="flex gap-3 justify-end">
+          <button @click="cancelDelete"
+            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors">
+            Cancel
+          </button>
+          <button @click="confirmDelete"
+            class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors">
+            Delete
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Custom Context Menu -->
