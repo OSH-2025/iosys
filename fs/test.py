@@ -59,10 +59,10 @@ async def run_tests(fs):
         print("Non-existent directory access test passed.")
 
     # Test path normalization
-    #print("Testing path normalization...")
-    #normalized_path = fs.normalize_path("///test//path/")
-    #assert normalized_path == "/test/path", "Path should be normalized."
-    #print("Path normalization test passed.")
+    # print("Testing path normalization...")
+    # normalized_path = fs.normalize_path("///test//path/")
+    # assert normalized_path == "/test/path", "Path should be normalized."
+    # print("Path normalization test passed.")
 
     # Test moving a file
     print("Testing move_to method...")
