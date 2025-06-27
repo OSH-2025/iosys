@@ -85,8 +85,8 @@ class IOSYSGraphEngine:
 
     async def delete_file(self, path: str):
         try:
-            await self.graph_store.adelete(entity_names=[path])
-            await self.connect_event(path, "deleted")
+            await self.graph_store.adelete_llama_nodes(node_ids=[path])
+            # await self.connect_event(path, "deleted")
             self.commit()
         except Exception as e:
             print(f"Error removing file {path}: ", e)
@@ -121,7 +121,14 @@ class IOSYSGraphEngine:
             raise e
 
     async def delete_directory(self, path: str):
-        raise NotImplementedError("Delete directory is not implemented yet.")
+        # raise NotImplementedError("Delete directory is not implemented yet.")
+        try:
+            await self.graph_store.adelete_llama_nodes(node_ids=[path])
+            # await self.connect_event(path, "deleted")
+            self.commit()
+        except Exception as e:
+            print(f"Error removing file {path}: ", e)
+            raise e
 
     async def connect_event(self, path: str, label: str):
         current_time = time.time()
