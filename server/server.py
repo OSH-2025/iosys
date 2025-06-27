@@ -6,12 +6,12 @@ from openai import OpenAI, AsyncOpenAI
 import os
 from fastapi.responses import Response
 
-from fs import new_fs, FileSystemNode
+from fs import new_fs
 from agent import IOSYSAgent
 from agent.config import AgentConfig
 from parser import IOSYSParser
 from rag import IOSYSRAG
-from rag.knowledge_graph import IOSYSKnowledgeGraphTask, IOSYSKnowledgeGraph
+from rag.knowledge_graph import IOSYSKnowledgeGraph
 from utils.logger import all_logs
 
 from .preview import render_preview_html
@@ -56,6 +56,7 @@ async def status_endpoint():
         "agent": "ready",
         "graph_revision": rag.graph.revision,
         "mcp_servers": agent.mcp.get_status(),
+        "knowledge_graph": knowledge_graph.status_dict(),
     }
 
 
@@ -157,60 +158,25 @@ async def logs_endpoint():
     return [log.to_dict() for log in all_logs]
 
 
-# Example of KG Generator
-def traverse_read_kg(node: FileSystemNode):
-    children_data = []
-    status = "done"
-    for child in node.children():
-        content = traverse_read_kg(child)
-        ch_status = content.get("status", "error")
-        print(f"Child status: {ch_status} for {child.path}")
-        children_data.append(content)
-        status = IOSYSKnowledgeGraphTask.merge_status_string(status, ch_status)
-    knowledge_graph = IOSYSKnowledgeGraphTask(node, knowledge_graph)
-    self_status = knowledge_graph.status()["status"]
-    status = IOSYSKnowledgeGraphTask.merge_status_string(status, self_status)
-    return {
-        "file": node.path,
-        "status": status,
-        "knowledge graph": knowledge_graph.to_dict(),
-        "children": children_data,
-    }
+class KgSpawnRequest(BaseModel):
+    path: str
 
 
-@app.get("/kg")
-async def kg_endpoint():
-    return traverse_read_kg(fs.get_root())
+@app.post("/kg/spawn")
+async def kg_endpoint(request: KgSpawnRequest):
+    node = fs.get_node(request.path)
+    if not node:
+        raise HTTPException(status_code=404, detail="Node not found")
+    knowledge_graph.spawn_task(node)
 
 
-async def traverse_update_kg(node: FileSystemNode):
-    knowledge_graph = IOSYSKnowledgeGraphTask(node, knowledge_graph)
-    await knowledge_graph.update()
-    children_data = []
-    for child in node.children():
-        children_data.append(await traverse_update_kg(child))
-    return {
-        "file": node.path,
-        "status": knowledge_graph.status(),
-        "children": children_data,
-    }
+class KgGetContentRequest(BaseModel):
+    path: str
 
 
-@app.get("/update_kg")
-@app.post("/update_kg")
-async def update_kg_endpoint():
-    return await traverse_update_kg(fs.get_root())
-
-
-def traverse_clear_kg(node: FileSystemNode):
-    knowledge_graph = IOSYSKnowledgeGraphTask(node, knowledge_graph)
-    knowledge_graph.clear()
-    for child in node.children():
-        traverse_clear_kg(child)
-
-
-@app.get("/clear_kg")
-@app.post("/clear_kg")
-async def clear_kg_endpoint():
-    traverse_clear_kg(fs.get_root())
-    return traverse_read_kg(fs.get_root())
+@app.post("/kg/content")
+async def update_kg_endpoint(request: KgGetContentRequest):
+    node = fs.get_node(request.path)
+    if not node:
+        raise HTTPException(status_code=404, detail="Node not found")
+    return knowledge_graph.get_result(node)

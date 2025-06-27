@@ -4,10 +4,28 @@ import { RawGraph } from "./graph";
 import { errorMessage } from "./states";
 
 const BASE_URL = import.meta.env.VITE_API_SERVER_URL;
-console.log("BASE_URL", BASE_URL);
+
+
+interface Status {
+  server: string;
+  rag: string;
+  llm: string;
+  fs: string;
+  graph_revision: number;
+  mcp_servers: Record<string, string | true>,
+  knowledge_graph: Record<string, {
+    status: 'error',
+    message: string,
+  } | {
+    status: 'in_progress',
+    progress: number,
+  } | {
+    status: 'done',
+  }>;
+}
 
 const apis = {
-  status: defineApi<{}, { server: string, rag: string, llm: string, fs: string, graph_revision: number, mcp_servers: Record<string, string | true> }>("/status"),
+  status: defineApi<{}, Status>("/status"),
   chat: defineApi<{ input: string }, { response: string }>("/chat"),
   preview: defineApi<{ path: string }, string>("/preview"),
   agent: defineApi<{ command: string }, { status: string, message?: string, data: any }>("/agent"),
@@ -15,6 +33,7 @@ const apis = {
   graph: defineApi<{}, RawGraph>("/graph"),
   mcpSync: defineApi<{ config: Record<string, any> }, {}>("/mcp"),
   getLogs: defineApi<{}, Array<{ timestamp: string, level: string, name: string, message: string }>>("/logs"),
+  getKnowledgeGraph: defineApi<{ path: string }, unknown>("/knowledge_graph"),
 };
 
 export default apis;

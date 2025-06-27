@@ -1,4 +1,3 @@
-import pandas as pd  # For displaying data in tables
 import os  # For accessing environment variables (safer for API keys)
 import warnings  # To suppress potential deprecation warnings
 import json  # For parsing LLM responses
@@ -6,14 +5,13 @@ import re  # For basic text cleaning (regular expressions)
 import jieba
 from openai import AsyncOpenAI
 from typing import Optional, TypedDict
+import asyncio
 
 from fs import FileSystemNode
 from utils.logger import IOSYSLogger
 
 # Configure settings for better display and fewer warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
-pd.set_option("display.max_rows", 100)  # Show more rows in pandas tables
-pd.set_option("display.max_colwidth", 150)  # Show more text width in pandas tables
 logger = IOSYSLogger("KG")
 # jieba.setLogLevel(logging.INFO)
 
@@ -82,13 +80,33 @@ class IOSYSKnowledgeGraph:
         self.system_prompt = system_prompt
         self.user_prompt_template = user_prompt_template
 
-    def create_task(self, node: FileSystemNode) -> "IOSYSKnowledgeGraphTask":
-        """
-        Create a new knowledge graph extraction task for the given file node.
-        """
-        task = IOSYSKnowledgeGraphTask(node, self)
-        self.tasks[node.path] = task
-        return task
+    def spawn_task(self, node: FileSystemNode):
+        if node.get_meta("type") != "directory":
+            task = IOSYSKnowledgeGraphTask(node, self)
+            self.tasks[node.path] = task
+        for child in node.children():
+            self.spawn_task(child)
+
+    def get_result(self, node: FileSystemNode):
+        result = []  # type: list[KnowledgeGraphTriplet]
+
+        def extend_result(path: str):
+            task = self.tasks.get(path)
+            assert task is not None, f"Task for {path} not found."
+            assert task.result is not None, f"Task for {path} is not finished."
+            result.extend(task.result)
+
+        if node.get_meta("type") != "directory":
+            extend_result(node.path)
+        for child in node.children():
+            extend_result(child.path)
+        return result
+
+    def status_dict(self):
+        status = {}
+        for path, task in self.tasks.items():
+            status[path] = task.status_dict()
+        return status
 
 
 class KnowledgeGraphTriplet(TypedDict):
@@ -98,8 +116,9 @@ class KnowledgeGraphTriplet(TypedDict):
 
 
 class IOSYSKnowledgeGraphTask:
-    content: Optional[list[KnowledgeGraphTriplet]] = None
+    result: Optional[list[KnowledgeGraphTriplet]]
     error = ""
+    progress = 0
 
     def __init__(self, node: FileSystemNode, config: IOSYSKnowledgeGraph):
         self.config = config
@@ -118,8 +137,10 @@ class IOSYSKnowledgeGraphTask:
         if cache:
             cache = json.loads(str(cache))
             # TODO: Check revision
-            self.done = True
-            self.content = cache["content"]
+            self.result = cache["content"]
+        else:
+            self.result = None
+            asyncio.create_task(self.update())
 
     async def chunk_to_raw_kg_json(self, text: str):
         user_prompt = self.user_prompt_template.format(text_chunk=text)
@@ -221,7 +242,7 @@ class IOSYSKnowledgeGraphTask:
         normalized_triples = []  # type: list[KnowledgeGraphTriplet]
         seen_triples = set()  # Tracks (subject, predicate, object) tuples
 
-        for j in range(len(words)):
+        for _ in range(len(words)):
             chunk_num += 1
             end_index = min(self.chunk_size, len(words))
             chunk_text = " ".join(words[0:end_index])
@@ -266,7 +287,7 @@ class IOSYSKnowledgeGraphTask:
                     all_extracted_triples.extend(valid_triples_in_chunk)
 
             # Normalize, Filter, and De-duplicate Triples
-            for i, triple in enumerate(all_extracted_triples):
+            for triple in all_extracted_triples:
                 subject_raw = triple.get("subject")
                 predicate_raw = triple.get("predicate")
                 object_raw = triple.get("object")
@@ -309,27 +330,25 @@ class IOSYSKnowledgeGraphTask:
             if len(words) <= self.overlap:
                 break
 
-        self.content = normalized_triples
+        self.result = normalized_triples
 
-        self.node.update_meta(knowledge_graph=json.dumps(self.to_dict()))
+        self.node.update_meta(knowledge_graph=json.dumps(self.status_dict()))
 
     def __str__(self) -> str:
-        return str(self.to_dict())
+        return str(self.status_dict())
 
-    def to_dict(self):
+    def status_dict(self):
         if self.error:
             return {
                 "status": "error",
                 "message": self.error,
             }
-        elif self.done:
+        elif self.result is not None:
             return {
                 "status": "done",
-                "path": self.node.path,
-                "content": self.content,
             }
         else:
             return {
                 "status": "in_progress",
-                "path": self.node.path,
+                "progress": self.progress,
             }
