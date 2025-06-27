@@ -64,6 +64,26 @@ async def run_tests(fs):
     assert normalized_path == "/test/path", "Path should be normalized."
     print("Path normalization test passed.")
 
+    # Test moving a file
+    print("Testing move_to method...")
+    original_path = "/test_file.txt"
+    target_path = "/moved_test_file.txt"
+    content = b"Hello, IOSYS!"
+
+    # Create a file at the original path
+    file_node = fs.write_file(original_path, content)
+    assert isinstance(file_node, FileSystemNode), "File node should be created."
+    assert file_node.path == original_path, "File path should match."
+
+    # Move the file to the target path
+    file_node.move_to(target_path)
+    assert file_node.path == target_path, "File path should be updated after move."
+    assert fs.get_node(original_path) is None, "Original path should no longer exist."
+    moved_node = fs.get_node(target_path)
+    assert moved_node is not None, "Moved file should exist at the target path."
+    assert fs.read(target_path) == content, "File content should remain unchanged."
+    print("move_to method test passed.")
+
 
 if __name__ == "__main__":
     main()
