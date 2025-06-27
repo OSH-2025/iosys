@@ -1,8 +1,8 @@
-import { ref, shallowRef } from 'vue';
-import type { Node, Edge } from 'vis-network/standalone/esm/vis-network';
+import { ref, shallowRef, computed } from 'vue';
 import rpc from "./rpc";
 import { status } from './states';
 import { whenever } from '@vueuse/core';
+import type * as echarts from 'echarts';
 
 export interface RawGraph {
   nodes: Record<string, {
@@ -22,9 +22,14 @@ export interface RawGraph {
 }
 
 const currentRevision = ref(-1);
-export const graphNodes = shallowRef<Node[]>([]);
-export const graphEdges = shallowRef<Edge[]>([]);
+export const graphNodes = shallowRef<echarts.GraphSeriesOption["nodes"] & {}>([]);
+export const graphEdges = shallowRef<echarts.GraphSeriesOption["edges"] & {}>([]);
 
+export const echartsCategories = [
+  { name: 'root', itemStyle: { color: '#2196F3' } },
+  { name: 'file', itemStyle: { color: '#FFC107' } },
+  { name: 'directory', itemStyle: { color: '#4CAF50' } },
+];
 
 whenever(
   () => currentRevision.value < (status.value.graph_revision || 0),
@@ -37,17 +42,24 @@ whenever(
       .filter(([_, node]) => node.label !== 'event')
       .map(([id, node]) => ({
         id,
-        label: node.name,
-        group: node.label,
-      } satisfies Node));
+        name: node.name.split('/').pop() || node.name,
+        category:
+          node.name === '/' ? 0 : echartsCategories.findIndex(cat => cat.name === node.label),
+        symbolSize: 30,
+        label: {
+          show: true
+        }
+      }));
     graphEdges.value = Object.entries(graph.relations)
       .filter(([_, relation]) => graph.nodes[relation.source_id].label !== 'event')
-      .map(([id, relation]) => ({
-        id,
-        from: relation.source_id,
-        to: relation.target_id,
-        label: relation.label,
-      } satisfies Edge));
+      .map(([_id, relation]) => ({
+        source: relation.source_id,
+        target: relation.target_id,
+        label: {
+          show: true,
+          formatter: relation.label
+        },
+      } satisfies (echarts.GraphSeriesOption["edges"] & {})[number]));
   },
   { immediate: true }
 )
