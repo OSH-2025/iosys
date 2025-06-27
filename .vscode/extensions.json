@@ -3,6 +3,7 @@
     "charliermarsh.ruff",
     "vue.volar",
     "ms-python.python",
-    "ms-python.vscode-pylance"
+    "ms-python.vscode-pylance",
+    "wayou.vscode-todo-highlight"
   ],
 }

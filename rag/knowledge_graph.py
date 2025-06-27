@@ -4,11 +4,10 @@ import warnings  # To suppress potential deprecation warnings
 import json  # For parsing LLM responses
 import re  # For basic text cleaning (regular expressions)
 import jieba
-import logging
 from openai import AsyncOpenAI
-from typing import Dict, Any, Callable, List
+from typing import Optional, TypedDict
 
-from fs import IOSYSFileSystem, FileSystemNode
+from fs import FileSystemNode
 from utils.logger import IOSYSLogger
 
 # Configure settings for better display and fewer warnings
@@ -63,16 +62,14 @@ Please extract Subject-Predicate-Object (S-P-O) triples from the text below. 对
 """
 
 
-class IOSYSKnowledgeGraphConfig:
-    llm: AsyncOpenAI
-    fs: IOSYSFileSystem
+class IOSYSKnowledgeGraph:
+    tasks: dict[str, "IOSYSKnowledgeGraphTask"] = {}
 
     def __init__(
         self,
         llm: AsyncOpenAI,
         chunk_size: int = 300,
         overlap: int = 30,
-        log_level: str = "INFO",
         system_prompt: str = extraction_system_prompt,
         user_prompt_template: str = extraction_user_prompt_template,
     ):
@@ -85,81 +82,53 @@ class IOSYSKnowledgeGraphConfig:
         self.system_prompt = system_prompt
         self.user_prompt_template = user_prompt_template
 
-        # 设置日志级别
-        numeric_level = getattr(logging, log_level.upper(), None)
-        if not isinstance(numeric_level, int):
-            raise ValueError(f"Invalid log level: {log_level}")
-        logging.basicConfig(
-            level=numeric_level,
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        )
+    def create_task(self, node: FileSystemNode) -> "IOSYSKnowledgeGraphTask":
+        """
+        Create a new knowledge graph extraction task for the given file node.
+        """
+        task = IOSYSKnowledgeGraphTask(node, self)
+        self.tasks[node.path] = task
+        return task
 
 
-class IOSYSKnowledgeGraph:
-    def __init__(
-        self, node: FileSystemNode, config: IOSYSKnowledgeGraphConfig, autoload=True
-    ):
+class KnowledgeGraphTriplet(TypedDict):
+    subject: str
+    predicate: str
+    object: str
+
+
+class IOSYSKnowledgeGraphTask:
+    content: Optional[list[KnowledgeGraphTriplet]] = None
+    error = ""
+
+    def __init__(self, node: FileSystemNode, config: IOSYSKnowledgeGraph):
         self.config = config
         self.node = node
         self.llm_client = config.llm
         self.llm_model_name = config.llm_model
-        self.llm_api_base = config.llm_api_base
-        self.llm_api_key = config.llm_api_key
         self.llm_temperature = 0.0  # Default temperature for LLM responses
         self.llm_max_tokens = 4096
-        self.tool_configs = self._collect_tool_configs()
-        self.tool_handlers = self._collect_tool_handlers()
         self.unstructured_text = ""
         self.chunk_size = config.chunk_size
         self.overlap = config.overlap
         self.system_prompt = config.system_prompt
         self.user_prompt_template = config.user_prompt_template
-        self.content = False
-        self.done = False
-        self.error = False
-        self.error_message = ""
-        if autoload:
-            self.load()
 
-    def _collect_tool_configs(self) -> List[Dict[str, Any]]:
-        """自动收集所有注册的工具配置"""
-        tools = []
-        for attr_name in dir(self):
-            attr = getattr(self, attr_name)
-            if hasattr(attr, "_tool_config"):
-                tools.append(attr._tool_config)
-        return tools
-
-    def _collect_tool_handlers(self) -> Dict[str, Callable]:
-        """自动收集所有工具处理函数"""
-        handlers = {}
-        for attr_name in dir(self):
-            attr = getattr(self, attr_name)
-            if hasattr(attr, "_tool_name"):
-                handlers[attr._tool_name] = attr
-        return handlers
-
-    def load(self):
-        kg_data = self.node.get_meta("knowledge_graph", "{}")
-        kg_dict = json.loads(str(kg_data))
-        self.content = kg_dict.get("content", [])
-        status = kg_dict.get("status", "not_generated")
-        self.done = status == "done"
-        self.error = status != "done"
-        self.error_message = kg_dict.get("error_message", f"{self.node.path}:\n")
-        if status == "not_generated":
-            self.error_message = (
-                f"{self.node.path}:\nNo knowledge graph content available."
-            )
+        cache = node.get_meta("knowledge_graph")
+        if cache:
+            cache = json.loads(str(cache))
+            # TODO: Check revision
+            self.done = True
+            self.content = cache["content"]
 
     async def chunk_to_raw_kg_json(self, text: str):
-        user_prompt = extraction_user_prompt_template.format(text_chunk=text)
+        user_prompt = self.user_prompt_template.format(text_chunk=text)
         llm_output = None
 
         response = await self.llm_client.chat.completions.create(
             model=self.llm_model_name,
             messages=[
-                {"role": "system", "content": extraction_system_prompt},
+                {"role": "system", "content": self.system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
             temperature=self.llm_temperature,
@@ -187,15 +156,15 @@ class IOSYSKnowledgeGraph:
                         parsed_json = list_values[0]
                     else:
                         logger.error(f"LLM raw output: {llm_output}")
-                        self.error_message += "JSON object received, but doesn't contain a single list of triples.\n"
-                        raise ValueError(self.error_message)
+                        self.error += "JSON object received, but doesn't contain a single list of triples.\n"
+                        raise ValueError(self.error)
                 elif isinstance(parsed_data, list):
                     parsed_json = parsed_data
                 else:
-                    self.error_message += (
+                    self.error += (
                         "Parsed JSON is not a list or expected dictionary wrapper.\n"
                     )
-                    raise ValueError(self.error_message)
+                    raise ValueError(self.error)
 
             except json.JSONDecodeError as json_err:
                 parsing_error = f"JSONDecodeError: {json_err}. Trying regex fallback..."
@@ -213,35 +182,25 @@ class IOSYSKnowledgeGraph:
                         parsing_error = None  # Clear previous error
                     except json.JSONDecodeError as nested_err:
                         parsing_error = f"JSONDecodeError after regex: {nested_err}"
-                        self.error_message += f"      ERROR: Regex content is not valid JSON: {nested_err}\n"
-                        logger.error(self.error_message)
+                        self.error += f"      ERROR: Regex content is not valid JSON: {nested_err}\n"
+                        logger.error(self.error)
                 else:
                     parsing_error = "JSONDecodeError and Regex fallback failed."
-                    self.error_message += (
+                    self.error += (
                         "      ERROR: Regex could not find JSON array structure.\n"
                     )
-                    logger.error(self.error_message)
+                    logger.error(self.error)
 
             except ValueError as val_err:
                 parsing_error = (
                     f"ValueError: {val_err}"  # Catches issues with unexpected structure
                 )
-                self.error_message += f"      ERROR: {parsing_error}\n"
-                logger.error(self.error_message)
+                self.error += f"      ERROR: {parsing_error}\n"
+                logger.error(self.error)
         return {"content": parsed_json, "error": parsing_error, "response": llm_output}
 
-    def clear(self, update_meta: bool = True):
-        """Clear the knowledge graph content and reset status."""
-        self.done = False
-        self.error = True
-        self.error_message = f"{self.node.path}:\nNo knowledge graph content available."
-        self.content = []
-        if update_meta:
-            self.node.update_meta(knowledge_graph=json.dumps(self.to_dict()))
-
     async def update(self):
-        self.clear(False)
-        self.error_message = f"{self.node.path}:\n"
+        self.error = f"{self.node.path}:\n"
 
         node = self.node
         logger.info(f"File {node.path} Starting knowledge graph extraction...")
@@ -259,7 +218,7 @@ class IOSYSKnowledgeGraph:
         total_words = 0
         chunk_num = 0
         all_extracted_triples = []
-        normalized_triples = []
+        normalized_triples = []  # type: list[KnowledgeGraphTriplet]
         seen_triples = set()  # Tracks (subject, predicate, object) tuples
 
         for j in range(len(words)):
@@ -299,10 +258,10 @@ class IOSYSKnowledgeGraph:
                                 item["chunk"] = chunk_num  # Add source chunk info
                                 valid_triples_in_chunk.append(item)
                 else:
-                    self.error_message += (
+                    self.error += (
                         "   ERROR: Parsed data is not a list, cannot extract triples.\n"
                     )
-                    logger.error(self.error_message)
+                    logger.error(self.error)
                 if valid_triples_in_chunk:
                     all_extracted_triples.extend(valid_triples_in_chunk)
 
@@ -347,25 +306,23 @@ class IOSYSKnowledgeGraph:
                         }
                     )
                     seen_triples.add(triple_identifier)
-            self.content = normalized_triples
             if len(words) <= self.overlap:
                 break
 
-        self.done = True
-        self.error = False
+        self.content = normalized_triples
 
         self.node.update_meta(knowledge_graph=json.dumps(self.to_dict()))
 
     def __str__(self) -> str:
         return str(self.to_dict())
 
-    def status_string(self):
+    def to_dict(self):
         if self.error:
             return {
                 "status": "error",
-                "message": self.error_message,
+                "message": self.error,
             }
-        if self.done:
+        elif self.done:
             return {
                 "status": "done",
                 "path": self.node.path,
@@ -376,13 +333,3 @@ class IOSYSKnowledgeGraph:
                 "status": "in_progress",
                 "path": self.node.path,
             }
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "status": self.status_string(),
-            "error_message": self.error_message,
-            "content": self.content,
-        }
-
-    def status(self):
-        return {"status": self.status_string(), "error_message": self.error_message}
