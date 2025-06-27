@@ -1,5 +1,7 @@
 import os
 import mimetypes
+import html
+
 
 from fs import IOSYSFileSystem
 
@@ -26,24 +28,7 @@ def render_preview_html(fs: IOSYSFileSystem, path: str):
     else:
         body = f"<p>Preview not available for {path}</p>"
 
-    return f"""
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        html, body, body > * {{
-            margin: 0;
-            padding: 0;
-        }}
-    </style>
-</head>
-<body>
-    {body}
-</body>
-</html>
-"""
+    return body
 
 
 def render_image(path: str):
@@ -65,6 +50,13 @@ def render_audio(path: str):
 
 
 def render_plain_text(content: str):
+    if not content:
+        return """
+        <p style="color: gray; font-style: italic;">(Empty)</p>
+        """
+    if len(content) > 10000:
+        content = content[:10000] + "\n\n... (truncated)"
+    content = html.escape(content)
     return f"""
 <pre>{content}</pre>
 """

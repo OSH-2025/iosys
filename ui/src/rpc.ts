@@ -9,6 +9,7 @@ console.log("BASE_URL", BASE_URL);
 const apis = {
   status: defineApi<{}, { server: string, rag: string, llm: string, fs: string, graph_revision: number, mcp_servers: Record<string, string | true> }>("/status"),
   chat: defineApi<{ input: string }, { response: string }>("/chat"),
+  preview: defineApi<{ path: string }, string>("/preview"),
   agent: defineApi<{ command: string }, { status: string, message?: string, data: any }>("/agent"),
   files: defineApi<{ path?: string }, { items: Array<{ name: string, path: string, type: string, size?: number }> }>("/files"),
   graph: defineApi<{}, RawGraph>("/graph"),

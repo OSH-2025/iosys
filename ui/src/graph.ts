@@ -48,15 +48,15 @@ whenever(
         label: {
           show: true
         },
-        // @ts-expect-error
-        tooltip: {
-          formatter: (params: any) => {
-            const node = graph.nodes[params.data.id];
-            return `
-              <strong>${node.name}</strong><br>
-            `;
-          }
-        }
+        // // @ts-expect-error
+        // tooltip: {
+        //   formatter: (params: any) => {
+        //     const node = graph.nodes[params.data.id];
+        //     return `
+        //       <strong>${node.name}</strong><br>
+        //     `;
+        //   }
+        // }
       } satisfies (echarts.GraphSeriesOption["nodes"] & {})[number]));
     graphEdges.value = Object.entries(graph.relations)
       .filter(([_, relation]) => graph.nodes[relation.source_id].label !== 'event')
