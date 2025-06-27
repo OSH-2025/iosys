@@ -14,6 +14,8 @@ from rag import IOSYSRAG
 from rag.knowledge_graph import IOSYSKnowledgeGraphTask, IOSYSKnowledgeGraph
 from utils.logger import all_logs
 
+from .preview import render_preview_html
+
 
 load_dotenv()
 
@@ -117,24 +119,24 @@ async def graph_endpoint():
     return rag.graph.to_dict()
 
 
-class PreviewRequest(BaseModel):
-    id: str
-
-
-@app.post("/preview")
-async def preview_endpoint(request: PreviewRequest):
-    return {
-        "url": f"http://localhost:8000/raw?fileid={request.id}",
-    }
+@app.get("/preview")
+async def preview_endpoint(path: str):
+    return Response(
+        media_type="text/html",
+        content=render_preview_html(fs, path),
+    )
 
 
 @app.get("/raw")
-async def raw_endpoint(fileid: str):
-    node = fs.get_node(fileid)
+async def raw_endpoint(path: str):
+    node = fs.get_node(path)
     if not node:
         raise HTTPException(status_code=404, detail="File not found")
 
     return Response(
+        headers={
+            "Content-Disposition": f'attachment; filename="{node.name}"',
+        },
         media_type="application/octet-stream",
         content=node.read(),
     )

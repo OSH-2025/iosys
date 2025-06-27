@@ -133,7 +133,7 @@ class IOSYSParser:
                 ),
                 image_converter=image_converter,
             )
-            return (result.text_content, embedded_files)
+            return (result.markdown, embedded_files)
         except UnsupportedFormatException:
             return ("ERROR: Unsupported file format", [])
 

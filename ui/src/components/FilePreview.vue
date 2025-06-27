@@ -1,20 +1,12 @@
 <script setup lang="ts">
-import { ref, watch, watchEffect } from 'vue';
+import { computed } from 'vue';
 import { previewFile } from '../states';
-import rpc from '../rpc';
 
-const url = ref<string | null>(null);
-let processingFile: string | null = null;
-watch(
-  previewFile,
-  async () => {
-    processingFile = previewFile.value;
-    if (processingFile) {
-      const response = await rpc.preview({ id: processingFile });
-      if (processingFile === previewFile.value)
-        url.value = response.url;
-    }
-  }, { immediate: true });
+const url = computed(() => {
+  if (!previewFile.value) return;
+  return `${import.meta.env.VITE_API_SERVER_URL}/preview?path=${encodeURIComponent(previewFile.value)}`;
+});
+
 
 function close(ev: Event) {
   if (previewFile.value) {
@@ -22,20 +14,35 @@ function close(ev: Event) {
     previewFile.value = null;
   }
 }
+
+function download(ev: Event) {
+  if (previewFile.value) {
+    ev.stopPropagation();
+    const link = document.createElement('a');
+    link.download = previewFile.value.split('/').pop() || 'download';
+    link.href = `${import.meta.env.VITE_API_SERVER_URL}/raw?path=${encodeURIComponent(previewFile.value)}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+}
 </script>
 
 <template>
-  <!-- <div :class="previewFile ? '' : 'op-0 pointer-events-none'" class="bg-black/5 absolute inset-0" @click="close"/> -->
+  <div :class="previewFile ? '' : 'op-0 pointer-events-none'" class="z-20 bg-white/50 absolute inset-0" @click="close"/>
   <div :class="previewFile ? '' : 'translate-x-100%'"
-    class="absolute transition-transform duration-300 ease-in-out right-0 top-0 bottom-0 bg-white shadow-xl px-8 py-6"
+    class="z-20 absolute transition-transform duration-300 ease-in-out right-0 top-0 bottom-0 bg-white shadow-xl py-6 flex flex-col"
     style="width: min(800px, 40vw);">
-    <button i-carbon-close-large text-2xl float-right hover:op-60 @click="close"/>
-    <h2 class="text-xl font-semibold mb-4">File Preview</h2>
-    <div v-if="previewFile">
-      <img v-if="url" :src="url" border="0" width="100%" height="500px"></img>
-      <p v-else op-80>
-        Loading {{ previewFile }}...
-      </p>
+    <h2 text-xl font-semibold mb-4 mx-8 flex items-center gap-2>
+      File Preview
+      <div flex-grow />
+      <button i-carbon-download text-xl hover:op-60 @click="download" />
+      <button i-carbon-close-large text-2xl hover:op-60 @click="close" />
+    </h2>
+    <div w-full flex-grow h-0 overflow-auto px-8 flex>
+      <iframe v-if="url" :src="url" class="border-0 min-h-100 w-max">
+        Your browser does not support iframes.
+      </iframe>
     </div>
   </div>
 </template>
