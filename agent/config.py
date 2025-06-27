@@ -2,7 +2,7 @@ import os
 import logging
 from openai import OpenAI
 
-from jfs import IOSYSFileSystem
+from fs import IOSYSFileSystem
 from rag import IOSYSRAG
 
 

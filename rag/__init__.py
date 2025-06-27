@@ -1,7 +1,7 @@
 import threading
 import os
 
-from jfs import FileSystemNode, IOSYSFileSystem, CHANGE_TYPE
+from fs import FileSystemNode, IOSYSFileSystem, CHANGE_TYPE
 from parser import IOSYSParser
 from llama_index.llms.openai import OpenAI
 

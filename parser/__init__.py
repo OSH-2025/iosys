@@ -6,7 +6,7 @@ from openai import OpenAI
 from markitdown import MarkItDown, StreamInfo, UnsupportedFormatException
 from dataclasses import dataclass
 
-from jfs import FileSystemNode
+from fs import FileSystemNode
 
 
 @dataclass

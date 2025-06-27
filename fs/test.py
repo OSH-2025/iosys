@@ -1,5 +1,5 @@
 import unittest
-from jfs import new_fs, FileSystemNode
+from fs import new_fs, FileSystemNode
 import asyncio
 
 

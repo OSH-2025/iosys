@@ -7,14 +7,14 @@ import jieba
 import logging
 from openai import AsyncOpenAI
 from typing import Dict, Any, Callable, List
-from jfs import IOSYSFileSystem, FileSystemNode
+from fs import IOSYSFileSystem, FileSystemNode
 
 # Configure settings for better display and fewer warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 pd.set_option("display.max_rows", 100)  # Show more rows in pandas tables
 pd.set_option("display.max_colwidth", 150)  # Show more text width in pandas tables
 logger = logging.getLogger(__name__)
-jieba.setLogLevel(logging.INFO)
+# jieba.setLogLevel(logging.INFO)
 
 # --- System Prompt: Sets the context/role for the LLM ---
 extraction_system_prompt = """

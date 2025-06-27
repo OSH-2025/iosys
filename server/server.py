@@ -6,7 +6,7 @@ from openai import OpenAI, AsyncOpenAI
 import os
 from fastapi.responses import Response
 
-from jfs import new_fs, FileSystemNode
+from fs import new_fs, FileSystemNode
 from agent import IOSYSAgent
 from agent.config import AgentConfig
 from parser import IOSYSParser
