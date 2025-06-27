@@ -1,13 +1,14 @@
 import asyncio
 from fs import new_fs, FileSystemNode
 
-
 def main():
     # Initialize the file system
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     fs = new_fs()
+    loop.run_until_complete(run_tests(fs))
 
+async def run_tests(fs):
     # Test if the root directory exists
     print("Testing root directory existence...")
     root_node = fs.get_root()
@@ -51,9 +52,7 @@ def main():
     print("Testing non-existent directory access...")
     try:
         fs.get_node("/non_existent_dir")
-        assert False, (
-            "Accessing a non-existent directory should raise FileNotFoundError."
-        )
+        assert False, "Accessing a non-existent directory should raise FileNotFoundError."
     except FileNotFoundError:
         print("Non-existent directory access test passed.")
 
@@ -62,7 +61,6 @@ def main():
     normalized_path = fs.normalize_path("///test//path/")
     assert normalized_path == "/test/path", "Path should be normalized."
     print("Path normalization test passed.")
-
 
 if __name__ == "__main__":
     main()
