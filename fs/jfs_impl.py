@@ -151,14 +151,15 @@ class JuiceFSFileSystemNode(FileSystemNode):
             meta_path = self.path
             meta_name = "user.iosys.meta"
 
-        try:
-            raw = self.fs.client.getxattr(meta_path, meta_name)
-        except OSError as e:
-            if e.errno not in (
-                getattr(errno, "ENODATA", 61),
-                getattr(errno, "ENOATTR", 61),
-            ):
-                raise
+        if self.fs.client.exists(meta_path):
+            try:
+                raw = self.fs.client.getxattr(meta_path, meta_name)
+            except OSError as e:
+                if e.errno not in (
+                    getattr(errno, "ENODATA", 61),
+                    getattr(errno, "ENOATTR", 61),
+                ):
+                    raise
 
         old_meta = json.loads(raw.decode()) if raw else None
 
