@@ -82,7 +82,7 @@ class JuiceFSFileSystemNode(FileSystemNode):
         self.update_meta(type="directory", created_at=_now(), modified_at=_now())
         self.fs.fire_event("create", self)
 
-    """
+    '''
     def remove(self):
         node_type = self._meta.get("type")
         if node_type == "embedded":
@@ -91,8 +91,8 @@ class JuiceFSFileSystemNode(FileSystemNode):
         #print(self.fs.client.listdir(self.path))  # 确保目录存在
         self.fs.client.remove(self.path)  # 可能需要确保目录为空
         self.fs.fire_event("delete", self)
-    """
-
+    '''
+    
     def remove(self):
         """递归删除；保证目录在调用 jfs_delete 之前已空。"""
 
@@ -111,6 +111,7 @@ class JuiceFSFileSystemNode(FileSystemNode):
         # 删掉自己（目录此时已空 / 文件直接删）
         self.fs.client.remove(self.path)
         self.fs.fire_event("delete", self)
+    
 
     def parent(self) -> Union["JuiceFSFileSystemNode", None]:
         """Return the parent directory node."""
@@ -150,13 +151,17 @@ class JuiceFSFileSystemNode(FileSystemNode):
             node._meta["created_at"] = _now()
             node._meta["modified_at"] = _now()
             # 父为目录，新子节点暂不赋类型，等待实际操作决定
-            # node.update_meta(created_at=_now(), modified_at=_now())
-            # self.fs.client.open(child_path, "wb").close()
+            #node.update_meta(created_at=_now(), modified_at=_now())
+            #self.fs.client.open(child_path, "wb").close()
         return node
 
     def move_to(self, target_path: str) -> None:
         """Move this node to a new path."""
         # rename in JuiceFS
+        target_path = self.fs.normalize_path(target_path)
+        parent_dir = os.path.dirname(target_path.rstrip("/"))
+        if parent_dir:
+            self.fs.ensure_directory(parent_dir)
         self.fs.client.rename(self.path, target_path)
         # update local path and metadata
         self.path = target_path
@@ -257,3 +262,4 @@ class JuiceFSFileSystem(IOSYSFileSystem):
         node = JuiceFSFileSystemNode(self, path)
         node._sync_metadata()  # Ensure metadata is loaded
         return node
+    
