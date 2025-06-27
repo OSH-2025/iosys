@@ -5,7 +5,7 @@ from fs import IOSYSFileSystem
 
 
 def get_raw_url(path: str):
-    return f"http://localhost:${os.environ['MAIN_SERVER_PORT']}/raw?fileid={path}"
+    return f"http://localhost:{os.environ['MAIN_SERVER_PORT']}/raw?path={path}"
 
 
 def render_preview_html(fs: IOSYSFileSystem, path: str):
