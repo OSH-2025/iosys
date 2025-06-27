@@ -156,23 +156,19 @@ function handleContextMenu(params: any) {
 
 // Delete node and related edges
 function deleteNode() {
-  const nodeId = contextMenu.value.nodeId;
-  if (!nodeId) return;
+  
+}
 
-  console.warn(`Deleting node: ${nodeId}`);
-
-  // Clear preview if the deleted node was being previewed
-  if (previewFile.value === nodeId) {
-    previewFile.value = null;
+function downloadNode(ev: Event) {
+  if (focusedNodeId.value) {
+    ev.stopPropagation();
+    const link = document.createElement('a');
+    link.download = focusedNodeId.value.split('/').pop() || 'download';
+    link.href = `${import.meta.env.VITE_API_SERVER_URL}/raw?path=${encodeURIComponent(focusedNodeId.value)}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
-
-  // Clear focus if the deleted node was focused
-  if (focusedNodeId.value === nodeId) {
-    focusedNodeId.value = null;
-    updateNodeFocus(null);
-  }
-
-  contextMenu.value.visible = false;
 }
 
 // Hide context menu when clicking elsewhere
@@ -215,8 +211,24 @@ const previewHtml = usePreviewHtml(computed(() => focusedNodeType.value === 'fil
     <!-- Focused Node Display -->
     <div v-if="focusedNodeId"
       class="absolute top-4 right-4 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg px-3 py-2 shadow-lg w-80 flex flex-col overflow-y-auto max-h-180">
-      <div class="text-lg text-gray-800 font-mono">{{ focusedNodeId }}</div>
-      <div v-if="previewHtml" v-html="previewHtml" class="border-0 w-full flex-grow mt-2 border-t pt-2" />
+      <div class="flex items-center justify-between">
+        <div class="text-lg text-gray-800 font-mono">{{ focusedNodeId }}</div>
+        <div class="flex items-center gap-2">
+          <button
+            v-if="focusedNodeType === 'file'"
+            @click="downloadNode" 
+            class="p-1 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+            title="Download">
+            <div class="i-carbon-download w-4 h-4"></div>
+          </button>
+          <button @click="deleteNode" 
+            class="p-1 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+            title="Delete">
+            <div class="i-carbon-trash-can w-4 h-4"></div>
+          </button>
+        </div>
+      </div>
+      <div v-if="previewHtml" v-html="previewHtml" class="border-0 w-full flex-grow my-2 border-t pt-2" />
     </div>
 
     <!-- Custom Context Menu -->
