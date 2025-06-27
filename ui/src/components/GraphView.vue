@@ -2,6 +2,8 @@
 import { onMounted, ref, watchEffect } from 'vue';
 import * as echarts from 'echarts';
 import { graphNodes, graphEdges, echartsCategories } from '../graph';
+import { useEventListener } from '@vueuse/core';
+import { previewFile } from '../states'
 
 const container = ref<HTMLDivElement | null>(null);
 let myChart: echarts.ECharts | null = null;
@@ -72,10 +74,31 @@ function updateChart() {
   myChart.hideLoading();
 };
 
+// Handle node click events
+function handleNodeClick(params: any) {
+  if (!myChart || !params.data) return;
+
+  if (params.dataType === 'node') {
+    if (params.data.category === 'file') {
+      previewFile.value = params.data.id;
+    } else {
+      previewFile.value = null;
+    }
+  }
+}
 
 onMounted(() => {
   if (container.value) {
     myChart = echarts.init(container.value);
+
+    myChart.on('click', handleNodeClick);
+
+    useEventListener(window, 'resize', () => {
+      if (myChart) {
+        myChart.resize();
+      }
+    });
+
     watchEffect(updateChart);
   } else {
     console.error('Container is not available');

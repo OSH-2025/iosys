@@ -43,13 +43,21 @@ whenever(
       .map(([id, node]) => ({
         id,
         name: node.name.split('/').pop() || node.name,
-        category:
-          node.name === '/' ? 0 : echartsCategories.findIndex(cat => cat.name === node.label),
+        category: node.name === '/' ? 'root' : node.label,
         symbolSize: 30,
         label: {
           show: true
+        },
+        // @ts-expect-error
+        tooltip: {
+          formatter: (params: any) => {
+            const node = graph.nodes[params.data.id];
+            return `
+              <strong>${node.name}</strong><br>
+            `;
+          }
         }
-      }));
+      } satisfies (echarts.GraphSeriesOption["nodes"] & {})[number]));
     graphEdges.value = Object.entries(graph.relations)
       .filter(([_, relation]) => graph.nodes[relation.source_id].label !== 'event')
       .map(([_id, relation]) => ({

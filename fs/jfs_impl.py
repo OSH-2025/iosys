@@ -6,6 +6,7 @@ from typing import Union
 import time
 import json
 import juicefs  # type: ignore
+import errno
 
 from . import (
     FileSystemNode,
@@ -150,30 +151,38 @@ class JuiceFSFileSystemNode(FileSystemNode):
             meta_path = self.path
             meta_name = "user.iosys.meta"
 
-        old_meta = None
-        if self.fs.client.exists(meta_path):
-            try:
-                raw = self.fs.client.getxattr(meta_path, meta_name)
-                if raw:
-                    old_meta = json.loads(raw.decode())
-            except FileNotFoundError:
-                # xattr 尚未写过：忽略
-                pass
-        else:
-            # 确保目录存在
-            dir_path = os.path.dirname(meta_path)
-            if dir_path and not self.fs.client.exists(dir_path):
-                self.fs.client.makedirs(dir_path, exist_ok=True)
+        if not self.fs.client.exists(meta_path):
+            return
 
-            # “touch” 文件：用 open(path, "a") 创建空文件后立即关闭
-            self.fs.client.open(meta_path, "a").close()
-        if old_meta and old_meta != "{}":
-            self._meta = {
-                **json.loads(old_meta),
-                **{k: v for k, v in self._meta.items() if v is not None},
-            }
+        try:
+            raw = self.fs.client.getxattr(meta_path, meta_name)
+            old_meta = json.loads(raw.decode()) if raw else None
+        except OSError as e:
+            if e.errno not in (
+                getattr(errno, "ENODATA", 61),
+                getattr(errno, "ENOATTR", 61),
+            ):
+                raise
+            old_meta = None
+        except json.JSONDecodeError as exc:
+            self.fs.logger.warning(
+                f"Corrupted metadata in {meta_path} ({meta_name}): {exc}"
+            )
+            old_meta = None
+
+        merged = {
+            **(old_meta or {}),
+            **{k: v for k, v in self._meta.items() if v is not None},
+        }
+
+        if merged != old_meta:
+            self._meta = merged
             self.fs.fire_event("metadata", self)
-        self.fs.client.setxattr(meta_path, meta_name, json.dumps(self._meta).encode())
+            self.fs.client.setxattr(
+                meta_path,
+                meta_name,
+                json.dumps(self._meta, separators=(",", ":")).encode(),
+            )
 
 
 class JuiceFSFileSystem(IOSYSFileSystem):
