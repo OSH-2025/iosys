@@ -231,10 +231,10 @@ class JuiceFSFileSystem(IOSYSFileSystem):
 
         # Initialise client – supports either native conf or explicit meta URL.
         name = os.getenv("JFS_NAME")
-        #meta = os.getenv("JFS_META_URL")
+        # meta = os.getenv("JFS_META_URL")
         token = os.getenv("JFS_TOKEN")
-        #access_key = os.getenv("JFS_ACCESS_KEY")
-        #secret_key = os.getenv("JFS_SECRET_KEY")
+        # access_key = os.getenv("JFS_ACCESS_KEY")
+        # secret_key = os.getenv("JFS_SECRET_KEY")
 
         kwargs = {}
         # if meta:
