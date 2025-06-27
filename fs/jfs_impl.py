@@ -125,9 +125,11 @@ class JuiceFSFileSystemNode(FileSystemNode):
                 modified_at=_now(),
             )
         else:
+            node._meta["created_at"] = _now()
+            node._meta["modified_at"] = _now()
             # 父为目录，新子节点暂不赋类型，等待实际操作决定
-            node.update_meta(created_at=_now(), modified_at=_now())
-            self.fs.client.open(child_path, "wb").close()
+            #node.update_meta(created_at=_now(), modified_at=_now())
+            #self.fs.client.open(child_path, "wb").close()
         return node
 
     def move_to(self, target_path: str) -> None:
@@ -198,10 +200,10 @@ class JuiceFSFileSystem(IOSYSFileSystem):
 
         # Initialise client – supports either native conf or explicit meta URL.
         name = os.getenv("JFS_NAME")
-        # meta = os.getenv("JFS_META_URL")
+        meta = os.getenv("JFS_META_URL")
         token = os.getenv("JFS_TOKEN")
-        # access_key = os.getenv("JFS_ACCESS_KEY")
-        # secret_key = os.getenv("JFS_SECRET_KEY")
+        access_key = os.getenv("JFS_ACCESS_KEY")
+        secret_key = os.getenv("JFS_SECRET_KEY")
 
         kwargs = {}
         # if meta:

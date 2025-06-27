@@ -144,7 +144,7 @@ class IOSYSFileSystem(abc.ABC):
         if node:
             node.write(content)
             return node
-        segmented_path = self.normalize_path(path).split("/")
+        segmented_path = [seg for seg in self.normalize_path(path).lstrip("/").split("/") if seg]
         if not segmented_path:
             raise ValueError("Cannot write to root directory.")
         dir_name = "/".join(segmented_path[:-1]) + "/"
@@ -161,7 +161,7 @@ class IOSYSFileSystem(abc.ABC):
             if node.get_meta("type", "directory") != "directory":
                 raise ValueError(f"Path {path} is not a directory.")
             return node
-        segmented_path = self.normalize_path(path).split("/")
+        segmented_path = [seg for seg in self.normalize_path(path).lstrip("/").split("/") if seg]
         dir_path = ""
         dir_node = self.get_root()
         for segment in segmented_path:
@@ -175,7 +175,7 @@ class IOSYSFileSystem(abc.ABC):
 
     def create_directory(self, path: str) -> FileSystemNode:
         """Create a directory at the specified path."""
-        segmented_path = self.normalize_path(path).split("/")
+        segmented_path = [seg for seg in self.normalize_path(path).lstrip("/").split("/") if seg]
         if not segmented_path:
             raise ValueError("Cannot write to root directory.")
         dir_name = "/".join(segmented_path[:-1]) + "/"
