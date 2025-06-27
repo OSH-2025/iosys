@@ -157,10 +157,9 @@ class JuiceFSFileSystemNode(FileSystemNode):
                 if raw:
                     old_meta = json.loads(raw.decode())
             except FileNotFoundError:
-            # xattr 尚未写过：忽略
+                # xattr 尚未写过：忽略
                 pass
         else:
-            
             # 确保目录存在
             dir_path = os.path.dirname(meta_path)
             if dir_path and not self.fs.client.exists(dir_path):
