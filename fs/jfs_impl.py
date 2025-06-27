@@ -38,7 +38,9 @@ class JuiceFSFileSystemNode(FileSystemNode):
         # 对于文件或嵌入节点，从JuiceFS读取内容
         filecode = self.fs.client.open(self.path, "rb")
         try:
-            content_bytes = filecode.read()
+            raw = filecode.io.read()
+            # ensure we always have bytes for BytesIO
+            content_bytes = raw.encode() if isinstance(raw, str) else raw
         finally:
             filecode.close()
 
