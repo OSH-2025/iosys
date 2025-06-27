@@ -48,19 +48,19 @@ def render_preview_html(fs: IOSYSFileSystem, path: str):
 
 def render_image(path: str):
     return f"""
-<img src="{get_raw_url(path)}" alt="{path}" style="max-width: 100%; max-height: 100%;">
+<img src="{get_raw_url(path)}" alt="{path}" style="width:100%">
 """
 
 
 def render_video(path: str):
     return f"""
-<video controls style="max-width: 100%; max-height: 100%;" src="{get_raw_url(path)}" />
+<video controls style="width:100%" src="{get_raw_url(path)}" />
 """
 
 
 def render_audio(path: str):
     return f"""
-<audio controls style="max-width: 100%; max-height: 100%;" src="{get_raw_url(path)}" />
+<audio controls style="width:100%" src="{get_raw_url(path)}" />
 """
 
 

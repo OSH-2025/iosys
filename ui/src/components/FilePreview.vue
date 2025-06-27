@@ -40,7 +40,7 @@ function download(ev: Event) {
       <button i-carbon-close-large text-2xl hover:op-60 @click="close" />
     </h2>
     <div w-full flex-grow h-0 overflow-auto px-8 flex>
-      <iframe v-if="url" :src="url" class="border-0 min-h-100 w-max">
+      <iframe v-if="url" :src="url" class="border-0 min-h-100 flex-grow">
         Your browser does not support iframes.
       </iframe>
     </div>
