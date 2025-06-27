@@ -21,7 +21,7 @@
         <table class="w-full text-sm">
           <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th class="px-4 py-3 text-left font-medium text-gray-900 w-36">Timestamp</th>
+              <th class="px-4 py-3 text-left font-medium text-gray-900 w-38">Timestamp</th>
               <th class="px-4 py-3 text-left font-medium text-gray-900 w-20">Level</th>
               <th class="px-4 py-3 text-left font-medium text-gray-900 w-24">Name</th>
               <th class="px-4 py-3 text-left font-medium text-gray-900">Message</th>

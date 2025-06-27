@@ -112,7 +112,7 @@ class IOSYSFileSystem(abc.ABC):
     _previous_task: asyncio.Task | None = None
 
     def __init__(self):
-        logger = IOSYSLogger("FS")
+        logger = IOSYSLogger("FileSystem")
 
         async def log_callback(node: FileSystemNode, change_type: CHANGE_TYPE):
             logger.info(f"{change_type} {node.path}")
