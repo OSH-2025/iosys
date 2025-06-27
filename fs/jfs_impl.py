@@ -13,27 +13,47 @@ from . import (
 )  # Assuming DirNode is defined elsewhere
 from utils.logger import IOSYSLogger
 
-_XATTR_PREFIX = "user.iosys."
 
 def _now() -> int:
     """Get current time in seconds since epoch."""
     return int(time.time())
 
+
 class JuiceFSFileSystemNode(FileSystemNode):
     fs: "JuiceFSFileSystem"
 
     def read_stream(self) -> io.BytesIO:
+        if self._meta.get("type") == "embedded":
+            # 对于嵌入节点，直接从JuiceFS读取内容
+            parent = self.parent()
+            assert parent
+            content_bytes = self.fs.client.getxattr(
+                parent.path, "user.iosys.embedded.content." + self.name
+            )
+            if content_bytes is None:
+                return io.BytesIO()
+            return io.BytesIO(content_bytes)
         if self._meta.get("type") == "directory":
             raise IsADirectoryError(f"Cannot read a directory: {self.path}")
         # 对于文件或嵌入节点，从JuiceFS读取内容
-        filecode = self.fs.client.open(self.path,"rb")
+        filecode = self.fs.client.open(self.path, "rb")
         try:
             content_bytes = filecode.read()
         finally:
             filecode.close()
+
         return io.BytesIO(content_bytes)
 
     def write(self, content: bytes):
+        if self._meta.get("type") == "embedded":
+            parent = self.parent()
+            assert parent
+            self.fs.client.setxattr(
+                parent.path,
+                "user.iosys.embedded.content." + self.name,
+                content,
+            )
+            return
         node_type = self._meta.get("type")
         if node_type == "directory":
             raise IsADirectoryError(f"Cannot write to a directory: {self.path}")
@@ -56,9 +76,7 @@ class JuiceFSFileSystemNode(FileSystemNode):
             )
         self.fs.client.makedirs(self.path, exist_ok=True)  # 在JuiceFS创建目录
         # 设置元数据为目录类型
-        self.update_meta(
-            type="directory", created_at=_now(), modified_at=_now()
-        )
+        self.update_meta(type="directory", created_at=_now(), modified_at=_now())
         self.fs.fire_event("create", self)
 
     def remove(self):
@@ -108,25 +126,6 @@ class JuiceFSFileSystemNode(FileSystemNode):
             node.update_meta(created_at=_now(), modified_at=_now())
         return node
 
-    @staticmethod
-    def _xa_key(key: str) -> str:
-        return _XATTR_PREFIX + key
-
-    def update_meta(self, **changes: Any) -> None:
-        """Merge *changes* into cached meta **and** persist via xattr."""
-        if not changes:
-            return
-        self._meta.update(changes)
-        for k, v in changes.items():
-            try:
-                self.fs.client.setxattr(
-                    self.path, self._xa_key(k), json.dumps(v).encode()
-                )
-            except Exception as exc:
-                self.fs.logger.warning(
-                    f"setxattr failed ({exc}) on {self.path} for {k}={v}"
-                )
-
     def move_to(self, target_path: str) -> None:
         """Move this node to a new path."""
         # rename in JuiceFS
@@ -138,22 +137,24 @@ class JuiceFSFileSystemNode(FileSystemNode):
 
     def _sync_metadata(self) -> None:
         """Reload metadata from JuiceFS xattrs."""
-        for k in self.fs.client.listxattr(self.path):
-            if k.startswith(_XATTR_PREFIX):
-                k = k[len(_XATTR_PREFIX):]
-                if self._meta.get(k) is None:
-                    try:
-                        value = self.fs.client.getxattr(self.path, k)
-                        
-        old_meta = self.fs.client.getxattr(self.path, self._xa_key("meta"))
+
+        if self._meta.get("type") == "embedded":
+            parent = self.parent()
+            assert parent
+            meta_path = parent.path
+            meta_name = "user.iosys.embedded.meta." + self.name
+        else:
+            meta_path = self.path
+            meta_name = "user.iosys.meta"
+
+        old_meta = self.fs.client.getxattr(meta_path, meta_name)
         if old_meta and old_meta != "{}":
             self._meta = {
                 **json.loads(old_meta),
                 **{k: v for k, v in self._meta.items() if v is not None},
             }
             self.fs.fire_event("metadata", self)
-        with open(meta_json, "w") as f:
-            f.write(json.dumps(self._meta, indent=2))
+        self.fs.client.setxattr(meta_path, meta_name, json.dumps(self._meta).encode())
 
 
 class JuiceFSFileSystem(IOSYSFileSystem):

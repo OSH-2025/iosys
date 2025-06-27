@@ -25,12 +25,18 @@ class OSFileSystemNode(FileSystemNode):
 
     def write(self, content: bytes):
         if self._meta.get("type") == "embedded":
-            raise ValueError("Cannot write to an embedded file directly.")
-        real_path = self.fs._get_real_path(self.path)
+            real_path = self.fs._get_embedded_path(self.path)
+            with open(real_path, "wb") as f:
+                f.write(content)
+            self.update_meta(
+                modified_at=int(time.time()),
+            )
+            return
         if self._meta.get("type") == "directory":
             raise IsADirectoryError(
                 f"Cannot write to a directory as a file: {self.path}"
             )
+        real_path = self.fs._get_real_path(self.path)
         with open(real_path, "wb") as f:
             f.write(content)
         self.update_meta(

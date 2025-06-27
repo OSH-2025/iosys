@@ -160,10 +160,10 @@ class IOSYSParser:
         )
         for embedded_file in embedded_files:
             embedded_node = node.create_child(embedded_file.name)
+            embedded_node.write(content=embedded_file.content)
             embedded_node.update_meta(
                 type=embedded_file.type,
                 description=embedded_file.description,
-                content=embedded_file.content,
             )
 
         parent = node.parent()
