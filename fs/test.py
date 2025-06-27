@@ -36,10 +36,9 @@ async def run_tests(fs):
     assert isinstance(dir_node, FileSystemNode), "Directory node should be created."
     assert dir_node.path == dir_path, "Directory path should match."
     fs.remove(dir_path)
-    try:
-        fs.get_node(dir_path)
+    if fs.get_node(dir_path) is not None:
         assert False, "Directory should not exist after removal."
-    except FileNotFoundError:
+    else:
         print("Directory creation and removal test passed.")
 
     # Test accessing a non-existent file
@@ -52,12 +51,11 @@ async def run_tests(fs):
 
     # Test accessing a non-existent directory
     print("Testing non-existent directory access...")
-    try:
-        fs.get_node("/non_existent_dir")
+    if fs.get_node("/non_existent_dir") is not None:
         assert False, (
             "Accessing a non-existent directory should raise FileNotFoundError."
         )
-    except FileNotFoundError:
+    else:
         print("Non-existent directory access test passed.")
 
     # Test path normalization
