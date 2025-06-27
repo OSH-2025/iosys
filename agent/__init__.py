@@ -8,6 +8,7 @@ from .file_agent import FileAgent
 from .config import AgentConfig
 from .mcp import MCPClient
 from utils.logger import IOSYSLogger
+from .memory import ConversationMemory
 
 
 class IOSYSAgent:
@@ -24,6 +25,7 @@ class IOSYSAgent:
         self.config = config
         self.file_agent = FileAgent(config=self.config)
         self.mcp = MCPClient()
+        self.memory = ConversationMemory(max_history=10)
 
     async def process_command(self, user_input: str) -> Dict[str, Any]:
         """
@@ -38,6 +40,7 @@ class IOSYSAgent:
         self.logger.info(f"接收到用户输入: {user_input}")
         result = await self._process(user_input)
         self.logger.info(f"处理结果: {json.dumps(result, ensure_ascii=False)}")
+        self.memory.add_interaction(user_input, result)
         return dict(result)
 
     async def _process(self, user_input: str) -> ToolCallResult:
@@ -50,6 +53,9 @@ class IOSYSAgent:
                 **mcp_tool_handlers,
             }
 
+            # get conversation history
+            conversation_history = self.memory.get_formatted_history(limit=5)
+
             # 调用 LLM 进行工具选择和调用
             response = self.config.llm.chat.completions.create(
                 model=self.config.llm_model,
@@ -57,6 +63,10 @@ class IOSYSAgent:
                     {
                         "role": "system",
                         "content": "你是一个文件管理助手，可以帮助用户进行各种文件操作。根据用户的需求，选择合适的工具来完成任务。",
+                    },
+                    {
+                        "role": "system",
+                        "content": f"以下是近期对话历史:\n{conversation_history}",
                     },
                     {"role": "user", "content": user_input},
                 ],
