@@ -15,20 +15,22 @@ def render_preview_html(fs: IOSYSFileSystem, path: str):
     if not node:
         return f"<p>Error: File not found: {path}</p>"
 
+    if node.get_meta("type") == "directory":
+        child_num = len(node.children())
+        return f'<p>Directory with <code style="font-size: larger">{child_num}</code> children</p>'
+
     mine_type = mimetypes.guess_type(path)[0] or ""
 
     if mine_type.startswith("image/"):
-        body = render_image(path)
+        return render_image(path)
     elif mine_type.startswith("text/"):
-        body = render_plain_text(node.read().decode("utf-8"))
+        return render_plain_text(node.read().decode("utf-8"))
     elif mine_type.startswith("video/"):
-        body = render_video(path)
+        return render_video(path)
     elif mine_type.startswith("audio/"):
-        body = render_audio(path)
+        return render_audio(path)
     else:
-        body = f"<p>Preview not available for {path}</p>"
-
-    return body
+        return f"<p>Preview not available for {path}</p>"
 
 
 def render_image(path: str):

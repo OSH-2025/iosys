@@ -39,12 +39,6 @@ function updateChart() {
   myChart.showLoading();
 
   const option = {
-    legend: [{
-      data: echartsCategories.map(cat => cat.name),
-      orient: 'vertical',
-      left: 'left',
-      top: 'top'
-    }],
     animationDuration: 1500,
     animationEasingUpdate: 'quinticInOut',
     series: [{
@@ -172,7 +166,7 @@ function deleteNode() {
     nodeId: nodeId,
     nodeName: nodeId.split('/').pop() || nodeId
   };
-  
+
   // Hide context menu
   contextMenu.value.visible = false;
 }
@@ -183,13 +177,13 @@ function confirmDelete() {
   // TODO: Implement actual deletion logic here
   // This should call your API to delete the file/node
   console.log('Deleting node:', confirmDialog.value.nodeId);
-  
+
   // Clear focus if the deleted node was focused
   if (focusedNodeId.value === confirmDialog.value.nodeId) {
     focusedNodeId.value = null;
     updateNodeFocus(null);
   }
-  
+
   // Hide dialog
   confirmDialog.value.visible = false;
 }
@@ -236,7 +230,7 @@ onMounted(() => {
   }
 });
 
-const previewHtml = usePreviewHtml(computed(() => focusedNodeType.value === 'file' ? focusedNodeId.value : null));
+const previewHtml = usePreviewHtml(focusedNodeId);
 </script>
 
 <template>
@@ -253,25 +247,29 @@ const previewHtml = usePreviewHtml(computed(() => focusedNodeType.value === 'fil
       <div class="flex items-center justify-between">
         <div class="text-lg text-gray-800 font-mono">{{ focusedNodeId }}</div>
         <div class="flex items-center gap-2">
-          <button
-            v-if="focusedNodeType === 'file'"
-            @click="downloadNode" 
-            class="p-1 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-            title="Download">
+          <button v-if="focusedNodeType !== 'directory'" @click="downloadNode"
+            class="p-1 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Download">
             <div class="i-carbon-download w-4 h-4"></div>
           </button>
-          <button @click="deleteNode" 
-            class="p-1 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-            title="Delete">
+          <button @click="deleteNode"
+            class="p-1 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors" title="Delete">
             <div class="i-carbon-trash-can w-4 h-4"></div>
           </button>
         </div>
       </div>
-      <div v-if="previewHtml" v-html="previewHtml" class="border-0 w-full flex-grow my-2 border-t pt-2" />
+      <div v-if="previewHtml" v-html="previewHtml" class="border-0 w-full flex-grow my-2 border-t pt-4" />
+      <div v-if="focusedNodeType === 'directory'">
+        <button
+          class="w-full px-3 py-2 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors flex items-center gap-2 justify-center mt-2"
+          @click="previewFile(focusedNodeId)">
+          <div class="i-carbon-chart-relationship w-4 h-4"></div>
+          Knowledge Graph
+        </button>
+      </div>
     </div>
 
     <!-- Confirmation Dialog -->
-    <div v-if="confirmDialog.visible" 
+    <div v-if="confirmDialog.visible"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
       <div class="bg-white rounded-lg shadow-xl border border-gray-200 p-6 max-w-md w-full mx-4">
         <div class="flex items-center gap-3 mb-4">
@@ -283,14 +281,14 @@ const previewHtml = usePreviewHtml(computed(() => focusedNodeType.value === 'fil
             <p class="text-sm text-gray-600">This action cannot be undone.</p>
           </div>
         </div>
-        
+
         <div class="mb-6">
           <p class="text-sm text-gray-700">
-            Are you sure you want to delete 
+            Are you sure you want to delete
             <span class="font-mono bg-gray-100 px-1 py-0.5 rounded text-xs">{{ confirmDialog.nodeName }}</span>?
           </p>
         </div>
-        
+
         <div class="flex gap-3 justify-end">
           <button @click="cancelDelete"
             class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors">
