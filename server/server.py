@@ -11,7 +11,7 @@ from agent import IOSYSAgent
 from agent.config import AgentConfig
 from parser import IOSYSParser
 from rag import IOSYSRAG
-from rag.knowledge_graph import IOSYSKnowledgeGraph, IOSYSKnowledgeGraphConfig
+from rag.knowledge_graph import IOSYSKnowledgeGraphTask, IOSYSKnowledgeGraph
 from utils.logger import all_logs
 
 
@@ -32,7 +32,7 @@ async_llm = AsyncOpenAI(
     base_url=os.environ["LLM_BASE_URL"],
     api_key=os.environ["LLM_API_KEY"],
 )
-kg_config = IOSYSKnowledgeGraphConfig(llm=async_llm, chunk_size=400)
+knowledge_graph = IOSYSKnowledgeGraph(llm=async_llm, chunk_size=400)
 
 app = FastAPI()
 app.add_middleware(
@@ -163,10 +163,10 @@ def traverse_read_kg(node: FileSystemNode):
         ch_status = content.get("status", "error")
         print(f"Child status: {ch_status} for {child.path}")
         children_data.append(content)
-        status = IOSYSKnowledgeGraph.merge_status_string(status, ch_status)
-    knowledge_graph = IOSYSKnowledgeGraph(node, kg_config)
+        status = IOSYSKnowledgeGraphTask.merge_status_string(status, ch_status)
+    knowledge_graph = IOSYSKnowledgeGraphTask(node, knowledge_graph)
     self_status = knowledge_graph.status()["status"]
-    status = IOSYSKnowledgeGraph.merge_status_string(status, self_status)
+    status = IOSYSKnowledgeGraphTask.merge_status_string(status, self_status)
     return {
         "file": node.path,
         "status": status,
@@ -181,7 +181,7 @@ async def kg_endpoint():
 
 
 async def traverse_update_kg(node: FileSystemNode):
-    knowledge_graph = IOSYSKnowledgeGraph(node, kg_config)
+    knowledge_graph = IOSYSKnowledgeGraphTask(node, knowledge_graph)
     await knowledge_graph.update()
     children_data = []
     for child in node.children():
@@ -200,7 +200,7 @@ async def update_kg_endpoint():
 
 
 def traverse_clear_kg(node: FileSystemNode):
-    knowledge_graph = IOSYSKnowledgeGraph(node, kg_config)
+    knowledge_graph = IOSYSKnowledgeGraphTask(node, knowledge_graph)
     knowledge_graph.clear()
     for child in node.children():
         traverse_clear_kg(child)
