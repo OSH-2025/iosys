@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import io
 import os
-from typing import Union, Any
+from typing import Union
 import time
 import json
 import juicefs  # type: ignore
