@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import io
 import os
-from typing import Union
+from typing import Union, Any
 import time
 import json
 import juicefs  # type: ignore
@@ -13,6 +13,11 @@ from . import (
 )  # Assuming DirNode is defined elsewhere
 from utils.logger import IOSYSLogger
 
+_XATTR_PREFIX = "user.iosys."
+
+def _now() -> int:
+    """Get current time in seconds since epoch."""
+    return int(time.time())
 
 class JuiceFSFileSystemNode(FileSystemNode):
     fs: "JuiceFSFileSystem"
@@ -21,7 +26,11 @@ class JuiceFSFileSystemNode(FileSystemNode):
         if self._meta.get("type") == "directory":
             raise IsADirectoryError(f"Cannot read a directory: {self.path}")
         # 对于文件或嵌入节点，从JuiceFS读取内容
-        content_bytes = self.fs.client.read_file(self.path)
+        filecode = self.fs.client.open(self.path,"rb")
+        try:
+            content_bytes = filecode.read()
+        finally:
+            filecode.close()
         return io.BytesIO(content_bytes)
 
     def write(self, content: bytes):
@@ -29,9 +38,13 @@ class JuiceFSFileSystemNode(FileSystemNode):
         if node_type == "directory":
             raise IsADirectoryError(f"Cannot write to a directory: {self.path}")
         # 如果是新建的占位节点或嵌入节点，可能需要在JuiceFS创建文件
-        self.fs.client.write_file(self.path, content)
+        filecode = self.fs.client.open(self.path, "wb")
+        try:
+            filecode.write(content)
+        finally:
+            filecode.close()
         # 更新元数据类型为文件，记录修改时间
-        self.update_meta(type="file", modified_at=int(time.time()))
+        self.update_meta(type="file", modified_at=_now())
         self.fs.fire_event("update", self)
 
     def makedir(self):
@@ -41,10 +54,10 @@ class JuiceFSFileSystemNode(FileSystemNode):
             raise ValueError(
                 f"Cannot make directory at {self.path}, node is {node_type}"
             )
-        self.fs.client.make_dir(self.path)  # 在JuiceFS创建目录
+        self.fs.client.makedirs(self.path, exist_ok=True)  # 在JuiceFS创建目录
         # 设置元数据为目录类型
         self.update_meta(
-            type="directory", created_at=int(time.time()), modified_at=int(time.time())
+            type="directory", created_at=_now(), modified_at=_now()
         )
         self.fs.fire_event("create", self)
 
@@ -53,40 +66,28 @@ class JuiceFSFileSystemNode(FileSystemNode):
         if node_type == "embedded":
             raise ValueError("Cannot remove embedded content directly")
         # 根据类型删除
-        if node_type == "directory":
-            self.fs.client.remove_dir(self.path)  # 可能需要确保目录为空
-        else:
-            self.fs.client.remove_file(self.path)
-        # 删除元数据文件
-        meta_path = self.fs._get_meta_path(self.path)
-        self.fs.client.remove_file(meta_path + "/.meta.json")
+        self.fs.client.remove(self.path)  # 可能需要确保目录为空
         self.fs.fire_event("delete", self)
 
     def parent(self) -> Union["JuiceFSFileSystemNode", None]:
         """Return the parent directory node."""
         if self.path == "/":
             return None
-        parent_path = os.path.dirname(self.path.rstrip("/"))
-        return JuiceFSFileSystemNode(self.fs, parent_path)
+        return self.fs.get_node(os.path.dirname(self.path.rstrip("/")))
 
     def children(self) -> list[FileSystemNode]:
-        node_type = self._meta.get("type")
-        children_nodes = []
-        if node_type == "directory":
-            for name in self.fs.client.list_dir(self.path):
-                child_path = f"{self.path}/{name}"
-                child_node = self.fs.get_node(child_path)
-                if child_node:
-                    children_nodes.append(child_node)
-        elif node_type == "file":
-            # 列出嵌入内容
-            meta_dir = self.fs._get_meta_path(self.path)
-            for name in self.fs.client.list_dir(meta_dir):
-                child_path = f"{self.path}/{name}"
-                child_node = self.fs.get_node(child_path)
-                if child_node:
-                    children_nodes.append(child_node)
-        return children_nodes
+        if self._meta.get("type") != "directory":
+            return []
+        try:
+            names = self.fs.client.listdir(self.path)
+        except Exception:
+            return []
+        result: list[FileSystemNode] = []
+        for name in names:
+            child = self.fs.get_node(os.path.join(self.path, name))
+            if child:
+                result.append(child)
+        return result
 
     def create_child(self, name: str) -> "JuiceFSFileSystemNode":
         # 禁止在嵌入节点上再创建子节点，避免无限嵌套
@@ -99,30 +100,59 @@ class JuiceFSFileSystemNode(FileSystemNode):
         if self._meta.get("type") == "file":
             node.update_meta(
                 type="embedded",
-                created_at=int(time.time()),
-                modified_at=int(time.time()),
+                created_at=_now(),
+                modified_at=_now(),
             )
         else:
             # 父为目录，新子节点暂不赋类型，等待实际操作决定
-            node.update_meta(created_at=int(time.time()), modified_at=int(time.time()))
+            node.update_meta(created_at=_now(), modified_at=_now())
         return node
 
-    def _sync_metadata(self):
-        # 将元数据写入JuiceFS的元数据存储，比如.path/.meta.json
-        meta_json_path = self.fs._get_meta_path(self.path) + "/.meta.json"
-        old_meta = {}
-        if self.fs.client.exists(meta_json_path):
-            old_meta = json.loads(self.fs.client.read_file(meta_json_path).decode())
-        # 合并旧meta和新meta（新meta优先）
-        merged_meta = {
-            **old_meta,
-            **{k: v for k, v in self._meta.items() if v is not None},
-        }
-        self._meta = merged_meta  # 更新当前内存中的meta
-        self.fs.client.write_file(
-            meta_json_path, json.dumps(merged_meta, indent=2).encode()
-        )
-        # 不调用invoke_on_change这里，以免重复，多数情况下调用update_meta时会触发
+    @staticmethod
+    def _xa_key(key: str) -> str:
+        return _XATTR_PREFIX + key
+
+    def _load_meta(self) -> None:
+        """Populate ``self._meta`` from xattrs (best‑effort)."""
+        for key in ("type", "created_at", "modified_at"):
+            try:
+                raw = self.fs.client.getxattr(self.path, self._xa_key(key))
+                if raw is not None:
+                    self._meta[key] = json.loads(raw.decode())
+            except Exception:
+                # Ignore silently: attribute might be missing or FS may not
+                # support xattrs – we fall back to heuristics elsewhere.
+                pass
+
+    def update_meta(self, **changes: Any) -> None:
+        """Merge *changes* into cached meta **and** persist via xattr."""
+        if not changes:
+            return
+        self._meta.update(changes)
+        for k, v in changes.items():
+            try:
+                self.fs.client.setxattr(
+                    self.path, self._xa_key(k), json.dumps(v).encode()
+                )
+            except Exception as exc:
+                self.fs.logger.warning(
+                    f"setxattr failed ({exc}) on {self.path} for {k}={v}"
+                )
+
+    def move_to(self, target_path: str) -> None:
+        """Move this node to a new path."""
+        # rename in JuiceFS
+        self.fs.client.rename(self.path, target_path)
+        # update local path and metadata
+        self.path = target_path
+        self.update_meta(modified_at=_now())
+        self.fs.fire_event("update", self)
+
+    def _sync_metadata(self) -> None:
+        """Reload metadata from JuiceFS xattrs."""
+        # clear current meta and reload
+        self._meta.clear()
+        self._load_meta()
 
 
 class JuiceFSFileSystem(IOSYSFileSystem):
@@ -161,6 +191,10 @@ class JuiceFSFileSystem(IOSYSFileSystem):
 
     def get_node(self, path: str) -> JuiceFSFileSystemNode | None:
         path = self.normalize_path(path)
+        if not self.client.exists(path):
+            return None
+        return JuiceFSFileSystemNode(self, path)
+        '''
         # 查询JuiceFS元数据或文件状态
         if self.client.is_file(path):
             node = JuiceFSFileSystemNode(self, path)
@@ -177,9 +211,4 @@ class JuiceFSFileSystem(IOSYSFileSystem):
             node.update_meta(type="embedded")
             return node
         return None  # 路径不存在
-
-    def _get_meta_path(self, path: str) -> str:
-        # 类似OSFS，把虚拟路径转换为元数据实际路径
-        if path == "/":
-            return "/.meta"  # 假设JuiceFS也采用类似隐藏目录
-        return f"/.meta{path}"
+        '''
