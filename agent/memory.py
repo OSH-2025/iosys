@@ -1,6 +1,5 @@
 from typing import List, Dict, Any, Optional
 from datetime import datetime
-import json
 from .types import ToolCallResult
 
 class ConversationMemory:
