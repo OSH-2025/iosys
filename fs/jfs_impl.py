@@ -82,13 +82,36 @@ class JuiceFSFileSystemNode(FileSystemNode):
         self.update_meta(type="directory", created_at=_now(), modified_at=_now())
         self.fs.fire_event("create", self)
 
+    '''
     def remove(self):
         node_type = self._meta.get("type")
         if node_type == "embedded":
             raise ValueError("Cannot remove embedded content directly")
         # 根据类型删除
+        #print(self.fs.client.listdir(self.path))  # 确保目录存在
         self.fs.client.remove(self.path)  # 可能需要确保目录为空
         self.fs.fire_event("delete", self)
+    '''
+    
+    def remove(self):
+        """递归删除；保证目录在调用 jfs_delete 之前已空。"""
+
+        node_type = self._meta.get("type")
+        if node_type == "embedded":
+            raise ValueError("Cannot remove embedded content directly")
+
+        # 若自己是目录，先删光子节点
+        if node_type == "directory":
+            for name in self.fs.client.listdir(self.path):
+                child_path = f"{self.path.rstrip('/')}/{name}"
+                child = JuiceFSFileSystemNode(self.fs, child_path)
+                child._sync_metadata()
+                child.remove()
+
+        # 删掉自己（目录此时已空 / 文件直接删）
+        self.fs.client.remove(self.path)
+        self.fs.fire_event("delete", self)
+    
 
     def parent(self) -> Union["JuiceFSFileSystemNode", None]:
         """Return the parent directory node."""
@@ -128,8 +151,8 @@ class JuiceFSFileSystemNode(FileSystemNode):
             node._meta["created_at"] = _now()
             node._meta["modified_at"] = _now()
             # 父为目录，新子节点暂不赋类型，等待实际操作决定
-            # node.update_meta(created_at=_now(), modified_at=_now())
-            # self.fs.client.open(child_path, "wb").close()
+            #node.update_meta(created_at=_now(), modified_at=_now())
+            #self.fs.client.open(child_path, "wb").close()
         return node
 
     def move_to(self, target_path: str) -> None:
@@ -166,6 +189,11 @@ class JuiceFSFileSystemNode(FileSystemNode):
                     raise
 
         old_meta = json.loads(raw.decode()) if raw else None
+
+        if not self._meta and old_meta:
+            # If no old metadata exists, we can skip merging
+            self._meta = old_meta
+            return
 
         merged = {
             **(old_meta or {}),
@@ -227,4 +255,7 @@ class JuiceFSFileSystem(IOSYSFileSystem):
         path = self.normalize_path(path)
         if not self.client.exists(path):
             return None
-        return JuiceFSFileSystemNode(self, path)
+        node = JuiceFSFileSystemNode(self, path)
+        node._sync_metadata()  # Ensure metadata is loaded
+        return node
+    

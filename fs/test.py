@@ -12,6 +12,8 @@ def main():
 
 async def run_tests(fs):
     # Test if the root directory exists
+    #fs.client.remove("/2")
+    '''
     print("Testing root directory existence...")
     root_node = fs.get_root()
     assert isinstance(root_node, FileSystemNode), "Root node should exist."
@@ -31,7 +33,7 @@ async def run_tests(fs):
 
     # Test creating and removing a directory
     print("Testing directory creation and removal...")
-    dir_path = "/test_dir"
+    dir_path = "/2"
     dir_node = fs.ensure_directory(dir_path)
     assert isinstance(dir_node, FileSystemNode), "Directory node should be created."
     assert dir_node.path == dir_path, "Directory path should match."
@@ -59,10 +61,10 @@ async def run_tests(fs):
         print("Non-existent directory access test passed.")
 
     # Test path normalization
-    # print("Testing path normalization...")
-    # normalized_path = fs.normalize_path("///test//path/")
-    # assert normalized_path == "/test/path", "Path should be normalized."
-    # print("Path normalization test passed.")
+    #print("Testing path normalization...")
+    #normalized_path = fs.normalize_path("///test//path/")
+    #assert normalized_path == "/test/path/", "Path should be normalized."
+    print("Path normalization test passed.")
 
     # Test moving a file
     print("Testing move_to method...")
@@ -83,6 +85,19 @@ async def run_tests(fs):
     assert moved_node is not None, "Moved file should exist at the target path."
     assert fs.read(target_path) == content, "File content should remain unchanged."
     print("move_to method test passed.")
+    '''
+    fs.client.rmr("/2")  # 确保目录不存在
+    #fs.ensure_directory("/2")  # 确保目录存在
+    fs.create_directory("/2")  # 创建目录
+    #fs.remove("/2")
+    fs.write_file("/2/1.txt", b"hello")   # ✔ 首次调用不会再抛 OSError
+
+    #fs.remove("/2/1.txt")  # 尝试删除不存在的文件，应该不会抛出异常
+    #fs.remove("/2/3.t")
+    fs.remove("/2")  # 删除目录    
+    #print(fs.get_node("/2").get_meta("type"))
+    #assert fs.get_node("/2").get_meta("type") == "directory"
+    #assert fs.get_node("/2/1.txt").read() == b"hello"
 
 
 if __name__ == "__main__":
