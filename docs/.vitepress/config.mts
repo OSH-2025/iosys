@@ -66,6 +66,10 @@ export default defineConfig({
             text: "中期报告",
             link: "/midterm/entry",
           },
+          {
+            text: "结题报告",
+            link: "/final/entry",
+          },
         ],
       },
     ],

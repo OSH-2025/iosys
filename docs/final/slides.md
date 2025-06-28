@@ -182,6 +182,9 @@ LLM 调用外部工具的方式
 - **获取信息**：读取文件内容 / 绘制图表
 - **执行操作**：创建目录 / 生成文档
 
+<img src="/../assets/feasibility/function-call.png" fixed top-0 right-0 h-full rounded-8 />
+
+
 ---
 
 # Server & Agent
@@ -233,7 +236,7 @@ B --> D((Response));
 
 # FileSystem
 
-<br>
+<div h-2 />
 
 - 一套接口，支持两种实现
   - **OSFS**：本地文件系统
@@ -444,8 +447,7 @@ A --> D(...)
 ```mermaid {scale:0.54,class:'ml--2'}
 graph LR
     subgraph "处理小文件"
-        A(文件输入) -- 小 --> F[直接送入 LLM];
-        F --> H_small(按 chunk 送入 LLM);
+        A(文件输入) -- 小 --> H_small[直接送入 LLM];
     end
 
     subgraph "处理大文件"
@@ -483,6 +485,24 @@ graph LR
 ---
 
 # File Graph
+
+---
+
+<img fixed h-full top-0 src="./assets/arch.svg" />
+
+<FocusOn :left="355" :top="50" :radius="110" />
+
+---
+
+<img v-drag="[20,14,681,NaN]" src="./assets/webui.png" border="#aaa rounded-lg 2"/>
+
+<div v-drag="[575,154,326,NaN,90]">
+
+# Web UI {.text-14!}
+
+</div>
+
+---
 
 
 
