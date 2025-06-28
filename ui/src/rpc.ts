@@ -21,28 +21,29 @@ interface Status {
     progress: number,
   } | {
     status: 'done',
+    done_at: number,
   }>;
 }
 
 const apis = {
   status: defineApi<{}, Status>("/status"),
-  chat: defineApi<{ input: string }, { response: string }>("/chat"),
+  chat: defineApi<{ input: string }, { response: string }>("/chat", true),
   preview: defineApi<{ path: string }, string>("/preview"),
-  agent: defineApi<{ command: string }, { status: string, message?: string, data: any }>("/agent"),
+  agent: defineApi<{ command: string }, { status: string, message?: string, data: any }>("/agent", true),
   files: defineApi<{ path?: string }, { items: Array<{ name: string, path: string, type: string, size?: number }> }>("/files"),
   graph: defineApi<{}, RawGraph>("/graph"),
-  mcpSync: defineApi<{ config: Record<string, any> }, {}>("/mcp"),
+  mcpSync: defineApi<{ config: Record<string, any> }, {}>("/mcp", true),
   getLogs: defineApi<{}, Array<{ timestamp: string, level: string, name: string, message: string }>>("/logs"),
-  kgSpawn: defineApi<{ path: string }, {}>("/kg/spawn"),
+  kgSpawn: defineApi<{ path: string }, {}>("/kg/spawn", true),
   kgContent: defineApi<{ path: string }, { subject: string, predicate: string, object: string }[]>("/kg/content"),
-  fsDelete: defineApi<{ path: string }, {}>("/fs/delete"),
+  fsDelete: defineApi<{ path: string }, {}>("/fs/delete", true),
 };
 
 export default apis;
 
 export type ApiResponse<T extends keyof typeof apis> = Awaited<ReturnType<typeof apis[T]>>;
 
-function defineApi<Request, Response>(endpoint: string) {
+function defineApi<Request, Response>(endpoint: string, shouldRefreshStatus = false) {
   return async (request: Request): Promise<Response> => {
     try {
       const response = await fetch(BASE_URL + endpoint, {
@@ -63,7 +64,7 @@ function defineApi<Request, Response>(endpoint: string) {
       errorMessage.value = `${error}`;
       throw error;
     } finally {
-      if (endpoint !== "/status") {
+      if (shouldRefreshStatus) {
         refreshStatus();
       }
     }

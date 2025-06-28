@@ -5,6 +5,7 @@ import { graphNodes, graphEdges, echartsCategories } from '../graph';
 import { useEventListener } from '@vueuse/core';
 import { previewFile, status } from '../states'
 import { usePreviewHtml } from '../composables/usePreviewHtml';
+import KnowledgeGraph from './KnowledgeGraph.vue'
 import apis from '../rpc';
 
 const container = ref<HTMLDivElement | null>(null);
@@ -244,14 +245,18 @@ onUnmounted(() => {
 })
 
 const previewHtml = usePreviewHtml(focusedNodeId);
+const kgPath = computed(() => focusedNodeKgStatus.value?.status === 'done' ? focusedNodeId.value : null)
+const largeKg = ref(false)
+watch(kgPath, () => largeKg.value = false);
 
 async function kgAction() {
   const id = focusedNodeId.value;
   if (!id) return;
-  if (focusedNodeKgStatus.value?.status === 'done') {
-    // If already done, just show the knowledge graph
-    previewFile(id);
-  } else {
+  const s = focusedNodeKgStatus.value?.status;
+  if (s === 'done') {
+    largeKg.value = true;
+  }
+  else if (s !== 'in_progress') {
     focusedNodeKgStatus.value = {
       status: 'in_progress',
       progress: 0,
@@ -317,6 +322,16 @@ async function kgAction() {
           </div>
           <pre v-if="focusedNodeKgStatus?.status === 'error'" v-text="focusedNodeKgStatus.message" text-red-600 text-sm
             text-left mt-1 />
+
+          <div v-if="kgPath" mt-2 mb-1 h-40>
+            <KnowledgeGraph :path="kgPath" />
+          </div>
+          <Teleport to="body" v-if="kgPath && largeKg">
+            <div fixed inset-0 z-40 backdrop-blur-sm flex items-center justify-center p-20 @click="largeKg = false">
+              <KnowledgeGraph :path="kgPath" show-header @click.prevent="(event) => event.stopPropagation()"
+                @close="largeKg = false" />
+            </div>
+          </Teleport>
         </button>
       </div>
     </div>

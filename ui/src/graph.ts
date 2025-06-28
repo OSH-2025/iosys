@@ -59,7 +59,7 @@ whenever(
         // }
       } satisfies (echarts.GraphSeriesOption["nodes"] & {})[number]));
     graphEdges.value = Object.entries(graph.relations)
-      .filter(([_, relation]) => graph.nodes[relation.source_id].label !== 'event')
+      .filter(([_, relation]) => graph.nodes[relation.source_id]?.label !== 'event')
       .map(([_id, relation]) => ({
         source: relation.source_id,
         target: relation.target_id,

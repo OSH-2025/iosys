@@ -52,7 +52,7 @@
       </aside>
 
       <!-- Resize Handle -->
-      <div class="relative w-0 z-100">
+      <div class="relative w-0 z-30">
         <div @mousedown="startResize"
           class="absolute inset-x--3px inset-y-0 hover:bg-gray-300 cursor-col-resize transition-colors duration-150">
         </div>

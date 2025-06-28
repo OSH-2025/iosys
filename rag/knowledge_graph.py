@@ -1,3 +1,4 @@
+import datetime
 import os  # For accessing environment variables (safer for API keys)
 import warnings  # To suppress potential deprecation warnings
 import json  # For parsing LLM responses
@@ -153,7 +154,10 @@ class IOSYSKnowledgeGraph:
         status = {}
         for path, task in self.tasks.items():
             if task is True:
-                status[path] = {"status": "done"}
+                status[path] = {
+                    "status": "done",
+                    "done_at": datetime.datetime.now().timestamp(),
+                }
             elif task is False:
                 status[path] = {"status": "in_progress"}
             else:
@@ -168,6 +172,7 @@ class KnowledgeGraphTriplet(TypedDict):
 
 
 class IOSYSKnowledgeGraphTask:
+    done_at: int
     result: Optional[list[KnowledgeGraphTriplet]]
 
     def __init__(self, node: FileSystemNode, config: IOSYSKnowledgeGraph):
@@ -186,14 +191,17 @@ class IOSYSKnowledgeGraphTask:
         self.result = None
         self.error = ""
         self.progress = 0
+        self.done_at = 0
 
         cache = node.get_meta("knowledge_graph")
         if cache:
             cache = json.loads(str(cache))
             # TODO: Check revision
-            self.result = cache.get("result", None)
-            if self.result is not None:
-                logger.info(f"Knowledge graph cache found for {node.path}.")
+            self.done_at = cache.get("done_at", 0)
+            if self.done_at:
+                self.result = cache.get("result", None)
+                if self.result is not None:
+                    logger.info(f"Knowledge graph cache found for {node.path}.")
 
     def chunk_to_raw_kg_json(self, text: str):
         user_prompt = self.user_prompt_template.format(text_chunk=text)
@@ -372,6 +380,7 @@ class IOSYSKnowledgeGraphTask:
                 break
 
         self.result = normalized_triples
+        self.done_at = int(datetime.datetime.now().timestamp())
 
         if not self.error and self.result:
             self.node.update_meta(
@@ -379,6 +388,7 @@ class IOSYSKnowledgeGraphTask:
                     {
                         "revision": 0,  # TODO:
                         "result": self.result,
+                        "done_at": self.done_at,
                     }
                 )
             )
@@ -395,6 +405,7 @@ class IOSYSKnowledgeGraphTask:
         elif self.result is not None:
             return {
                 "status": "done",
+                "done_at": self.done_at,
             }
         else:
             return {

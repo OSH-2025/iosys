@@ -1,5 +1,4 @@
 import { reactive, ref } from "vue";
-import { useIntervalFn } from '@vueuse/core';
 import rpc, { ApiResponse } from './rpc';
 
 interface Message {
@@ -39,8 +38,10 @@ export async function refreshStatus() {
   }
 }
 
-useIntervalFn(
-  refreshStatus,
-  5000,
-  { immediate: true, immediateCallback: true }
-);
+const intervalId = setInterval(refreshStatus, 5000);
+
+if (import.meta.hot) {
+  import.meta.hot.on('vite:beforeUpdate', () => {
+    clearInterval(intervalId);
+  });
+}

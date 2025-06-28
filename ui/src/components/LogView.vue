@@ -1,10 +1,10 @@
 <template>
-  <div class="p-6 max-w-full">
+  <div class="p-6 max-w-full flex flex-col h-full">
 
     <!-- Search -->
     <div class="mb-4 flex items-center gap-4">
       <i class="i-carbon-search text-gray-500 mr--2 ml-2 text-2xl"></i>
-      
+
       <input v-model="searchQuery" type="text" placeholder="Search logs..."
         class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" />
 
@@ -16,10 +16,11 @@
     </div>
 
     <!-- Table -->
-    <div class="border border-gray-200 rounded-lg overflow-hidden">
-      <div class="overflow-x-auto">
+    <div class="border border-gray-200 rounded-lg h-0 flex-grow flex flex-col">
+      <!-- Fixed Header -->
+      <div class="bg-gray-50 border-b border-gray-200">
         <table class="w-full text-sm">
-          <thead class="bg-gray-50 border-b border-gray-200">
+          <thead>
             <tr>
               <th class="px-4 py-3 text-left font-medium text-gray-900 w-38">Timestamp</th>
               <th class="px-4 py-3 text-left font-medium text-gray-900 w-20">Level</th>
@@ -27,6 +28,12 @@
               <th class="px-4 py-3 text-left font-medium text-gray-900">Message</th>
             </tr>
           </thead>
+        </table>
+      </div>
+      
+      <!-- Scrollable Body -->
+      <div class="flex-1 overflow-y-auto">
+        <table class="w-full text-sm">
           <tbody class="divide-y divide-gray-200">
             <tr v-if="loading && logs.length === 0">
               <td colspan="4" class="px-4 py-8 text-center text-gray-500">
@@ -41,17 +48,16 @@
                 {{ logs.length === 0 ? 'No logs found' : 'No logs match your search' }}
               </td>
             </tr>
-            <tr v-for="log in filteredLogs" :key="`${log.timestamp}-${log.name}-${log.message}`"
-              class="hover:bg-gray-50">
-              <td class="px-4 py-3 text-gray-600 font-mono text-xs">
+            <tr v-for="log in filteredLogs" :key="`${log.timestamp}-${log.name}-${log.message}`" class="hover:bg-gray-50">
+              <td class="px-4 py-3 text-gray-600 font-mono text-xs w-38">
                 {{ formatTimestamp(log.timestamp) }}
               </td>
-              <td class="px-4 py-3">
+              <td class="px-4 py-3 w-20">
                 <span :class="getLevelClass(log.level)" class="px-2 py-1 text-xs font-medium rounded-full">
                   {{ log.level.toUpperCase() }}
                 </span>
               </td>
-              <td class="px-4 py-3 text-gray-900 font-medium">
+              <td class="px-4 py-3 text-gray-900 font-medium w-24">
                 {{ log.name }}
               </td>
               <td class="px-4 py-3 text-gray-700 break-words">
