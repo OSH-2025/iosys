@@ -19,8 +19,8 @@
         <button
           class="flex items-center hover:bg-gray-200 gap-x-1 transition-colors duration-150 px-4 py-2 my--2 rounded-md border-2 border-gray-200"
           :class="panel === 'mcp' ? 'bg-gray-100' : 'op-70'" @click="panel = 'mcp'">
-          <span class="select-none font-medium">MCP Servers:</span>
-          <span class="select-none text-green-600">{{ Object.keys(status.mcp_servers ?? {}).length }}</span>
+          <span class="select-none font-medium">MCP Servers</span>
+          <!-- <span class="select-none text-green-600">{{ Object.keys(status.mcp_servers ?? {}).length }}</span> -->
         </button>
       </div>
 
@@ -63,7 +63,7 @@
         <!-- Main content will go here -->
         <FilePreview />
         <GraphView v-show="panel === 'graph'" />
-        <LogView v-show="panel === 'log'" />
+        <LogView v-if="panel === 'log'" />
         <McpServers v-show="panel === 'mcp'" />
       </main>
     </div>

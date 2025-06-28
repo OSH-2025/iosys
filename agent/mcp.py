@@ -2,6 +2,7 @@
 
 import json
 import os
+import asyncio
 from contextlib import AsyncExitStack
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Callable, Awaitable
@@ -19,9 +20,12 @@ from mcp.types import (
     AudioContent,
     ResourceLink,
 )
+from utils.logger import IOSYSLogger
 
 NonTextContent = ImageContent | AudioContent | ResourceLink | EmbeddedResource
 MAX_ITERATIONS = 1000
+
+logger = IOSYSLogger("MCP")
 
 
 @dataclass
@@ -55,6 +59,8 @@ class MCPClient:
         self.config_file_path = os.environ.get(
             "MCP_CONFIG_FILE", "./data/mcp_config.json"
         )
+        self._shutdown_lock = asyncio.Lock()
+        self._load_config_from_file()
 
     def _load_config_from_file(self) -> Dict[str, Any]:
         """Load configuration from file"""
@@ -93,6 +99,7 @@ class MCPClient:
         """Start a new session for all servers and return session_id, tools, and handlers"""
         self._session_counter += 1
         session_id = f"session_{self._session_counter}"
+        logger.info(f"Starting session {session_id}")
 
         # Collect all tools and handlers from all servers
         all_tools: List[Dict[str, Any]] = []
@@ -119,6 +126,7 @@ class MCPClient:
 
                 # Load tools for this server
                 mcp_tools: List[McpTool] = await load_mcp_tools(session)
+                logger.debug(f"Loaded {len(mcp_tools)} tools from server {name}")
 
                 # Collect tools and handlers
                 server_tools = self._get_tools_for_session(mcp_tools)
@@ -127,18 +135,20 @@ class MCPClient:
                 all_tools.extend(server_tools)
                 all_handlers.update(server_handlers)
             except Exception as e:
-                print(f"Error starting session for server {name}: {e}")
+                logger.error(f"Failed to start session for server {name}: {e}")
                 server_info.errors.append(str(e))
                 # Clean up the exit stack if it was created
                 if name in session_info.exit_stacks:
                     await session_info.exit_stacks[name].aclose()
                     del session_info.exit_stacks[name]
 
+        logger.info(f"Session {session_id} started with {len(all_tools)} tools from {len([s for s in self.servers.values() if not s.errors])} servers")
         return session_id, all_tools, all_handlers
 
     async def end_session(self, session_id: str) -> None:
         """End a specific session"""
         if session_id in self.sessions:
+            logger.info(f"Ending session {session_id}")
             session_info = self.sessions[session_id]
 
             # Close session exit stacks in reverse order
@@ -148,14 +158,16 @@ class MCPClient:
                     await exit_stack.aclose()
                     del session_info.exit_stacks[name]
                 except Exception as e:
-                    print(f"Error closing session for {name}: {e}")
+                    logger.error(f"Error closing session for {name}: {e}")
                     if name in self.servers:
                         self.servers[name].errors.append(f"Session cleanup error: {e}")
 
             del self.sessions[session_id]
+            logger.debug(f"Session {session_id} ended")
 
     async def _add_http_server(self, server_name: str, server_url: str) -> None:
         """Add a new HTTP MCP server"""
+        logger.info(f"Adding HTTP server: {server_name} ({server_url})")
         if server_url in self.servers:
             await self._remove_server(server_url)
 
@@ -175,7 +187,9 @@ class MCPClient:
                 write_stream=write_stream,
                 server_config={"url": server_url},
             )
+            logger.info(f"HTTP server {server_name} added successfully")
         except Exception as e:
+            logger.error(f"Failed to add HTTP server {server_name}: {e}")
             # Clean up on error
             if "exit_stack" in locals():
                 await exit_stack.aclose()
@@ -189,14 +203,16 @@ class MCPClient:
         env: Optional[Dict[str, str]] = None,
     ) -> None:
         """Add a new stdio MCP server"""
+        logger.info(f"Adding stdio server: {server_name} ({command})")
         if server_name in self.servers:
             await self._remove_server(server_name)
 
+        exit_stack = None
         try:
             # Create an exit stack to manage this server's connection lifecycle
             exit_stack = AsyncExitStack()
 
-            # Connect to stdio server
+            # Connect to stdio server with proper error handling
             read_stream, write_stream = await exit_stack.enter_async_context(
                 stdio_client(
                     StdioServerParameters(
@@ -214,10 +230,15 @@ class MCPClient:
                 write_stream=write_stream,
                 server_config={"command": command, "args": args, "env": env},
             )
+            logger.info(f"Stdio server {server_name} added successfully")
         except Exception as e:
-            # Clean up on error
-            if "exit_stack" in locals():
-                await exit_stack.aclose()
+            logger.error(f"Failed to add stdio server {server_name}: {e}")
+            # Clean up on error with proper task context
+            if exit_stack is not None:
+                try:
+                    await exit_stack.aclose()
+                except Exception as cleanup_error:
+                    logger.warning(f"Error during cleanup for {server_name}: {cleanup_error}")
             raise RuntimeError(
                 f"Failed to connect to stdio server {server_name}: {e}"
             ) from e
@@ -263,6 +284,7 @@ class MCPClient:
         self._save_config_to_file(config)
 
         mcp_servers = config.get("mcpServers", {})
+        logger.info(f"Syncing config with {len(mcp_servers)} servers")
 
         # Track which servers should remain
         servers_to_keep = set()
@@ -276,6 +298,7 @@ class MCPClient:
         # Remove servers that are out-dated
         servers_to_remove = set(self.servers.keys()) - servers_to_keep
         for server_name in servers_to_remove:
+            logger.debug(f"Removing outdated server: {server_name}")
             await self._remove_server(server_name)
 
         # Check existing servers and add new ones
@@ -306,41 +329,66 @@ class MCPClient:
 
     async def _remove_server(self, server_name: str) -> None:
         """Remove an MCP server"""
-        if server_name in self.servers:
-            # First, remove this server from all active sessions
-            for session_id, session_info in list(self.sessions.items()):
-                if server_name in session_info.exit_stacks:
-                    try:
-                        await session_info.exit_stacks[server_name].aclose()
-                        del session_info.exit_stacks[server_name]
-                    except Exception as e:
-                        print(
-                            f"Error closing session exit stack for {server_name}: {e}"
-                        )
-
-            # Then close the server's main connection
-            server_info = self.servers[server_name]
+        if server_name not in self.servers:
+            return
+            
+        logger.info(f"Removing server: {server_name}")
+        
+        async with self._shutdown_lock:
             try:
-                await server_info.connection_exit_stack.aclose()
-            except Exception as e:
-                print(f"Error closing server connection for {server_name}: {e}")
+                # First, remove this server from all active sessions
+                for session_id, session_info in list(self.sessions.items()):
+                    if server_name in session_info.exit_stacks:
+                        try:
+                            await session_info.exit_stacks[server_name].aclose()
+                            del session_info.exit_stacks[server_name]
+                        except Exception as e:
+                            logger.warning(f"Error closing session for {server_name}: {e}")
 
-            del self.servers[server_name]
+                # Then close the server's main connection with proper error handling
+                server_info = self.servers[server_name]
+                try:
+                    # Give the connection a moment to clean up gracefully
+                    await asyncio.sleep(0.1)
+                    await server_info.connection_exit_stack.aclose()
+                    logger.info(f"Server {server_name} removed successfully")
+                except Exception as e:
+                    logger.warning(f"Error closing server connection for {server_name}: {e}")
+                    # Don't re-raise here, we still want to remove the server from our dict
+
+                del self.servers[server_name]
+                
+            except Exception as e:
+                logger.error(f"Unexpected error removing server {server_name}: {e}")
+                # Still remove from dict to prevent hanging references
+                if server_name in self.servers:
+                    del self.servers[server_name]
 
     async def _close_all_servers(self) -> None:
         """Close all server connections"""
-        # Close all sessions first
-        for session_id in list(self.sessions.keys()):
-            await self.end_session(session_id)
+        logger.info("Closing all servers")
+        
+        async with self._shutdown_lock:
+            # Close all sessions first
+            for session_id in list(self.sessions.keys()):
+                try:
+                    await self.end_session(session_id)
+                except Exception as e:
+                    logger.warning(f"Error ending session {session_id}: {e}")
 
-        # Then close all server connections
-        for server_name in list(self.servers.keys()):
-            try:
-                server_info = self.servers[server_name]
-                await server_info.connection_exit_stack.aclose()
-                del self.servers[server_name]
-            except Exception as e:
-                print(f"Error closing server {server_name}: {e}")
+            # Then close all server connections
+            for server_name in list(self.servers.keys()):
+                try:
+                    server_info = self.servers[server_name]
+                    # Add small delay to allow proper cleanup
+                    await asyncio.sleep(0.05)
+                    await server_info.connection_exit_stack.aclose()
+                    del self.servers[server_name]
+                except Exception as e:
+                    logger.warning(f"Error closing server {server_name}: {e}")
+                    # Remove from dict even if cleanup failed
+                    if server_name in self.servers:
+                        del self.servers[server_name]
 
     def _get_tools_for_session(self, mcp_tools: List[McpTool]) -> List[Dict[str, Any]]:
         """Private method to get tools for a specific session"""
@@ -381,7 +429,11 @@ class MCPClient:
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        await self._close_all_servers()
+        try:
+            await self._close_all_servers()
+        except Exception as e:
+            logger.warning(f"Error during MCPClient cleanup: {e}")
+            # Don't re-raise to prevent masking original exceptions
 
 
 async def _list_all_tools(session: ClientSession) -> List[Tool]:
@@ -444,7 +496,7 @@ def convert_mcp_tool(
     async def call_tool(
         params: Dict[str, Any],
     ):
-        print(f"Calling tool: {tool.name} with params: {params}")
+        logger.debug(f"Calling tool: {tool.name}")
         call_tool_result = await session.call_tool(tool.name, params)
         return _convert_call_tool_result(call_tool_result)
 
