@@ -27,10 +27,9 @@ interface Status {
 
 const apis = {
   status: defineApi<{}, Status>("/status"),
-  chat: defineApi<{ input: string }, { response: string }>("/chat", true),
   preview: defineApi<{ path: string }, string>("/preview"),
-  agent: defineApi<{ command: string }, { status: string, message?: string, data: any }>("/agent", true),
-  files: defineApi<{ path?: string }, { items: Array<{ name: string, path: string, type: string, size?: number }> }>("/files"),
+  agent: defineApi<{ command: string }, { status: string, message?: string, data: any }>("/agent/run", true),
+  newHistory: defineApi<{ }, { }>("/agent/new", true),
   graph: defineApi<{}, RawGraph>("/graph"),
   mcpSync: defineApi<{ config: Record<string, any> }, {}>("/mcp/sync", true),
   mcpGetConfig: defineApi<{}, Record<string, any>>("/mcp/config"),

@@ -13,6 +13,14 @@ export const messages = reactive<Message[]>([
   },
 ]);
 
+export function resetMessages() {
+  messages.length = 0;
+  messages.push({
+    fromUser: false,
+    content: "### Hello!\nHow can I assist you today?",
+  });
+}
+
 export const errorMessage = ref<string | null>(null);
 
 export const previewFile = ref<string | null>(null);
