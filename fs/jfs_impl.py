@@ -216,7 +216,9 @@ class JuiceFSFileSystemNode(FileSystemNode):
             self.fs.client.setxattr(
                 meta_path,
                 meta_name,
-                json.dumps(self._meta, ensure_ascii=False, separators=(",", ":")).encode(),
+                json.dumps(
+                    self._meta, ensure_ascii=False, separators=(",", ":")
+                ).encode(),
             )
 
 
