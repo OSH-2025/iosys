@@ -142,7 +142,9 @@ class MCPClient:
                     await session_info.exit_stacks[name].aclose()
                     del session_info.exit_stacks[name]
 
-        logger.info(f"Session {session_id} started with {len(all_tools)} tools from {len([s for s in self.servers.values() if not s.errors])} servers")
+        logger.info(
+            f"Session {session_id} started with {len(all_tools)} tools from {len([s for s in self.servers.values() if not s.errors])} servers"
+        )
         return session_id, all_tools, all_handlers
 
     async def end_session(self, session_id: str) -> None:
@@ -238,7 +240,9 @@ class MCPClient:
                 try:
                     await exit_stack.aclose()
                 except Exception as cleanup_error:
-                    logger.warning(f"Error during cleanup for {server_name}: {cleanup_error}")
+                    logger.warning(
+                        f"Error during cleanup for {server_name}: {cleanup_error}"
+                    )
             raise RuntimeError(
                 f"Failed to connect to stdio server {server_name}: {e}"
             ) from e
@@ -331,9 +335,9 @@ class MCPClient:
         """Remove an MCP server"""
         if server_name not in self.servers:
             return
-            
+
         logger.info(f"Removing server: {server_name}")
-        
+
         async with self._shutdown_lock:
             try:
                 # First, remove this server from all active sessions
@@ -343,7 +347,9 @@ class MCPClient:
                             await session_info.exit_stacks[server_name].aclose()
                             del session_info.exit_stacks[server_name]
                         except Exception as e:
-                            logger.warning(f"Error closing session for {server_name}: {e}")
+                            logger.warning(
+                                f"Error closing session for {server_name}: {e}"
+                            )
 
                 # Then close the server's main connection with proper error handling
                 server_info = self.servers[server_name]
@@ -353,11 +359,13 @@ class MCPClient:
                     await server_info.connection_exit_stack.aclose()
                     logger.info(f"Server {server_name} removed successfully")
                 except Exception as e:
-                    logger.warning(f"Error closing server connection for {server_name}: {e}")
+                    logger.warning(
+                        f"Error closing server connection for {server_name}: {e}"
+                    )
                     # Don't re-raise here, we still want to remove the server from our dict
 
                 del self.servers[server_name]
-                
+
             except Exception as e:
                 logger.error(f"Unexpected error removing server {server_name}: {e}")
                 # Still remove from dict to prevent hanging references
@@ -367,7 +375,7 @@ class MCPClient:
     async def _close_all_servers(self) -> None:
         """Close all server connections"""
         logger.info("Closing all servers")
-        
+
         async with self._shutdown_lock:
             # Close all sessions first
             for session_id in list(self.sessions.keys()):
