@@ -113,6 +113,27 @@ class CacheFileSystemNode(FileSystemNode):
     def _lock_for(cls, path: str) -> threading.Lock:
         return cls._locks.setdefault(path, threading.Lock())
 
+    
+    def _promote_to_regular(self, os_node: FileSystemNode):
+        """
+        把 embedded 节点转成普通文件节点：
+        1. 若存在 /.content → 原子移动到真实路径
+        2. 补建父目录
+        3. 写回 type="file" 到侧车
+        """
+        if os_node._meta.get("type") != "embedded":
+            return
+
+        real_path = self.fs.cache_fs._get_real_path(os_node.path)
+        embedded_path = self.fs.cache_fs._get_embedded_path(os_node.path)
+
+        os.makedirs(os.path.dirname(real_path), exist_ok=True)
+
+        if os.path.exists(embedded_path):
+            os.replace(embedded_path, real_path)
+        os_node.update_meta(type="file")
+
+
     def read_stream(self) -> io.BytesIO:
         """
         1) 若本地缓存已存在 → 直接返回缓存文件流
@@ -172,26 +193,22 @@ class CacheFileSystemNode(FileSystemNode):
         return cache_node.read_stream()
 
     def write(self, content: bytes):
-        # 0) 先确保两端节点真实存在
-        cache_node = self._cache_node or self.fs.cache_fs.write_file(self.path, b"")
-        backend_node = self._backend_node or self.fs.backend_fs.write_file(
-            self.path, b""
-        )
+        cache_node   = self._cache_node   or self.fs.cache_fs.write_file(self.path, b"")
+        backend_node = self._backend_node or self.fs.backend_fs.write_file(self.path, b"")
 
-        # 1) 写缓存
+        self._promote_to_regular(cache_node)
+        self._promote_to_regular(backend_node)
+
         cache_node.write(content)
-
-        # 2) 写远端
         backend_node.write(content)
 
-        # 3) 同步 metadata（size、modified_at 等），以缓存为准
         now = int(time.time())
         cache_node.update_meta(size=len(content), modified_at=now, type="file")
         backend_node.update_meta(size=len(content), modified_at=now, type="file")
 
-        # 4) 触发事件
-        self.update_meta(**cache_node._meta)  # 把 dict 复制到自己
+        self.update_meta(**cache_node._meta)
         self.fs.fire_event("update", self)
+
 
     # ------- 维护操作 -------
     def remove(self):
@@ -206,17 +223,23 @@ class CacheFileSystemNode(FileSystemNode):
 
     def move_to(self, target_path: str):
         target_path = self.fs.normalize_path(target_path)
-        # 后端
+        parent_dir  = os.path.dirname(target_path) or "/"
+
+        self.fs.cache_fs.ensure_directory(parent_dir)
+        self.fs.backend_fs.ensure_directory(parent_dir)
+
         backend_node = self._backend_node
         if backend_node:
             backend_node.move_to(target_path)
-        # 缓存
+
         cache_node = self._cache_node
         if cache_node:
             cache_node.move_to(target_path)
-        # 更新自身
+
+        # 更新自身路径 & 事件
         self.path = target_path
         self.fs.fire_event("update", self)
+
 
     # ------- 目录相关 -------
     def children(self) -> List["CacheFileSystemNode"]:
@@ -240,15 +263,21 @@ class CacheFileSystemNode(FileSystemNode):
         # 1) 在缓存中创建
         cache_node = self._cache_node
         if cache_node is None:
-            raise FileNotFoundError(f"Parent directory {self.path} not found in cache")
-        cache_node.create_child(name)
+            self.fs.cache_fs.ensure_directory(self.path)  # 自动创建父目录
+            cache_node = self.fs.cache_fs.get_node(self.path)
+            if cache_node is None:
+                raise FileNotFoundError(f"Failed to create parent directory {self.path} in cache.")
+        else:
+            cache_node.create_child(name)
         # 2) 在远端创建
         backend_node = self._backend_node
         if backend_node is None:
-            raise FileNotFoundError(
-                f"Parent directory {self.path} not found in backend"
-            )
-        backend_node.create_child(name)
+            self.fs.backend_fs.ensure_directory(self.path)  # 自动创建父目录
+            backend_node = self.fs.backend_fs.get_node(self.path)
+            if backend_node is None:
+                raise FileNotFoundError(f"Failed to create parent directory {self.path} in backend.")
+        else:
+            backend_node.create_child(name)
         return CacheFileSystemNode(self.fs, child_path)
 
     def makedir(self):
