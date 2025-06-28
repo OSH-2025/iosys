@@ -86,7 +86,6 @@ class IOSYSGraphEngine:
 
     async def delete_file(self, path: str):
         try:
-            print("----------------------------------", path)
             # self.delete_llama_nodes(node_ids=[path])
             self.delete(ids=[path], entity_names=["file"])
             # await self.connect_event(path, "deleted")
@@ -125,9 +124,44 @@ class IOSYSGraphEngine:
         """
         nodes = []
 
+        # triplets = self.graph_store.graph.get_triplets() # type: ignore
+        triplets = []
+        try:
+            # 安全地获取所有三元组
+            for subj_id, rel_id, obj_id in self.graph_store.graph.triplets: # type: ignore
+                try:
+                    # 检查节点是否存在
+                    if (subj_id in self.graph_store.graph.nodes and # type: ignore
+                        obj_id in self.graph_store.graph.nodes): # type: ignore
+                        
+                        rel_key = self.graph_store.graph._get_relation_key( # type: ignore
+                            obj_id=obj_id, subj_id=subj_id, rel_id=rel_id
+                        )
+                        
+                        if rel_key in self.graph_store.graph.relations: # type: ignore
+                            triplet = (
+                                self.graph_store.graph.nodes[subj_id], # type: ignore
+                                self.graph_store.graph.relations[rel_key], # type: ignore
+                                self.graph_store.graph.nodes[obj_id], # type: ignore
+                            )
+                            triplets.append(triplet)
+                    else:
+                        print(f"Warning: Missing nodes for triplet {subj_id}-{rel_id}-{obj_id}")
+                except KeyError as e:
+                    print(f"Warning: KeyError when processing triplet {subj_id}-{rel_id}-{obj_id}: {e}")
+                    continue
+        except Exception as e:
+            print(f"Error getting triplets: {e}")
+
         node_ids = node_ids or []
+        triplets_ids = []
         for id_ in node_ids:
-            nodes.extend(self.graph_store.get(properties={"triplet_source_id": id_}))
+            for triplet in triplets:
+                if triplet[1].source_id == id_:
+                    triplets_ids.append(triplet[1].target_id)
+
+        if len(triplets_ids) > 0:
+            nodes.extend(self.graph_store.get(ids=triplets_ids))
 
         if len(node_ids) > 0:
             nodes.extend(self.graph_store.get(ids=node_ids))
@@ -139,12 +173,8 @@ class IOSYSGraphEngine:
         if len(ref_doc_ids) > 0:
             nodes.extend(self.graph_store.get(ids=ref_doc_ids))
 
-        # self.graph_store.delete(ids=[node.id for node in nodes])
         for node in nodes:
-            self.graph_store.delete(
-                entity_names=[node.label],
-                ids=[node.id],
-            )
+            self.delete(ids=[node.id])
 
     async def create_directory(self, path: str, parent_path: str):
         return await self.update_directory(path, parent_path)
@@ -177,11 +207,14 @@ class IOSYSGraphEngine:
     async def delete_directory(self, path: str):
         # raise NotImplementedError("Delete directory is not implemented yet.")
         try:
-            self.graph_store.delete_llama_nodes(node_ids=[path])
+            self.delete_llama_nodes(node_ids=[path])
             # await self.connect_event(path, "deleted")
             self.commit()
         except Exception as e:
-            print(f"Error removing file {path}: ", e)
+            print(f"Error removing file {path}:")
+            print(f"  Exception: {type(e).__name__}: {e}")
+            print(f"  Full traceback:")
+            traceback.print_exc()
             raise e
 
     async def connect_event(self, path: str, label: str):
