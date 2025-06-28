@@ -80,7 +80,9 @@ const updateChart = () => {
       lineStyle: {
         color: '#666',
         width: 2,
-      }
+      },
+      symbol: ['none', 'arrow'],
+      symbolSize: [0, 15]
     })
   })
 
@@ -118,8 +120,13 @@ const updateChart = () => {
         focus: 'adjacency',
         lineStyle: {
           width: 3
+        },
+        label: {
+          show: true
         }
-      }
+      },
+      edgeSymbol: ['none', 'arrow'],
+      edgeSymbolSize: [0, 15]
     }]
   }
 

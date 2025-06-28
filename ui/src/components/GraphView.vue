@@ -377,7 +377,7 @@ function handleFileInput(event: Event) {
             class="p-1 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Download">
             <div class="i-carbon-download w-4 h-4"></div>
           </button>
-          <button @click="deleteNode"
+          <button v-if="focusedNodeType !== 'root' && focusedNodeType !== 'embedded'" @click="deleteNode"
             class="p-1 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors" title="Delete">
             <div class="i-carbon-trash-can w-4 h-4"></div>
           </button>
