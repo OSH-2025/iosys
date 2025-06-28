@@ -197,34 +197,29 @@ async def fs_delete_endpoint(request: FsDeleteRequest):
 
 @app.post("/fs/upload")
 async def fs_upload_endpoint(
-    files: list[UploadFile] = File(...),
-    path: str = Form(...)
+    files: list[UploadFile] = File(...), path: str = Form(...)
 ):
     try:
         uploaded_files = []
-        
+
         for file in files:
             # Read file content
             content = await file.read()
 
             # Construct the full file path by combining directory path with filename
             file_path = f"{path.rstrip('/')}/{file.filename}"
-            
+
             # Create the file node at the specified path
             node = fs.write_file(file_path, content)
-            
-            uploaded_files.append({
-                "filename": file.filename,
-                "path": file_path,
-                "size": len(content)
-            })
-        
+
+            uploaded_files.append(
+                {"filename": file.filename, "path": file_path, "size": len(content)}
+            )
+
         return {
             "success": True,
             "uploaded_files": uploaded_files,
-            "total_files": len(uploaded_files)
+            "total_files": len(uploaded_files),
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
-
-
