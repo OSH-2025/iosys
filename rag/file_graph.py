@@ -94,11 +94,11 @@ class IOSYSGraphEngine:
         except Exception as e:
             print(f"Error removing file {path}:")
             print(f"  Exception: {type(e).__name__}: {e}")
-            print(f"  Full traceback:")
+            print("  Full traceback:")
             traceback.print_exc()
 
             raise e
-        
+
     def delete(
         self,
         entity_names: Optional[List[str]] = None,
@@ -109,8 +109,7 @@ class IOSYSGraphEngine:
         """Delete matching data."""
         nodes = self.graph_store.get(properties=properties, ids=ids)
         for node in nodes:
-            self.graph_store.graph.delete_node(node) # type: ignore
-
+            self.graph_store.graph.delete_node(node)  # type: ignore
 
     def delete_llama_nodes(
         self,
