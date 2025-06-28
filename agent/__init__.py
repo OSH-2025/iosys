@@ -101,92 +101,139 @@ class IOSYSAgent:
                     all_success = True
                     all_messages = []
                     all_data = {}
-                    
+
                     for i, tool_call in enumerate(tool_calls):
                         function_name = tool_call.function.name
                         function_args = json.loads(tool_call.function.arguments)
-                        
-                        self.logger.info(f"执行工具 {i+1}/{len(tool_calls)}: {function_name}")
-                        
+
+                        self.logger.info(
+                            f"执行工具 {i + 1}/{len(tool_calls)}: {function_name}"
+                        )
+
                         # 使用自动收集的处理函数
                         if function_name in tool_handlers:
                             try:
                                 result = tool_handlers[function_name](function_args)
                                 if inspect.isawaitable(result):
                                     result = await result
-                                
-                                results.append({
-                                    "tool_name": function_name,
-                                    "args": function_args,
-                                    "result": result,
-                                    "index": i
-                                })
-                                
+
+                                results.append(
+                                    {
+                                        "tool_name": function_name,
+                                        "args": function_args,
+                                        "result": result,
+                                        "index": i,
+                                    }
+                                )
+
                                 if result["status"] != "success":
                                     all_success = False
-                                    self.logger.warning(f"工具 {function_name} 执行失败: {result.get('message', '')}")
+                                    self.logger.warning(
+                                        f"工具 {function_name} 执行失败: {result.get('message', '')}"
+                                    )
                                 else:
                                     self.logger.info(f"工具 {function_name} 执行成功")
-                                
+
                                 # 收集消息和数据
                                 if result.get("message"):
-                                    all_messages.append(f"[{i+1}] {function_name}: {result['message']}")
-                                
+                                    all_messages.append(
+                                        f"[{i + 1}] {function_name}: {result['message']}"
+                                    )
+
                                 if result.get("data"):
-                                    all_data[f"tool_{i+1}_{function_name}"] = result["data"]
-                                    
+                                    all_data[f"tool_{i + 1}_{function_name}"] = result[
+                                        "data"
+                                    ]
+
                             except Exception as e:
                                 error_msg = f"工具 {function_name} 执行异常: {str(e)}"
                                 self.logger.error(error_msg)
-                                results.append({
-                                    "tool_name": function_name,
-                                    "args": function_args,
-                                    "error": str(e),
-                                    "index": i
-                                })
+                                results.append(
+                                    {
+                                        "tool_name": function_name,
+                                        "args": function_args,
+                                        "error": str(e),
+                                        "index": i,
+                                    }
+                                )
                                 all_success = False
-                                all_messages.append(f"[{i+1}] {function_name}: 执行异常 - {str(e)}")
+                                all_messages.append(
+                                    f"[{i + 1}] {function_name}: 执行异常 - {str(e)}"
+                                )
                         else:
                             error_msg = f"不支持的操作: {function_name}"
                             self.logger.error(error_msg)
-                            results.append({
-                                "tool_name": function_name,
-                                "args": function_args,
-                                "error": error_msg,
-                                "index": i
-                            })
+                            results.append(
+                                {
+                                    "tool_name": function_name,
+                                    "args": function_args,
+                                    "error": error_msg,
+                                    "index": i,
+                                }
+                            )
                             all_success = False
-                            all_messages.append(f"[{i+1}] {function_name}: {error_msg}")
-                    
+                            all_messages.append(
+                                f"[{i + 1}] {function_name}: {error_msg}"
+                            )
+
                     # 生成汇总结果
                     if len(tool_calls) == 1:
                         # 单个工具调用，保持原有格式
-                        single_result = results[0]["result"] if "result" in results[0] else {"status": "error", "message": results[0].get("error", "执行失败")}
+                        single_result = (
+                            results[0]["result"]
+                            if "result" in results[0]
+                            else {
+                                "status": "error",
+                                "message": results[0].get("error", "执行失败"),
+                            }
+                        )
                         if single_result["status"] != "success":
                             return {
                                 "status": "error",
-                                "message": concat_message(single_result.get("message", "工具调用失败")),
+                                "message": concat_message(
+                                    single_result.get("message", "工具调用失败")
+                                ),
                             }
                         else:
                             return {
                                 "status": "success",
-                                "message": concat_message(single_result.get("message", "")),
+                                "message": concat_message(
+                                    single_result.get("message", "")
+                                ),
                                 "data": single_result.get("data", {}),
                             }
                     else:
                         # 多个工具调用，返回汇总结果
-                        success_count = sum(1 for r in results if "result" in r and r["result"]["status"] == "success")
+                        success_count = sum(
+                            1
+                            for r in results
+                            if "result" in r and r["result"]["status"] == "success"
+                        )
                         total_count = len(tool_calls)
-                        
-                        summary_message = f"执行了 {total_count} 个操作，成功 {success_count} 个"
+
+                        summary_message = (
+                            f"执行了 {total_count} 个操作，成功 {success_count} 个"
+                        )
                         if success_count < total_count:
-                            summary_message += f"，失败 {total_count - success_count} 个"
-                        
-                        detailed_message = "\n".join(all_messages) if all_messages else ""
-                        final_message = f"{summary_message}\n\n详细结果:\n{detailed_message}" if detailed_message else summary_message
-                        
+                            summary_message += (
+                                f"，失败 {total_count - success_count} 个"
+                            )
+
+                        detailed_message = (
+                            "\n".join(all_messages) if all_messages else ""
+                        )
+                        final_message = (
+                            f"{summary_message}\n\n详细结果:\n{detailed_message}"
+                            if detailed_message
+                            else summary_message
+                        )
+
                         return {
-                            "status": "success" if all_success else "partial_success" if success_count > 0 else "error",
+                            "status": "success"
+                            if all_success
+                            else "partial_success"
+                            if success_count > 0
+                            else "error",
                             "message": concat_message(final_message),
                             "data": {
                                 **all_data,
@@ -194,9 +241,9 @@ class IOSYSAgent:
                                     "total_operations": total_count,
                                     "successful_operations": success_count,
                                     "failed_operations": total_count - success_count,
-                                    "results": results
-                                }
-                            }
+                                    "results": results,
+                                },
+                            },
                         }
                 else:
                     return {
