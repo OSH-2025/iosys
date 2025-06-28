@@ -3,11 +3,11 @@ import warnings  # To suppress potential deprecation warnings
 import json  # For parsing LLM responses
 import re  # For basic text cleaning (regular expressions)
 import jieba
-from openai import AsyncOpenAI
-from typing import Optional, TypedDict
-import asyncio
+from openai import OpenAI
+from typing import Optional, TypedDict, Union
+from multiprocessing.pool import Pool
 
-from fs import FileSystemNode
+from fs import CHANGE_TYPE, FileSystemNode, IOSYSFileSystem
 from utils.logger import IOSYSLogger
 
 # Configure settings for better display and fewer warnings
@@ -61,11 +61,12 @@ Please extract Subject-Predicate-Object (S-P-O) triples from the text below. 对
 
 
 class IOSYSKnowledgeGraph:
-    tasks: dict[str, "IOSYSKnowledgeGraphTask"] = {}
+    tasks: dict[str, Union["IOSYSKnowledgeGraphTask", bool]]
 
     def __init__(
         self,
-        llm: AsyncOpenAI,
+        fs: IOSYSFileSystem,
+        llm: OpenAI,
         chunk_size: int = 300,
         overlap: int = 30,
         system_prompt: str = extraction_system_prompt,
@@ -79,13 +80,57 @@ class IOSYSKnowledgeGraph:
         self.overlap = overlap
         self.system_prompt = system_prompt
         self.user_prompt_template = user_prompt_template
+        self.tasks = {}
+
+        fs.on_change.append(self.on_fs_change)
+
+    async def on_fs_change(self, node: FileSystemNode, type: CHANGE_TYPE):
+        if type == "metadata":
+            return
+
+        n = node  # type: FileSystemNode | None
+        while n is not None:
+            task = self.tasks.pop(n.path, None)
+            if isinstance(task, IOSYSKnowledgeGraphTask):
+                if task.result is not None:
+                    node.update_meta(knowledge_graph=None)
+            n = n.parent()
 
     def spawn_task(self, node: FileSystemNode):
-        if node.get_meta("type") != "directory":
-            task = IOSYSKnowledgeGraphTask(node, self)
-            self.tasks[node.path] = task
-        for child in node.children():
-            self.spawn_task(child)
+        logger.info(f"Spawning knowledge graph task for {node.path}")
+
+        tasks = []  # type: list[IOSYSKnowledgeGraphTask]
+        dir_nodes = []  # type: list[FileSystemNode]
+
+        def create_tasks(n: FileSystemNode):
+            for child in n.children():
+                create_tasks(child)
+            if n.get_meta("type") == "directory":
+                self.tasks[n.path] = False  # Mark directory as in progress
+                dir_nodes.append(n)
+            else:
+                task = IOSYSKnowledgeGraphTask(n, self)
+                self.tasks[n.path] = task
+                tasks.append(task)
+
+        create_tasks(node)
+
+        # pool = Pool(4)
+
+        def callback(_):
+            logger.info(f"Knowledge graph tasks completed for {node.path}")
+
+            for dir_node in dir_nodes:
+                self.tasks[dir_node.path] = True  # Mark directories as done
+            
+            # pool.close()
+            # pool.join()
+
+        # pool.map_async(lambda t: t.generate(), iterable=tasks, callback=callback)
+
+        for task in tasks:
+            task.generate()
+        callback(None)  # Simulate completion callback
 
     def get_result(self, node: FileSystemNode):
         result = []  # type: list[KnowledgeGraphTriplet]
@@ -93,6 +138,9 @@ class IOSYSKnowledgeGraph:
         def extend_result(path: str):
             task = self.tasks.get(path)
             assert task is not None, f"Task for {path} not found."
+            if isinstance(task, bool):
+                assert task, f"Task for {path} is not done."
+                return
             assert task.result is not None, f"Task for {path} is not finished."
             result.extend(task.result)
 
@@ -105,7 +153,12 @@ class IOSYSKnowledgeGraph:
     def status_dict(self):
         status = {}
         for path, task in self.tasks.items():
-            status[path] = task.status_dict()
+            if task is True:
+                status[path] = {"status": "done"}
+            elif task is False:
+                status[path] = {"status": "in_progress"}
+            else:
+                status[path] = task.status_dict()
         return status
 
 
@@ -117,8 +170,6 @@ class KnowledgeGraphTriplet(TypedDict):
 
 class IOSYSKnowledgeGraphTask:
     result: Optional[list[KnowledgeGraphTriplet]]
-    error = ""
-    progress = 0
 
     def __init__(self, node: FileSystemNode, config: IOSYSKnowledgeGraph):
         self.config = config
@@ -133,20 +184,23 @@ class IOSYSKnowledgeGraphTask:
         self.system_prompt = config.system_prompt
         self.user_prompt_template = config.user_prompt_template
 
+        self.result = None
+        self.error = ""
+        self.progress = 0
+
         cache = node.get_meta("knowledge_graph")
         if cache:
             cache = json.loads(str(cache))
             # TODO: Check revision
-            self.result = cache["content"]
-        else:
-            self.result = None
-            asyncio.create_task(self.update())
+            self.result = cache.get("result", None)
+            if self.result is not None:
+                logger.info(f"Knowledge graph cache found for {node.path}.")
 
-    async def chunk_to_raw_kg_json(self, text: str):
+    def chunk_to_raw_kg_json(self, text: str):
         user_prompt = self.user_prompt_template.format(text_chunk=text)
         llm_output = None
 
-        response = await self.llm_client.chat.completions.create(
+        response = self.llm_client.chat.completions.create(
             model=self.llm_model_name,
             messages=[
                 {"role": "system", "content": self.system_prompt},
@@ -194,12 +248,8 @@ class IOSYSKnowledgeGraphTask:
                 match = re.search(r"^\s*(\[.*?\])\s*$", llm_output, re.DOTALL)
                 if match:
                     json_string_extracted = match.group(1)
-                    logger.info("      Regex found potential JSON array structure.")
                     try:
                         parsed_json = json.loads(json_string_extracted)
-                        logger.info(
-                            "      Successfully parsed JSON from regex extraction."
-                        )
                         parsing_error = None  # Clear previous error
                     except json.JSONDecodeError as nested_err:
                         parsing_error = f"JSONDecodeError after regex: {nested_err}"
@@ -220,8 +270,9 @@ class IOSYSKnowledgeGraphTask:
                 logger.error(self.error)
         return {"content": parsed_json, "error": parsing_error, "response": llm_output}
 
-    async def update(self):
-        self.error = f"{self.node.path}:\n"
+    def generate(self):
+        if self.result is not None and not self.error:
+            return
 
         node = self.node
         logger.info(f"File {node.path} Starting knowledge graph extraction...")
@@ -229,7 +280,7 @@ class IOSYSKnowledgeGraphTask:
         name = node.name
         content = ""
         # TODO: Read as text (Markitdown part)
-        if name.endswith(".txt") and not name.endswith(".md"):
+        if name.endswith(".txt"):
             content_bytes = node.read()
             content = content_bytes.decode("utf-8", errors="ignore")
         rawtext = f"**File: {node.path}**\n{content}\n\n"
@@ -249,42 +300,33 @@ class IOSYSKnowledgeGraphTask:
             cut_index = max(end_index - self.overlap, 0)
             words = words[cut_index:]
 
-            logger.info(
-                f"File {node.path} is processing Chunk {chunk_num}/{total_chunks}"
-            )
+            self.progress = int((chunk_num / total_chunks) * 100)
             try:
-                raw_kg = await self.chunk_to_raw_kg_json(chunk_text)
+                raw_kg = self.chunk_to_raw_kg_json(chunk_text)
                 parsed_json = raw_kg.get("content", None)
             except Exception as e:
-                error_message = str(e)
-                logger.error(f"   ERROR during API call: {error_message}")
+                self.error += str(e)
+                return
 
-            if parsed_json is None:
-                logger.error(f"--- JSON Parsing FAILED (Chunk {chunk_num}) --- ")
-                logger.error(
-                    f"   Final Parsing Error: {raw_kg.get('error', 'Unknown error')}"
-                )
-                logger.error("-" * 20)
-            else:
-                valid_triples_in_chunk = []
-                if isinstance(parsed_json, list):
-                    for item in parsed_json:
-                        if isinstance(item, dict) and all(
-                            k in item for k in ["subject", "predicate", "object"]
+            valid_triples_in_chunk = []
+            if isinstance(parsed_json, list):
+                for item in parsed_json:
+                    if isinstance(item, dict) and all(
+                        k in item for k in ["subject", "predicate", "object"]
+                    ):
+                        if all(
+                            isinstance(item[k], str)
+                            for k in ["subject", "predicate", "object"]
                         ):
-                            if all(
-                                isinstance(item[k], str)
-                                for k in ["subject", "predicate", "object"]
-                            ):
-                                item["chunk"] = chunk_num  # Add source chunk info
-                                valid_triples_in_chunk.append(item)
-                else:
-                    self.error += (
-                        "   ERROR: Parsed data is not a list, cannot extract triples.\n"
-                    )
-                    logger.error(self.error)
-                if valid_triples_in_chunk:
-                    all_extracted_triples.extend(valid_triples_in_chunk)
+                            item["chunk"] = chunk_num  # Add source chunk info
+                            valid_triples_in_chunk.append(item)
+            else:
+                self.error += (
+                    "   ERROR: Parsed data is not a list, cannot extract triples.\n"
+                )
+                return
+            if valid_triples_in_chunk:
+                all_extracted_triples.extend(valid_triples_in_chunk)
 
             # Normalize, Filter, and De-duplicate Triples
             for triple in all_extracted_triples:
@@ -332,7 +374,15 @@ class IOSYSKnowledgeGraphTask:
 
         self.result = normalized_triples
 
-        self.node.update_meta(knowledge_graph=json.dumps(self.status_dict()))
+        if not self.error and self.result:
+            self.node.update_meta(
+                knowledge_graph=json.dumps(
+                    {
+                        "revision": 0,  # TODO:
+                        "result": self.result,
+                    }
+                )
+            )
 
     def __str__(self) -> str:
         return str(self.status_dict())

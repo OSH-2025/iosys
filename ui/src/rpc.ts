@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
 import { RawGraph } from "./graph";
-import { errorMessage } from "./states";
+import { errorMessage, refreshStatus } from "./states";
 
 const BASE_URL = import.meta.env.VITE_API_SERVER_URL;
 
@@ -33,7 +33,9 @@ const apis = {
   graph: defineApi<{}, RawGraph>("/graph"),
   mcpSync: defineApi<{ config: Record<string, any> }, {}>("/mcp"),
   getLogs: defineApi<{}, Array<{ timestamp: string, level: string, name: string, message: string }>>("/logs"),
-  getKnowledgeGraph: defineApi<{ path: string }, unknown>("/knowledge_graph"),
+  kgSpawn: defineApi<{ path: string }, {}>("/kg/spawn"),
+  kgContent: defineApi<{ path: string }, { subject: string, predicate: string, object: string }[]>("/kg/content"),
+  fsDelete: defineApi<{ path: string }, {}>("/fs/delete"),
 };
 
 export default apis;
@@ -60,6 +62,10 @@ function defineApi<Request, Response>(endpoint: string) {
     } catch (error) {
       errorMessage.value = `${error}`;
       throw error;
+    } finally {
+      if (endpoint !== "/status") {
+        refreshStatus();
+      }
     }
   };
 }

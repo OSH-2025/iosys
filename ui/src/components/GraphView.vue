@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watchEffect } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue';
 import * as echarts from 'echarts';
 import { graphNodes, graphEdges, echartsCategories } from '../graph';
 import { useEventListener } from '@vueuse/core';
-import { previewFile } from '../states'
+import { previewFile, status } from '../states'
 import { usePreviewHtml } from '../composables/usePreviewHtml';
+import apis from '../rpc';
 
 const container = ref<HTMLDivElement | null>(null);
 let myChart: echarts.ECharts | null = null;
@@ -27,6 +28,16 @@ const confirmDialog = ref({
 // Focus state
 const focusedNodeId = ref<string | null>(null);
 const focusedNodeType = ref<string | null>(null);
+const focusedNodeKgStatusOriginal = computed(() => {
+  const id = focusedNodeId.value;
+  if (!id) return;
+  return status.value.knowledge_graph?.[id]
+})
+const focusedNodeKgStatus = ref(focusedNodeKgStatusOriginal.value);
+watch([
+  focusedNodeKgStatusOriginal,
+  focusedNodeId,
+], () => focusedNodeKgStatus.value = focusedNodeKgStatusOriginal.value);
 
 function updateChart() {
   if (!myChart) return;
@@ -50,9 +61,9 @@ function updateChart() {
       roam: true,
       force: {
         repulsion: 1000,
-        gravity: 0.1,
         edgeLength: 200,
-        layoutAnimation: true
+        layoutAnimation: false,
+        initLayout: 'circular' // Start with circular layout
       },
       label: {
         show: true,
@@ -174,9 +185,7 @@ function deleteNode() {
 function confirmDelete() {
   if (!confirmDialog.value.nodeId) return;
 
-  // TODO: Implement actual deletion logic here
-  // This should call your API to delete the file/node
-  console.log('Deleting node:', confirmDialog.value.nodeId);
+  apis.fsDelete({ path: confirmDialog.value.nodeId })
 
   // Clear focus if the deleted node was focused
   if (focusedNodeId.value === confirmDialog.value.nodeId) {
@@ -230,7 +239,27 @@ onMounted(() => {
   }
 });
 
+onUnmounted(() => {
+  myChart?.dispose()
+})
+
 const previewHtml = usePreviewHtml(focusedNodeId);
+
+async function kgAction() {
+  const id = focusedNodeId.value;
+  if (!id) return;
+  if (focusedNodeKgStatus.value?.status === 'done') {
+    // If already done, just show the knowledge graph
+    previewFile(id);
+  } else {
+    focusedNodeKgStatus.value = {
+      status: 'in_progress',
+      progress: 0,
+    }
+    // Trigger knowledge graph generation
+    await apis.kgSpawn({ path: id });
+  }
+}
 </script>
 
 <template>
@@ -258,12 +287,36 @@ const previewHtml = usePreviewHtml(focusedNodeId);
         </div>
       </div>
       <div v-if="previewHtml" v-html="previewHtml" class="border-0 w-full flex-grow my-2 border-t pt-4" />
-      <div v-if="focusedNodeType === 'directory'">
+      <div>
         <button
-          class="w-full px-3 py-2 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors flex items-center gap-2 justify-center mt-2"
-          @click="previewFile(focusedNodeId)">
-          <div class="i-carbon-chart-relationship w-4 h-4"></div>
-          Knowledge Graph
+          class="w-full px-3 py-2 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors mt-2 relative"
+          :class="{
+            'bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200': focusedNodeKgStatus?.status === 'done',
+            'bg-yellow-50 hover:bg-yellow-100 text-yellow-700 border border-yellow-200': focusedNodeKgStatus?.status === 'in_progress',
+            'bg-red-50 hover:bg-red-100 text-red-700 border border-red-200': focusedNodeKgStatus?.status === 'error'
+          }" @click="kgAction">
+
+          <div flex items-center gap-2 justify-center>
+            <!-- Status indicator icon -->
+            <div v-if="focusedNodeKgStatus?.status === 'done'" class="i-carbon-checkmark-filled w-4 h-4 text-green-600">
+            </div>
+            <div v-else-if="focusedNodeKgStatus?.status === 'in_progress'"
+              class="i-mdi-loading w-4 h-4 text-yellow-600 animate-spin"></div>
+            <div v-else-if="focusedNodeKgStatus?.status === 'error'"
+              class="i-carbon-warning-filled w-4 h-4 text-red-600"></div>
+            <div v-else class="i-carbon-chart-relationship w-4 h-4"></div>
+
+            <span>Knowledge Graph</span>
+
+            <!-- Status text -->
+            <span class="text-xs opacity-75 ml-auto">
+              {{ focusedNodeKgStatus?.status === 'done' ? 'Ready' :
+                focusedNodeKgStatus?.status === 'in_progress' ? 'Processing...' :
+                  focusedNodeKgStatus?.status === 'error' ? 'Failed' : 'Generate' }}
+            </span>
+          </div>
+          <pre v-if="focusedNodeKgStatus?.status === 'error'" v-text="focusedNodeKgStatus.message" text-red-600 text-sm
+            text-left mt-1 />
         </button>
       </div>
     </div>

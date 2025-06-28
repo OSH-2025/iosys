@@ -56,8 +56,8 @@ def render_plain_text(content: str):
         return """
         <p style="color: gray; font-style: italic;">(Empty)</p>
         """
-    if len(content) > 10000:
-        content = content[:10000] + "\n\n... (truncated)"
+    if len(content) > 1000:
+        content = content[:1000] + f"\n\n... (truncated {len(content) - 1000} characters)"
     content = html.escape(content)
     return f"""
 <pre>{content}</pre>

@@ -42,7 +42,6 @@ class IOSYSRAG:
                 raise ValueError(f"Unsupported node type: {node.get_meta('type')}")
 
     async def on_file_change(self, node: FileSystemNode, change_type: CHANGE_TYPE):
-        print(f"[RAG] File change detected: {node.path}, type: {change_type}")
         match change_type:
             case "create":
                 parsed = self.parser.parse(node)
@@ -57,7 +56,6 @@ class IOSYSRAG:
                 await self.graph.delete_file(node.path)
 
     async def on_directory_change(self, node: FileSystemNode, change_type: CHANGE_TYPE):
-        print(f"[RAG] Directory change detected: {node.path}, type: {change_type}.")
         parent = node.parent()
         if not parent:
             return

@@ -34,7 +34,7 @@ async_llm = AsyncOpenAI(
     base_url=os.environ["LLM_BASE_URL"],
     api_key=os.environ["LLM_API_KEY"],
 )
-knowledge_graph = IOSYSKnowledgeGraph(llm=async_llm, chunk_size=400)
+knowledge_graph = IOSYSKnowledgeGraph(llm=llm, fs=fs, chunk_size=400)
 
 app = FastAPI()
 app.add_middleware(
@@ -46,6 +46,7 @@ app.add_middleware(
 )
 
 
+@app.get("/status")
 @app.post("/status")
 async def status_endpoint():
     return {
@@ -170,13 +171,25 @@ async def kg_endpoint(request: KgSpawnRequest):
     knowledge_graph.spawn_task(node)
 
 
-class KgGetContentRequest(BaseModel):
+class KgContentRequest(BaseModel):
     path: str
 
 
 @app.post("/kg/content")
-async def update_kg_endpoint(request: KgGetContentRequest):
+async def kg_content_endpoint(request: KgContentRequest):
     node = fs.get_node(request.path)
     if not node:
         raise HTTPException(status_code=404, detail="Node not found")
     return knowledge_graph.get_result(node)
+
+
+class FsDeleteRequest(BaseModel):
+    path: str
+
+
+@app.post("/fs/delete")
+async def fs_delete_endpoint(request: FsDeleteRequest):
+    node = fs.get_node(request.path)
+    if not node:
+        raise HTTPException(status_code=404, detail="Node not found")
+    node.remove()

@@ -115,7 +115,7 @@ class IOSYSFileSystem(abc.ABC):
         logger = IOSYSLogger("FileSystem")
 
         async def log_callback(node: FileSystemNode, change_type: CHANGE_TYPE):
-            logger.info(f"{change_type} {node.path}")
+            logger.info(f"event: {change_type} - {node.path}")
 
         self.on_change = [log_callback]
 

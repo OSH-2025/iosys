@@ -41,6 +41,7 @@ class IOSYSLogger:
             timestamp=datetime.now(), level=level, name=self.name, message=message
         )
         self.logs.append(entry)
+        print(f"[{level.value}] [{self.name}] {message}")
 
     def debug(self, message: str):
         self._log(LogLevel.DEBUG, message)

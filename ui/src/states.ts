@@ -21,12 +21,20 @@ export const previewFile = ref<string | null>(null);
 export const status = ref<Partial<ApiResponse<"status">>>({});
 
 
+let working = 0;
+
 export async function refreshStatus() {
+  if (working) return;
+  const myWorking = working = Date.now();
   try {
     status.value = await rpc.status({});
   } catch (e) {
     status.value = {
       server: 'offline',
+    }
+  } finally {
+    if (myWorking === working) {
+      working = 0;
     }
   }
 }
