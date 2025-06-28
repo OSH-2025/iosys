@@ -238,15 +238,19 @@ def new_fs() -> IOSYSFileSystem:
         from .osfs_impl import OSFileSystem
         from .jfs_impl import JuiceFSFileSystem
 
-        return CacheFileSystem(
+        fs = CacheFileSystem(
             cache_fs=OSFileSystem(root_path=cache_dir),
             backend_fs=JuiceFSFileSystem(),
         )
     elif use_local_fs:
         from .osfs_impl import OSFileSystem
 
-        return OSFileSystem(root_path=use_local_fs)
+        fs = OSFileSystem(root_path=use_local_fs)
     else:
         from .jfs_impl import JuiceFSFileSystem
 
-        return JuiceFSFileSystem()
+        fs = JuiceFSFileSystem()
+    
+    fs.get_root().makedir()
+
+    return fs

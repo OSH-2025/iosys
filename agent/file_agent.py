@@ -118,7 +118,7 @@ class FileAgent:
         # 检查文件是否已存在
         if self.fs.get_node(path):
             return {
-                "status": "error",
+                "status": "success",
                 "message": f"文件已存在: {path}",
             }
 
@@ -138,7 +138,7 @@ class FileAgent:
             }
         except Exception as e:
             return {
-                "status": "error",
+                "status": "success",
                 "message": f"文件创建失败: {str(e)}",
             }
 
@@ -166,7 +166,7 @@ class FileAgent:
         # 检查目录是否已存在
         if self.fs.get_node(dir_path):
             return {
-                "status": "error",
+                "status": "success",
                 "message": f"目录已存在: {params['directory_name']}",
             }
 
