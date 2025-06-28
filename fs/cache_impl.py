@@ -1,6 +1,6 @@
 """
 缓存文件系统：用 OSFileSystem 做本地缓存，以 JuiceFSFileSystem 为后端。
-读操作 → 先查本地缓存；未命中则从 JuiceFS 读取并写入缓存  
+读操作 → 先查本地缓存；未命中则从 JuiceFS 读取并写入缓存
 写操作 → 先写本地缓存，再写远端 JuiceFS（write-through）
 """
 
@@ -21,6 +21,8 @@ from . import IOSYSFileSystem, FileSystemNode
 
 # chunk size for streaming reads
 _CHUNK = 65536
+
+
 # --------------------------------------------------------------------------- #
 # 主文件系统
 # --------------------------------------------------------------------------- #
@@ -29,12 +31,10 @@ class CacheFileSystem(IOSYSFileSystem):
     组合模式（而非多重继承）包装 OSFileSystem + JuiceFSFileSystem。
     """
 
-    def __init__(self,
-                 cache_fs: OSFileSystem,
-                 backend_fs: JuiceFSFileSystem) -> None:
+    def __init__(self, cache_fs: OSFileSystem, backend_fs: JuiceFSFileSystem) -> None:
         super().__init__()
-        self.cache_fs = cache_fs            # 本地缓存
-        self.backend_fs = backend_fs        # 远端存储
+        self.cache_fs = cache_fs  # 本地缓存
+        self.backend_fs = backend_fs  # 远端存储
 
     # ------------ 基础工具 ------------
     @staticmethod
@@ -60,14 +60,14 @@ class CacheFileSystem(IOSYSFileSystem):
         # 本地无 → 看远端
         backend_node = self.backend_fs.get_node(path)
         if backend_node is None:
-            return None    # 远端也不存在
+            return None  # 远端也不存在
 
         # 远端是目录：**只返回一个包装节点**，不建任何本地目录
         if backend_node._meta.get("type") == "directory":
             return CacheFileSystemNode(self, path)
 
         # 远端是文件：把文件内容拉回本地
-        data = backend_node.read()            # 读远端文件
+        data = backend_node.read()  # 读远端文件
         # 让 OSFS 自己确保父目录存在并写入；不会多余地建目录
         self.cache_fs.write_file(path, data)  # OSFS 内部 already handles makedirs
         return CacheFileSystemNode(self, path)
@@ -80,6 +80,7 @@ class CacheFileSystemNode(FileSystemNode):
     """
     单个路径对应的节点，内部委托 cache_fs / backend_fs 的节点实现具体 IO。
     """
+
     fs: "CacheFileSystem"
 
     # ---------- 内部委托 ----------
@@ -125,7 +126,7 @@ class CacheFileSystemNode(FileSystemNode):
            2-c) 再打开缓存文件并 return。
         整个过程对调用方透明，且不会把全文件载入内存。
         """
-        if self._cache_node:               # 已缓存
+        if self._cache_node:  # 已缓存
             return self._cache_node.read_stream()
 
         # -------- 缓存未命中，进入加锁区，避免并发重复拉取 --------
@@ -159,8 +160,11 @@ class CacheFileSystemNode(FileSystemNode):
                 os.replace(tmp_path, final_path)
 
                 # 更新本地节点元数据、触发事件
-                self._cache_node.update_meta(type="file", size=os.path.getsize(final_path),
-                                             modified_at=int(time.time()))
+                self._cache_node.update_meta(
+                    type="file",
+                    size=os.path.getsize(final_path),
+                    modified_at=int(time.time()),
+                )
                 self.fs.fire_event("update", self)
             finally:
                 # 若发生异常确保临时文件被清理
@@ -169,7 +173,6 @@ class CacheFileSystemNode(FileSystemNode):
 
         # 最终以缓存文件流返回
         return self._cache_node.read_stream()
-
 
     def write(self, content: bytes):
         # 1) 写缓存
@@ -211,10 +214,10 @@ class CacheFileSystemNode(FileSystemNode):
                 for child in n.children():
                     names.add(child.path)
         return [CacheFileSystemNode(self.fs, p) for p in names]
-    
+
     def _sync_metadata(self):
         return super()._sync_metadata()
-    
+
     def create_child(self, name: str) -> "CacheFileSystemNode":
         """
         创建子节点，先在缓存中创建，再在远端创建。
@@ -225,11 +228,11 @@ class CacheFileSystemNode(FileSystemNode):
         # 2) 在远端创建
         self._backend_node.create_child(name)
         return CacheFileSystemNode(self.fs, child_path)
-    
+
     def makedir(self):
         self._cache_node.makedir()
         self._backend_node.makedir()
-    
+
     def parent(self) -> Optional["CacheFileSystemNode"]:
         parent_path = os.path.dirname(self.path) or "/"
         return self.fs.get_node(parent_path) if parent_path != "/" else None
