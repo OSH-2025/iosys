@@ -5,7 +5,8 @@
       <div :style="{ width: (sidebarWidth - 13.5) + 'px' }" flex items-center px-2>
         <h1 class="text-xl font-normal min-w-fit">IOSYS</h1>
         <div flex-grow />
-        <button class="i-carbon-add-large text-2xl text-gray-500 hover:text-gray-400 mt-2 mb--1" />
+        <button class="i-carbon-add-large text-2xl text-gray-500 hover:text-gray-400 mt-2 mb--1"
+          @click="apis.newHistory({}); resetMessages()" />
       </div>
 
 
@@ -87,11 +88,12 @@ import { useSessionStorage } from '@vueuse/core';
 import Messages from './components/Messages.vue';
 import GraphView from './components/GraphView.vue';
 import LogView from './components/LogView.vue';
-import { errorMessage, status } from './states';
+import { errorMessage, status, resetMessages } from './states';
 import FilePreview from './components/FilePreview.vue';
 import ChatBox from './components/ChatBox.vue';
 import { useDynamicSplitter } from './composables/useDynamicSplitter';
 import McpServers from './components/McpServers.vue';
+import apis from './rpc';
 
 const panel = useSessionStorage('iosys.active-panel', 'graph');
 
