@@ -74,7 +74,9 @@ class IOSYSAgent:
                 )
 
                 # 处理LLM响应
-                message = response.choices[0].message.content if response.choices else None
+                message = (
+                    response.choices[0].message.content if response.choices else None
+                )
                 message = message.strip() if message else ""
 
                 self.history.append(
@@ -130,7 +132,9 @@ class IOSYSAgent:
                                             f"工具 {function_name} 执行失败: {result.get('message', '')}"
                                         )
                                     else:
-                                        self.logger.info(f"工具 {function_name} 执行成功")
+                                        self.logger.info(
+                                            f"工具 {function_name} 执行成功"
+                                        )
 
                                     if result.get("message"):
                                         step_messages.append(
@@ -138,19 +142,25 @@ class IOSYSAgent:
                                         )
 
                                     if result.get("data"):
-                                        step_data[f"tool_{i + 1}_{function_name}"] = result[
-                                            "data"
-                                        ]
+                                        step_data[f"tool_{i + 1}_{function_name}"] = (
+                                            result["data"]
+                                        )
 
                                     # 将工具调用结果添加到历史记录
-                                    self.history.append({
-                                        "role": "tool",
-                                        "tool_call_id": tool_call.id,
-                                        "content": json.dumps(result, ensure_ascii=False)
-                                    })
+                                    self.history.append(
+                                        {
+                                            "role": "tool",
+                                            "tool_call_id": tool_call.id,
+                                            "content": json.dumps(
+                                                result, ensure_ascii=False
+                                            ),
+                                        }
+                                    )
 
                                 except Exception as e:
-                                    error_msg = f"工具 {function_name} 执行异常: {str(e)}"
+                                    error_msg = (
+                                        f"工具 {function_name} 执行异常: {str(e)}"
+                                    )
                                     self.logger.error(error_msg)
                                     results.append(
                                         {
@@ -166,13 +176,17 @@ class IOSYSAgent:
                                     )
                                     error_result = {
                                         "status": "error",
-                                        "message": error_msg
+                                        "message": error_msg,
                                     }
-                                    self.history.append({
-                                        "role": "tool",
-                                        "tool_call_id": tool_call.id,
-                                        "content": json.dumps(error_result, ensure_ascii=False)
-                                    })
+                                    self.history.append(
+                                        {
+                                            "role": "tool",
+                                            "tool_call_id": tool_call.id,
+                                            "content": json.dumps(
+                                                error_result, ensure_ascii=False
+                                            ),
+                                        }
+                                    )
                             else:
                                 error_msg = f"不支持的操作: {function_name}"
                                 self.logger.error(error_msg)
@@ -188,15 +202,16 @@ class IOSYSAgent:
                                 step_messages.append(
                                     f"[{i + 1}] {function_name}: {error_msg}"
                                 )
-                                error_result = {
-                                    "status": "error",
-                                    "message": error_msg
-                                }
-                                self.history.append({
-                                    "role": "tool",
-                                    "tool_call_id": tool_call.id,
-                                    "content": json.dumps(error_result, ensure_ascii=False)
-                                })
+                                error_result = {"status": "error", "message": error_msg}
+                                self.history.append(
+                                    {
+                                        "role": "tool",
+                                        "tool_call_id": tool_call.id,
+                                        "content": json.dumps(
+                                            error_result, ensure_ascii=False
+                                        ),
+                                    }
+                                )
 
                         # 汇总本轮结果
                         all_results.extend(results)
@@ -232,12 +247,8 @@ class IOSYSAgent:
                     f"执行了 {total_count} 个操作，成功 {success_count} 个"
                 )
                 if success_count < total_count:
-                    summary_message += (
-                        f"，失败 {total_count - success_count} 个"
-                    )
-                detailed_message = (
-                    "\n".join(all_messages) if all_messages else ""
-                )
+                    summary_message += f"，失败 {total_count - success_count} 个"
+                detailed_message = "\n".join(all_messages) if all_messages else ""
                 combined_message = (
                     f"{summary_message}\n\n详细结果:\n{detailed_message}"
                     if detailed_message
@@ -249,7 +260,8 @@ class IOSYSAgent:
                     else "partial_success"
                     if success_count > 0
                     else "error",
-                    "message": final_message + ("\n\n---\n\n" + combined_message if combined_message else ""),
+                    "message": final_message
+                    + ("\n\n---\n\n" + combined_message if combined_message else ""),
                     "data": {
                         **final_data,
                         "execution_summary": {
