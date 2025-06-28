@@ -141,11 +141,14 @@ function handleNodeClick(params: any) {
   contextMenu.value.visible = false;
 
   if (!myChart) return;
-  if (!params.data) {
+  
+  // If no params or no data, it means clicked on empty area
+  if (!params || !params.data || params.dataType !== 'node') {
     // Clicked on empty area, clear focus
     focusedNodeId.value = null;
+    focusedNodeType.value = null;
     updateNodeFocus(null);
-    contextMenu.value.visible = false;
+    return;
   }
 
   if (params.dataType === 'node') {
@@ -231,6 +234,17 @@ onMounted(() => {
 
     myChart.on('click', handleNodeClick);
     myChart.on('contextmenu', handleContextMenu);
+
+    // Add click listener to handle empty area clicks
+    myChart.getZr().on('click', (event: any) => {
+      // If the click target is not a graph element, clear focus
+      if (!event.target) {
+        contextMenu.value.visible = false;
+        focusedNodeId.value = null;
+        focusedNodeType.value = null;
+        updateNodeFocus(null);
+      }
+    });
 
     useEventListener(window, 'resize', () => {
       if (myChart) {

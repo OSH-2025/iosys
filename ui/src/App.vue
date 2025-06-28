@@ -68,9 +68,9 @@
       <main class="relative w-0 flex-grow bg-white">
         <!-- Main content will go here -->
         <FilePreview />
-        <GraphView v-show="panel === 'graph'" />
+        <GraphView v-if="panel === 'graph'" />
         <LogView v-if="panel === 'log'" />
-        <McpServers v-show="panel === 'mcp'" />
+        <McpServers v-if="panel === 'mcp'" />
       </main>
     </div>
 
