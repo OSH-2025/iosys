@@ -136,6 +136,7 @@ class IOSYSAgent:
                                             "args": function_args,
                                             "result": result,
                                             "index": i,
+                                            "tool_call_id": tool_call.id,
                                         }
                                     )
 
@@ -159,72 +160,59 @@ class IOSYSAgent:
                                             result["data"]
                                         )
 
-                                    # 将工具调用结果添加到历史记录
-                                    history.append(
-                                        {
-                                            "role": "tool",
-                                            "tool_call_id": tool_call.id,
-                                            "content": json.dumps(
-                                                result, ensure_ascii=False
-                                            ),
-                                        }
-                                    )
-
                                 except Exception as e:
                                     error_msg = (
                                         f"工具 {function_name} 执行异常: {str(e)}"
                                     )
                                     self.logger.error(error_msg)
+                                    error_result = {
+                                        "status": "error",
+                                        "message": error_msg,
+                                    }
                                     results.append(
                                         {
                                             "tool_name": function_name,
                                             "args": function_args,
                                             "error": str(e),
                                             "index": i,
+                                            "tool_call_id": tool_call.id,
+                                            "result": error_result,
                                         }
                                     )
                                     step_success = False
                                     step_messages.append(
                                         f"[{i + 1}] {function_name}: 执行异常 - {str(e)}"
                                     )
-                                    error_result = {
-                                        "status": "error",
-                                        "message": error_msg,
-                                    }
-                                    history.append(
-                                        {
-                                            "role": "tool",
-                                            "tool_call_id": tool_call.id,
-                                            "content": json.dumps(
-                                                error_result, ensure_ascii=False
-                                            ),
-                                        }
-                                    )
                             else:
                                 error_msg = f"不支持的操作: {function_name}"
                                 self.logger.error(error_msg)
+                                error_result = {"status": "error", "message": error_msg}
                                 results.append(
                                     {
                                         "tool_name": function_name,
                                         "args": function_args,
                                         "error": error_msg,
                                         "index": i,
+                                        "tool_call_id": tool_call.id,
+                                        "result": error_result,
                                     }
                                 )
                                 step_success = False
                                 step_messages.append(
                                     f"[{i + 1}] {function_name}: {error_msg}"
                                 )
-                                error_result = {"status": "error", "message": error_msg}
-                                history.append(
-                                    {
-                                        "role": "tool",
-                                        "tool_call_id": tool_call.id,
-                                        "content": json.dumps(
-                                            error_result, ensure_ascii=False
-                                        ),
-                                    }
-                                )
+
+                        # 将所有工具调用结果一次性添加到历史记录
+                        for result_item in results:
+                            history.append(
+                                {
+                                    "role": "tool",
+                                    "tool_call_id": result_item["tool_call_id"],
+                                    "content": json.dumps(
+                                        result_item["result"], ensure_ascii=False
+                                    ),
+                                }
+                            )
 
                         # 汇总本轮结果
                         all_results.extend(results)

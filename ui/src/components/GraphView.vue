@@ -386,7 +386,7 @@ function handleFileInput(event: Event) {
       <div v-if="previewHtml" v-html="previewHtml" class="border-0 w-full children:break-words children:text-pretty flex-grow my-2 border-t pt-4 max-h-120 overflow-y-auto" />
 
       <!-- Drag and Drop Upload Area for Directories -->
-      <div v-if="focusedNodeType === 'directory'" class="mt-2 mb-2" @dragover="handleDragOver"
+      <div v-if="focusedNodeType === 'directory' || focusedNodeType === 'root'" class="mt-2 mb-2" @dragover="handleDragOver"
         @dragleave="handleDragLeave" @drop="handleDrop">
         <div class="border-1 rounded-lg p-6 text-center transition-all duration-200 cursor-pointer"
           :class="{

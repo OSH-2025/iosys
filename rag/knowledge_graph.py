@@ -140,9 +140,9 @@ class IOSYSKnowledgeGraph:
             assert task is not None, f"Task for {path} not found."
             if isinstance(task, bool):
                 assert task, f"Task for {path} is not done."
-                return
-            assert task.result is not None, f"Task for {path} is not finished."
-            result.extend(task.result)
+            else:
+                assert task.result is not None, f"Task for {path} is not finished."
+                result.extend(task.result)
 
         if node.get_meta("type") != "directory":
             extend_result(node.path)
