@@ -232,13 +232,14 @@ class IOSYSFileSystem(abc.ABC):
 def new_fs() -> IOSYSFileSystem:
     use_local_fs = os.environ.get("USE_LOCAL_FS")
     use_cache = os.environ.get("USE_CACHE", "false").lower() == "true"
-    if use_cache and use_local_fs:
+    cache_dir = os.environ.get("CACHE_DIR")
+    if use_cache and cache_dir:
         from .cache_impl import CacheFileSystem
         from .osfs_impl import OSFileSystem
         from .jfs_impl import JuiceFSFileSystem
 
         return CacheFileSystem(
-            cache_fs=OSFileSystem(root_path=use_local_fs),
+            cache_fs=OSFileSystem(root_path=cache_dir),
             backend_fs=JuiceFSFileSystem(),
         )
     elif use_local_fs:
