@@ -1,8 +1,8 @@
 # test_cache.py
 from fs import new_fs
+import asyncio
 
-
-def run_tests():
+async def run_tests():
     fs = new_fs()
 
     # Test creating a directory
@@ -45,4 +45,4 @@ def run_tests():
 
 
 if __name__ == "__main__":
-    run_tests()
+    asyncio.run(run_tests())
