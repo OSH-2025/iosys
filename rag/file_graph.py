@@ -157,7 +157,7 @@ class IOSYSGraphEngine:
     async def delete_directory(self, path: str):
         # raise NotImplementedError("Delete directory is not implemented yet.")
         try:
-            self.delete_llama_nodes(node_ids=[path])
+            self.graph_store.delete_llama_nodes(node_ids=[path])
             # await self.connect_event(path, "deleted")
             self.commit()
         except Exception as e:
