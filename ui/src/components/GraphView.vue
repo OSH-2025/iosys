@@ -106,7 +106,8 @@ function updateChart() {
   } satisfies echarts.EChartsCoreOption;
 
   myChart.setOption(option, true);
-  myChart.resize();
+  // @ts-expect-error
+  window.NOT_FIRST_LOAD && myChart.resize(); window.NOT_FIRST_LOAD = 1;
   myChart.hideLoading();
 };
 
