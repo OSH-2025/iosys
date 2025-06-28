@@ -79,6 +79,13 @@ class IOSYSParser:
         assert description is not None
         return description
 
+    def _get_extension(self, fullname: str):
+        basename = os.path.basename(fullname) 
+        extention = os.path.splitext(basename)[1]
+        if extention == "":
+            return ".txt"  # To make sure it can be parsed as a plain text
+        return extention
+
     def _generate_verbose(self, node: FileSystemNode):
         embedded_files = []  # type: list[EmbeddedFile]
 
@@ -120,8 +127,13 @@ class IOSYSParser:
                 )
             )
 
+            if "png" in content_type:
+                source = "./{0}.png".format(name)
+            else:
+                source = "./{0}.jpg".format(name)
+
             return {
-                "src": "data:{0};base64,{1}".format(content_type, b64_data),
+                "src": source,
                 "alt": description,
             }
 
@@ -130,6 +142,7 @@ class IOSYSParser:
                 node.read_stream(),
                 stream_info=StreamInfo(
                     filename=node.name,
+                    extension=self._get_extension(node.name),
                 ),
                 image_converter=image_converter,
             )
