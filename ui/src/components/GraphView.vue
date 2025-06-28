@@ -106,6 +106,7 @@ function updateChart() {
   } satisfies echarts.EChartsCoreOption;
 
   myChart.setOption(option, true);
+  myChart.resize();
   myChart.hideLoading();
 };
 
@@ -367,7 +368,7 @@ function handleFileInput(event: Event) {
           </button>
         </div>
       </div>
-      <div v-if="previewHtml" v-html="previewHtml" class="border-0 w-full flex-grow my-2 border-t pt-4" />
+      <div v-if="previewHtml" v-html="previewHtml" class="border-0 w-full children:break-words children:text-pretty flex-grow my-2 border-t pt-4 max-h-120 overflow-y-auto" />
 
       <!-- Drag and Drop Upload Area for Directories -->
       <div v-if="focusedNodeType === 'directory'" class="mt-2 mb-2" @dragover="handleDragOver"

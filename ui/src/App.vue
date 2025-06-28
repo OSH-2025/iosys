@@ -2,7 +2,12 @@
   <div class="flex flex-col h-screen bg-white">
     <!-- Title Bar -->
     <header class="bg-white text-black p-3 border-b-2 border-gray-200 flex items-center">
-      <h1 class="text-xl font-normal pl-2 min-w-fit" :style="{ width: (sidebarWidth - 13.5) + 'px' }">IOSYS</h1>
+      <div :style="{ width: (sidebarWidth - 13.5) + 'px' }" flex items-center px-2>
+        <h1 class="text-xl font-normal min-w-fit">IOSYS</h1>
+        <div flex-grow />
+        <button class="i-carbon-add-large text-2xl text-gray-500 hover:text-gray-400 mt-2 mb--1" />
+      </div>
+
 
       <!-- View Switch -->
       <div mb--18px flex gap-3>
