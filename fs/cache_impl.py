@@ -15,7 +15,7 @@ from typing import Optional, List
 
 
 from .osfs_impl import OSFileSystem, OSFileSystemNode
-from .jfs_impl import JuiceFSFileSystem, JuiceFSFileSystemNode
+from .jfs_impl import JuiceFSFileSystem
 from . import IOSYSFileSystem, FileSystemNode
 
 # chunk size for streaming reads
@@ -67,7 +67,7 @@ class CacheFileSystem(IOSYSFileSystem):
 
         # 远端是文件：把文件内容拉回本地
         with backend_node.read_stream() as src:
-            self.cache_fs.write_file(path, src.read())   # OSFS 自带 mkdir -p
+            self.cache_fs.write_file(path, src.read())  # OSFS 自带 mkdir -p
 
         # 把远端的 metadata 复制到本地副本
         local_node = self.cache_fs.get_node(path)
@@ -107,7 +107,9 @@ class CacheFileSystemNode(FileSystemNode):
         if not (c and b):
             return
         # 谁的 modified_at 大，谁覆盖谁
-        if float(c._meta.get("modified_at", 0) or 0) >= float(b._meta.get("modified_at", 0) or 0):
+        if float(c._meta.get("modified_at", 0) or 0) >= float(
+            b._meta.get("modified_at", 0) or 0
+        ):
             self._copy_meta(c, b)
         else:
             self._copy_meta(b, c)
@@ -182,7 +184,9 @@ class CacheFileSystemNode(FileSystemNode):
     def write(self, content: bytes):
         # 0) 先确保两端节点真实存在
         cache_node = self._cache_node or self.fs.cache_fs.write_file(self.path, b"")
-        backend_node = self._backend_node or self.fs.backend_fs.write_file(self.path, b"")
+        backend_node = self._backend_node or self.fs.backend_fs.write_file(
+            self.path, b""
+        )
 
         # 1) 写缓存
         cache_node.write(content)
@@ -251,7 +255,9 @@ class CacheFileSystemNode(FileSystemNode):
         # 2) 在远端创建
         backend_node = self._backend_node
         if backend_node is None:
-            raise FileNotFoundError(f"Parent directory {self.path} not found in backend")
+            raise FileNotFoundError(
+                f"Parent directory {self.path} not found in backend"
+            )
         backend_node.create_child(name)
         return CacheFileSystemNode(self.fs, child_path)
 
