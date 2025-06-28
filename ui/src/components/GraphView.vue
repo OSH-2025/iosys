@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue';
-import * as echarts from 'echarts';
-import { graphNodes, graphEdges, echartsCategories } from '../graph';
 import { useEventListener } from '@vueuse/core';
-import { previewFile, status } from '../states'
+import * as echarts from 'echarts';
+import { computed, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue';
 import { usePreviewHtml } from '../composables/usePreviewHtml';
-import KnowledgeGraph from './KnowledgeGraph.vue'
+import { echartsCategories, graphEdges, graphNodes } from '../graph';
 import apis from '../rpc';
+import { status } from '../states';
+import KnowledgeGraph from './KnowledgeGraph.vue';
 
 const container = ref<HTMLDivElement | null>(null);
 let myChart: echarts.ECharts | null = null;
@@ -39,6 +39,10 @@ watch([
   focusedNodeKgStatusOriginal,
   focusedNodeId,
 ], () => focusedNodeKgStatus.value = focusedNodeKgStatusOriginal.value);
+
+// Drag and drop state
+const dragOver = ref(false);
+const uploading = ref(false);
 
 function updateChart() {
   if (!myChart) return;
@@ -265,6 +269,73 @@ async function kgAction() {
     await apis.kgSpawn({ path: id });
   }
 }
+
+// Drag and drop handlers
+function handleDragOver(event: DragEvent) {
+  event.preventDefault();
+  event.stopPropagation();
+  dragOver.value = true;
+}
+
+function handleDragLeave(event: DragEvent) {
+  event.preventDefault();
+  event.stopPropagation();
+  dragOver.value = false;
+}
+
+function handleDrop(event: DragEvent) {
+  event.preventDefault();
+  event.stopPropagation();
+  dragOver.value = false;
+
+  const files = event.dataTransfer?.files;
+  if (!files || files.length === 0 || !focusedNodeId.value) return;
+
+  uploadFiles(Array.from(files));
+}
+
+async function uploadFiles(files: File[]) {
+  if (!focusedNodeId.value) return;
+
+  uploading.value = true;
+
+  try {
+    const formData = new FormData();
+    
+    // Add all files to the same FormData
+    files.forEach(file => {
+      formData.append('files', file);
+    });
+    
+    // Add the directory path
+    formData.append('path', focusedNodeId.value);
+
+    // Upload all files in a single request
+    const response = await fetch(`${import.meta.env.VITE_API_SERVER_URL}/fs/upload`, {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Upload failed: ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log(`Successfully uploaded ${result.total_files} file(s)`);
+  } catch (error) {
+    console.error('Upload failed:', error);
+  } finally {
+    uploading.value = false;
+  }
+}
+
+function handleFileInput(event: Event) {
+  const input = event.target as HTMLInputElement;
+  if (input.files) {
+    uploadFiles(Array.from(input.files));
+  }
+}
 </script>
 
 <template>
@@ -292,6 +363,36 @@ async function kgAction() {
         </div>
       </div>
       <div v-if="previewHtml" v-html="previewHtml" class="border-0 w-full flex-grow my-2 border-t pt-4" />
+
+      <!-- Drag and Drop Upload Area for Directories -->
+      <div v-if="focusedNodeType === 'directory'" class="mt-2 mb-2" @dragover="handleDragOver"
+        @dragleave="handleDragLeave" @drop="handleDrop">
+        <div class="border-1 rounded-lg p-6 text-center transition-all duration-200 cursor-pointer"
+          :class="{
+            'border-blue-300 bg-blue-50': dragOver,
+            'border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100': !dragOver && !uploading,
+            'border-orange-300 bg-orange-50': uploading
+          }">
+          <div class="flex flex-col items-center gap-2">
+            <div v-if="uploading" class="i-mdi-loading w-6 h-6 text-orange-500 animate-spin"></div>
+            <div v-else-if="dragOver" class="i-carbon-cloud-upload w-6 h-6 text-blue-500"></div>
+            <div v-else class="i-carbon-document-add w-6 h-6 text-gray-400"></div>
+
+            <label for="file-upload" class="text-sm">
+              <div v-if="uploading" class="text-orange-600 font-medium">Uploading files...</div>
+              <div v-else-if="dragOver" class="text-blue-600 font-medium">Drop files here</div>
+              <div v-else>
+                <div class="text-gray-600 font-medium">Drag files here to upload</div>
+                <div class="text-xs text-gray-500 mt-1">
+                  or click to browse
+                </div>
+              </div>
+            </label>
+          </div>
+          <input id="file-upload" type="file" multiple class="hidden" @change="handleFileInput" />
+        </div>
+      </div>
+
       <div>
         <button
           class="w-full px-3 py-2 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors mt-2 relative"
