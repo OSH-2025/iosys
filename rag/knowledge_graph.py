@@ -5,7 +5,6 @@ import re  # For basic text cleaning (regular expressions)
 import jieba
 from openai import OpenAI
 from typing import Optional, TypedDict, Union
-from multiprocessing.pool import Pool
 
 from fs import CHANGE_TYPE, FileSystemNode, IOSYSFileSystem
 from utils.logger import IOSYSLogger
@@ -122,7 +121,7 @@ class IOSYSKnowledgeGraph:
 
             for dir_node in dir_nodes:
                 self.tasks[dir_node.path] = True  # Mark directories as done
-            
+
             # pool.close()
             # pool.join()
 
