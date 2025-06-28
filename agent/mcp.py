@@ -1,15 +1,26 @@
 # Credit: https://github.com/langchain-ai/langchain-mcp-adapters/
 
+import json
+import os
+from contextlib import AsyncExitStack
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Callable, Awaitable
-from contextlib import AsyncExitStack
+
+from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
+from mcp import ClientSession, StdioServerParameters
 from mcp.client.streamable_http import streamablehttp_client, SessionMessage
 from mcp.client.stdio import stdio_client
-from mcp import ClientSession, StdioServerParameters
-from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
-from mcp.types import Tool, CallToolResult, ImageContent, TextContent, EmbeddedResource
+from mcp.types import (
+    Tool,
+    CallToolResult,
+    ImageContent,
+    TextContent,
+    EmbeddedResource,
+    AudioContent,
+    ResourceLink,
+)
 
-NonTextContent = ImageContent | EmbeddedResource
+NonTextContent = ImageContent | AudioContent | ResourceLink | EmbeddedResource
 MAX_ITERATIONS = 1000
 
 
@@ -41,6 +52,40 @@ class MCPClient:
         self.servers: Dict[str, ServerInfo] = {}
         self.sessions: Dict[str, SessionInfo] = {}  # session_id -> SessionInfo
         self._session_counter: int = 0
+        self.config_file_path = os.environ.get(
+            "MCP_CONFIG_FILE", "./data/mcp_config.json"
+        )
+
+    def _load_config_from_file(self) -> Dict[str, Any]:
+        """Load configuration from file"""
+        if not self.config_file_path or not os.path.exists(self.config_file_path):
+            return {}
+
+        try:
+            with open(self.config_file_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError) as e:
+            print(f"Error loading MCP config from {self.config_file_path}: {e}")
+            return {}
+
+    def _save_config_to_file(self, config: Dict[str, Any]) -> None:
+        """Save configuration to file"""
+        if not self.config_file_path:
+            return
+
+        try:
+            # Ensure directory exists
+            os.makedirs(os.path.dirname(self.config_file_path), exist_ok=True)
+
+            with open(self.config_file_path, "w", encoding="utf-8") as f:
+                json.dump(config, f, indent=2, ensure_ascii=False)
+        except IOError as e:
+            print(f"Error saving MCP config to {self.config_file_path}: {e}")
+            raise
+
+    def get_config(self) -> Dict[str, Any]:
+        """Get current configuration"""
+        return self._load_config_from_file()
 
     async def start_session(
         self,
@@ -214,6 +259,9 @@ class MCPClient:
             }
         }
         """
+        # Save config to file first
+        self._save_config_to_file(config)
+
         mcp_servers = config.get("mcpServers", {})
 
         # Track which servers should remain

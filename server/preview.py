@@ -30,7 +30,7 @@ def render_preview_html(fs: IOSYSFileSystem, path: str):
     elif mine_type.startswith("audio/"):
         return render_audio(path)
     else:
-        return f"<p>Preview not available for {path}</p>"
+        return """<p style="color: gray; font-style: italic;">(Not available)</p>"""
 
 
 def render_image(path: str):

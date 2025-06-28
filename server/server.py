@@ -1,5 +1,5 @@
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from openai import OpenAI, AsyncOpenAI
@@ -20,6 +20,7 @@ from .preview import render_preview_html
 load_dotenv()
 
 MODEL = os.environ["LLM_MODEL_NAME"]
+
 llm = OpenAI(
     base_url=os.environ["LLM_BASE_URL"],
     api_key=os.environ["LLM_API_KEY"],
@@ -149,9 +150,16 @@ class MCPServerRequest(BaseModel):
     config: dict
 
 
-@app.post("/mcp")
+@app.post("/mcp/sync")
 async def sync_mcp_server(request: MCPServerRequest):
     await agent.mcp.sync_config(request.config)
+
+
+@app.get("/mcp/config")
+@app.post("/mcp/config")
+async def get_mcp_config():
+    """Get current MCP configuration"""
+    return agent.mcp.get_config()
 
 
 @app.post("/logs")
@@ -193,3 +201,39 @@ async def fs_delete_endpoint(request: FsDeleteRequest):
     if not node:
         raise HTTPException(status_code=404, detail="Node not found")
     node.remove()
+
+
+@app.post("/fs/upload")
+async def fs_upload_endpoint(
+    files: list[UploadFile] = File(...), path: str = Form(...)
+):
+    try:
+        uploaded_files = []
+
+        for file in files:
+            # Read file content
+            content = await file.read()
+
+            # Construct the full file path by combining directory path with filename
+            file_path = f"{path.rstrip('/')}/{file.filename}"
+
+            if fs.get_node(file_path) is not None:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"File {file.filename} already exists at {file_path}",
+                )
+
+            # Create the file node at the specified path
+            fs.write_file(file_path, content)
+
+            uploaded_files.append(
+                {"filename": file.filename, "path": file_path, "size": len(content)}
+            )
+
+        return {
+            "success": True,
+            "uploaded_files": uploaded_files,
+            "total_files": len(uploaded_files),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")

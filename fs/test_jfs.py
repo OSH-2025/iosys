@@ -1,5 +1,5 @@
 import asyncio
-from fs import new_fs, FileSystemNode
+from . import new_fs, FileSystemNode
 
 
 def main():

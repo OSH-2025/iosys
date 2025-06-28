@@ -35,22 +35,12 @@ class CacheFileSystem(IOSYSFileSystem):
         self.cache_fs = cache_fs  # 本地缓存
         self.backend_fs = backend_fs  # 远端存储
 
-    # ------------ 基础工具 ------------
-    @staticmethod
-    def _norm(path: str) -> str:
-        """标准化：以 / 开头，去掉多余尾斜杠（根目录除外）"""
-        if not path.startswith("/"):
-            path = "/" + path
-        if path != "/" and path.endswith("/"):
-            path = path.rstrip("/")
-        return path
-
     # ------------ IOSYSFileSystem API ------------
     def is_running(self) -> bool:
         return self.cache_fs.is_running() and self.backend_fs.is_running()
 
     def get_node(self, path: str) -> Optional["CacheFileSystemNode"]:
-        path = self._norm(path)
+        path = self.normalize_path(path)  # 确保路径标准化
 
         # 已在本地缓存 → 直接返回
         if self.cache_fs.get_node(path):
@@ -215,7 +205,7 @@ class CacheFileSystemNode(FileSystemNode):
         self.fs.fire_event("delete", self)
 
     def move_to(self, target_path: str):
-        target_path = self.fs._norm(target_path)
+        target_path = self.fs.normalize_path(target_path)
         # 后端
         backend_node = self._backend_node
         if backend_node:
@@ -246,7 +236,7 @@ class CacheFileSystemNode(FileSystemNode):
         """
         创建子节点，先在缓存中创建，再在远端创建。
         """
-        child_path = self.fs._norm(os.path.join(self.path, name))
+        child_path = self.fs.normalize_path(os.path.join(self.path, name))
         # 1) 在缓存中创建
         cache_node = self._cache_node
         if cache_node is None:
