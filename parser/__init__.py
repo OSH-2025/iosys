@@ -80,7 +80,7 @@ class IOSYSParser:
         return description
 
     def _get_extension(self, fullname: str):
-        basename = os.path.basename(fullname) 
+        basename = os.path.basename(fullname)
         extention = os.path.splitext(basename)[1]
         if extention == "":
             return ".txt"  # To make sure it can be parsed as a plain text
