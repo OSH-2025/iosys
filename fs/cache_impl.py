@@ -11,7 +11,6 @@ import os
 import time
 import threading
 import tempfile
-from contextlib import contextmanager
 from typing import Optional, List
 
 
@@ -67,9 +66,13 @@ class CacheFileSystem(IOSYSFileSystem):
             return CacheFileSystemNode(self, path)
 
         # 远端是文件：把文件内容拉回本地
-        data = backend_node.read()  # 读远端文件
-        # 让 OSFS 自己确保父目录存在并写入；不会多余地建目录
-        self.cache_fs.write_file(path, data)  # OSFS 内部 already handles makedirs
+        with backend_node.read_stream() as src:
+            self.cache_fs.write_file(path, src.read())   # OSFS 自带 mkdir -p
+
+        # 把远端的 metadata 复制到本地副本
+        local_node = self.cache_fs.get_node(path)
+        if local_node:
+            local_node.update_meta(**backend_node._meta)
         return CacheFileSystemNode(self, path)
 
 
@@ -83,57 +86,62 @@ class CacheFileSystemNode(FileSystemNode):
 
     fs: "CacheFileSystem"
 
-    # ---------- 内部委托 ----------
     @property
-    def _cache_node(self) -> FileSystemNode:
-        node = self.fs.cache_fs.get_node(self.path)
-        if node is None:
-            # 如果缓存文件尚未创建，实例化一个占位节点
-            node = OSFileSystemNode(self.fs.cache_fs, self.path)
-        return node
+    def _cache_node(self) -> Optional[FileSystemNode]:
+        return self.fs.cache_fs.get_node(self.path)
 
     @property
-    def _backend_node(self) -> FileSystemNode:
-        node = self.fs.backend_fs.get_node(self.path)
-        # 如果文件尚未创建，实例化一个占位节点
-        if node is None:
-            node = JuiceFSFileSystemNode(self.fs.backend_fs, self.path)
-        return node
+    def _backend_node(self) -> Optional[FileSystemNode]:
+        return self.fs.backend_fs.get_node(self.path)
+
+    def _copy_meta(self, src: FileSystemNode, dst: FileSystemNode):
+        """
+        把 src 的 meta 全量写到 dst，并调用 dst.update_meta
+        避免漏掉自定义键（JuiceFS 里 xattr；OSFS 里 side-car）
+        """
+        dst.update_meta(**src._meta)
+
+    def _sync_meta_two_way(self):
+        """把两端 meta 对齐为 superset，取 '最新版'(modified_at 较大者)"""
+        c, b = self._cache_node, self._backend_node
+        if not (c and b):
+            return
+        # 谁的 modified_at 大，谁覆盖谁
+        if float(c._meta.get("modified_at", 0) or 0) >= float(b._meta.get("modified_at", 0) or 0):
+            self._copy_meta(c, b)
+        else:
+            self._copy_meta(b, c)
 
     # ------------------------------------------------------------
     # 新增一个简单的文件级进程内锁，防止并发读时重复回源
     # ------------------------------------------------------------
     _locks: dict[str, threading.Lock] = {}
 
-    @contextmanager
-    def _file_lock(self, path: str):
-        lock = self._locks.setdefault(path, threading.Lock())
-        lock.acquire()
-        try:
-            yield
-        finally:
-            lock.release()
+    @classmethod
+    def _lock_for(cls, path: str) -> threading.Lock:
+        return cls._locks.setdefault(path, threading.Lock())
 
-    # ------------------------------------------------------------
-    # read_stream —— 缓存有直接读；无缓存则边流式写边返回
-    # ------------------------------------------------------------
     def read_stream(self) -> io.BytesIO:
         """
-        1) 若缓存文件已存在 → 直接 return open(local_path, "rb")
-        2) 若不存在 → 与其他并发线程协商，只让 1 个线程真正回源；
-           2-a) 用远端流按块写入临时文件 (.part)，
-           2-b) 写完后原子 rename → 正式缓存文件，
-           2-c) 再打开缓存文件并 return。
-        整个过程对调用方透明，且不会把全文件载入内存。
+        1) 若本地缓存已存在 → 直接返回缓存文件流
+        2) 否则获取文件级锁，确保只由一个线程负责下载：
+           - 从 JuiceFS 以 _CHUNK 大小流式读取到临时 .part 文件
+           - 下载完成后原子 rename 为正式缓存文件
+           - 把远端 metadata 全量复制到本地节点
+        3) 最终再次打开缓存文件并返回其流
         """
-        if self._cache_node:  # 已缓存
-            return self._cache_node.read_stream()
+        # ---------- 1. 快速路径：缓存命中 ----------
+        cache_node = self.fs.cache_fs.get_node(self.path)
+        if cache_node:
+            return cache_node.read_stream()
 
-        # -------- 缓存未命中，进入加锁区，避免并发重复拉取 --------
-        with self._file_lock(self.path):
-            # 第二次进入时可能已有其他线程写好缓存，因此再检查一遍
-            if self.fs.cache_fs.get_node(self.path):
-                return self._cache_node.read_stream()
+        # ---------- 2. 缓存未命中：加锁回源 ----------
+        lock = self._lock_for(self.path)
+        with lock:
+            # 可能其他线程已完成下载；再检查一次
+            cache_node = self.fs.cache_fs.get_node(self.path)
+            if cache_node:
+                return cache_node.read_stream()
 
             backend_node = self.fs.backend_fs.get_node(self.path)
             if backend_node is None:
@@ -141,65 +149,77 @@ class CacheFileSystemNode(FileSystemNode):
             if backend_node._meta.get("type") == "directory":
                 raise IsADirectoryError(self.path)
 
-            # 准备本地目录并创建临时文件
-            # 获取缓存节点的实际文件路径
-            local_path = self._cache_node.get_real_path()
-            local_dir = os.path.dirname(local_path)
-            os.makedirs(local_dir, exist_ok=True)
-            fd, tmp_path = tempfile.mkstemp(dir=local_dir, suffix=".part")
+            # 2-a. 预备缓存目标路径和临时文件
+            real_cache_path = self.fs.cache_fs._get_real_path(self.path)
+            os.makedirs(os.path.dirname(real_cache_path), exist_ok=True)
+            fd, tmp_path = tempfile.mkstemp(
+                dir=os.path.dirname(real_cache_path), suffix=".part"
+            )
             os.close(fd)
 
             try:
-                # --- 流式复制 ---
+                # 2-b. 边读边写到临时文件
                 with backend_node.read_stream() as src, open(tmp_path, "wb") as dst:
                     for chunk in iter(lambda: src.read(_CHUNK), b""):
                         dst.write(chunk)
 
-                # --- 原子 rename 成正式文件名 ---
-                final_path = self.fs.cache_fs.get_real_path(self.path)
-                os.replace(tmp_path, final_path)
+                # 2-c. 原子替换成正式缓存文件
+                os.replace(tmp_path, real_cache_path)
 
-                # 更新本地节点元数据、触发事件
-                self._cache_node.update_meta(
-                    type="file",
-                    size=os.path.getsize(final_path),
-                    modified_at=int(time.time()),
-                )
-                self.fs.fire_event("update", self)
+                # 2-d. 确保 cache_node 对象存在并同步元数据
+                cache_node = self.fs.cache_fs.get_node(self.path)
+                if cache_node is None:
+                    cache_node = OSFileSystemNode(self.fs.cache_fs, self.path)
+                cache_node.update_meta(**backend_node._meta)  # 全量复制 metadata
             finally:
-                # 若发生异常确保临时文件被清理
+                # 异常时清理临时文件
                 if os.path.exists(tmp_path):
                     os.remove(tmp_path)
 
-        # 最终以缓存文件流返回
-        return self._cache_node.read_stream()
+        # ---------- 3. 返回缓存文件流 ----------
+        return cache_node.read_stream()
 
     def write(self, content: bytes):
+        # 0) 先确保两端节点真实存在
+        cache_node = self._cache_node or self.fs.cache_fs.write_file(self.path, b"")
+        backend_node = self._backend_node or self.fs.backend_fs.write_file(self.path, b"")
+
         # 1) 写缓存
-        self._cache_node.write(content)
+        cache_node.write(content)
+
         # 2) 写远端
-        self._backend_node.write(content)
-        # 3) 更新元数据 + 事件
-        self.update_meta(type="file", modified_at=int(time.time()))
+        backend_node.write(content)
+
+        # 3) 同步 metadata（size、modified_at 等），以缓存为准
+        now = int(time.time())
+        cache_node.update_meta(size=len(content), modified_at=now, type="file")
+        backend_node.update_meta(size=len(content), modified_at=now, type="file")
+
+        # 4) 触发事件
+        self.update_meta(**cache_node._meta)  # 把 dict 复制到自己
         self.fs.fire_event("update", self)
 
     # ------- 维护操作 -------
     def remove(self):
         # 先删远端，后删本地
-        if self.fs.backend_fs.get_node(self.path):
-            self._backend_node.remove()
-        if self.fs.cache_fs.get_node(self.path):
-            self._cache_node.remove()
+        backend_node = self._backend_node
+        if backend_node:
+            backend_node.remove()
+        cache_node = self._cache_node
+        if cache_node:
+            cache_node.remove()
         self.fs.fire_event("delete", self)
 
     def move_to(self, target_path: str):
         target_path = self.fs._norm(target_path)
         # 后端
-        if self.fs.backend_fs.get_node(self.path):
-            self._backend_node.move_to(target_path)
+        backend_node = self._backend_node
+        if backend_node:
+            backend_node.move_to(target_path)
         # 缓存
-        if self.fs.cache_fs.get_node(self.path):
-            self._cache_node.move_to(target_path)
+        cache_node = self._cache_node
+        if cache_node:
+            cache_node.move_to(target_path)
         # 更新自身
         self.path = target_path
         self.fs.fire_event("update", self)
@@ -216,7 +236,7 @@ class CacheFileSystemNode(FileSystemNode):
         return [CacheFileSystemNode(self.fs, p) for p in names]
 
     def _sync_metadata(self):
-        return super()._sync_metadata()
+        return self._sync_meta_two_way()
 
     def create_child(self, name: str) -> "CacheFileSystemNode":
         """
@@ -224,14 +244,24 @@ class CacheFileSystemNode(FileSystemNode):
         """
         child_path = self.fs._norm(os.path.join(self.path, name))
         # 1) 在缓存中创建
-        self._cache_node.create_child(name)
+        cache_node = self._cache_node
+        if cache_node is None:
+            raise FileNotFoundError(f"Parent directory {self.path} not found in cache")
+        cache_node.create_child(name)
         # 2) 在远端创建
-        self._backend_node.create_child(name)
+        backend_node = self._backend_node
+        if backend_node is None:
+            raise FileNotFoundError(f"Parent directory {self.path} not found in backend")
+        backend_node.create_child(name)
         return CacheFileSystemNode(self.fs, child_path)
 
     def makedir(self):
-        self._cache_node.makedir()
-        self._backend_node.makedir()
+        parent_path = os.path.dirname(self.path) or "/"
+        parent = self.fs.get_node(parent_path)
+        if not parent:
+            raise FileNotFoundError(f"Parent directory {parent_path} not found")
+        # use create_child to make a new directory in both cache and backend
+        return parent.create_child(os.path.basename(self.path))
 
     def parent(self) -> Optional["CacheFileSystemNode"]:
         parent_path = os.path.dirname(self.path) or "/"
