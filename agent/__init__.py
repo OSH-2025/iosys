@@ -25,29 +25,42 @@ class IOSYSAgent:
         self.config = config
         self.file_agent = FileAgent(config=self.config)
         self.mcp = MCPClient()
-        self.history: list[ChatCompletionMessageParam] = [
-            {
-                "role": "system",
-                "content": "你是一个文件管理助手，可以帮助用户进行各种文件操作。根据用户的需求，选择合适的工具来完成任务。如果用户的要求比较复杂, 你需要将任务拆分成多个步骤，并使用合适的工具来完成每个步骤。",
-            },
-        ]
+        self.sessions: Dict[str, list[ChatCompletionMessageParam]] = {}
 
-    async def process_command(self, user_input: str) -> Dict[str, Any]:
+    def _get_or_create_session(
+        self, session_id: str
+    ) -> list[ChatCompletionMessageParam]:
+        """获取或创建会话历史"""
+        if session_id not in self.sessions:
+            self.sessions[session_id] = [
+                {
+                    "role": "system",
+                    "content": "你是一个文件管理助手，可以帮助用户进行各种文件操作。根据用户的需求，选择合适的工具来完成任务。如果用户的要求比较复杂, 你需要将任务拆分成多个步骤，并使用合适的工具来完成每个步骤。",
+                },
+            ]
+        return self.sessions[session_id]
+
+    async def process_command(self, user_input: str, session_id: str) -> Dict[str, Any]:
         """
         处理用户命令
 
         Args:
             user_input: 用户的自然语言输入
+            session_id: 会话ID
 
         Returns:
             Dict: 处理结果
         """
-        self.logger.info(f"接收到用户输入: {user_input}")
-        result = await self._process(user_input)
-        self.logger.info(f"处理结果: {json.dumps(result, ensure_ascii=False)}")
+        self.logger.info(f"接收到用户输入 (会话 {session_id}): {user_input}")
+        result = await self._process(user_input, session_id)
+        self.logger.info(
+            f"处理结果 (会话 {session_id}): {json.dumps(result, ensure_ascii=False)}"
+        )
         return dict(result)
 
-    async def _process(self, user_input: str) -> ToolCallResult:
+    async def _process(self, user_input: str, session_id: str) -> ToolCallResult:
+        history = self._get_or_create_session(session_id)
+
         # 收集工具配置和处理函数
         session_id, mcp_tool_configs, mcp_tool_handlers = await self.mcp.start_session()
         try:
@@ -57,7 +70,7 @@ class IOSYSAgent:
                 **mcp_tool_handlers,
             }
 
-            self.history.append({"role": "user", "content": user_input})
+            history.append({"role": "user", "content": user_input})
 
             final_message = ""
             final_data = {}
@@ -68,7 +81,7 @@ class IOSYSAgent:
             while True:
                 response = self.config.llm.chat.completions.create(
                     model=self.config.llm_model,
-                    messages=self.history,
+                    messages=history,
                     tools=tool_configs,  # type: ignore
                     tool_choice="auto",
                 )
@@ -79,7 +92,7 @@ class IOSYSAgent:
                 )
                 message = message.strip() if message else ""
 
-                self.history.append(
+                history.append(
                     {
                         "role": "assistant",
                         "content": message,
@@ -147,7 +160,7 @@ class IOSYSAgent:
                                         )
 
                                     # 将工具调用结果添加到历史记录
-                                    self.history.append(
+                                    history.append(
                                         {
                                             "role": "tool",
                                             "tool_call_id": tool_call.id,
@@ -178,7 +191,7 @@ class IOSYSAgent:
                                         "status": "error",
                                         "message": error_msg,
                                     }
-                                    self.history.append(
+                                    history.append(
                                         {
                                             "role": "tool",
                                             "tool_call_id": tool_call.id,
@@ -203,7 +216,7 @@ class IOSYSAgent:
                                     f"[{i + 1}] {function_name}: {error_msg}"
                                 )
                                 error_result = {"status": "error", "message": error_msg}
-                                self.history.append(
+                                history.append(
                                     {
                                         "role": "tool",
                                         "tool_call_id": tool_call.id,

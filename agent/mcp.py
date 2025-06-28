@@ -6,6 +6,7 @@ import asyncio
 from contextlib import AsyncExitStack
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Callable, Awaitable
+import copy
 
 from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
 from mcp import ClientSession, StdioServerParameters
@@ -62,6 +63,40 @@ class MCPClient:
         self._shutdown_lock = asyncio.Lock()
         self._load_config_from_file()
 
+        # Schedule delayed sync operation
+        self._schedule_delayed_sync()
+
+    def _schedule_delayed_sync(self) -> None:
+        """Schedule a delayed sync operation"""
+        try:
+            # Get the current event loop or create a new one
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If loop is running, schedule the task
+                loop.create_task(self._delayed_sync())
+            else:
+                # If no loop is running, create a task that will run when loop starts
+                asyncio.create_task(self._delayed_sync())
+        except RuntimeError:
+            # No event loop in current thread, will need to be called manually
+            logger.warning(
+                "No event loop available for delayed sync. Call sync_config manually."
+            )
+
+    async def _delayed_sync(self) -> None:
+        """Perform delayed sync operation"""
+        try:
+            # Wait a short delay to allow initialization to complete
+            await asyncio.sleep(0.1)
+
+            # Load current config and sync
+            config = self._load_config_from_file()
+            if config:
+                await self.sync_config(config)
+                logger.info("Initial sync completed successfully")
+        except Exception as e:
+            logger.error(f"Error during delayed sync: {e}")
+
     def _load_config_from_file(self) -> Dict[str, Any]:
         """Load configuration from file"""
         if not self.config_file_path or not os.path.exists(self.config_file_path):
@@ -69,7 +104,11 @@ class MCPClient:
 
         try:
             with open(self.config_file_path, "r", encoding="utf-8") as f:
-                return json.load(f)
+                d = json.load(f)
+                logger.info(
+                    f"Loaded MCP config from {self.config_file_path} with {len(d.get('mcpServers', {}))} servers"
+                )
+                return d
         except (json.JSONDecodeError, IOError) as e:
             print(f"Error loading MCP config from {self.config_file_path}: {e}")
             return {}
@@ -497,10 +536,42 @@ def _convert_call_tool_result(
     }
 
 
+def _repair_array_schemas(schema: Dict[str, Any]) -> None:
+    """
+    Recursively traverse schema dict, and for any 'type: "array"' without 'items',
+    add items: {}.
+    """
+    if not isinstance(schema, dict):
+        return
+    if schema.get("type") == "array" and "items" not in schema:
+        schema["items"] = {}
+    # 修复 properties、definitions、patternProperties 下的所有子 schema
+    for key in ("properties", "definitions", "patternProperties"):
+        subs = schema.get(key)
+        if isinstance(subs, dict):
+            for subschema in subs.values():
+                _repair_array_schemas(subschema)
+    # 修复 anyOf/oneOf/allOf
+    for key in ("anyOf", "oneOf", "allOf"):
+        subs = schema.get(key)
+        if isinstance(subs, list):
+            for subschema in subs:
+                _repair_array_schemas(subschema)
+    # 继续修复 items 下的 schema
+    items = schema.get("items")
+    if isinstance(items, dict):
+        _repair_array_schemas(items)
+
+
 def convert_mcp_tool(
     session: ClientSession,
     tool: Tool,
 ) -> McpTool:
+    # 先深拷贝一份原始的 inputSchema
+    raw_schema = tool.inputSchema or {}
+    repaired_schema = copy.deepcopy(raw_schema)
+    _repair_array_schemas(repaired_schema)
+
     async def call_tool(
         params: Dict[str, Any],
     ):
@@ -511,7 +582,7 @@ def convert_mcp_tool(
     return McpTool(
         name=tool.name,
         description=tool.description or "",
-        input_schema=tool.inputSchema,
+        input_schema=repaired_schema,
         annotations=tool.annotations.model_dump() if tool.annotations else None,
         handler=call_tool,
     )

@@ -106,6 +106,8 @@ function updateChart() {
   } satisfies echarts.EChartsCoreOption;
 
   myChart.setOption(option, true);
+  // @ts-expect-error
+  window.NOT_FIRST_LOAD && myChart.resize(); window.NOT_FIRST_LOAD = 1;
   myChart.hideLoading();
 };
 
@@ -140,11 +142,14 @@ function handleNodeClick(params: any) {
   contextMenu.value.visible = false;
 
   if (!myChart) return;
-  if (!params.data) {
+  
+  // If no params or no data, it means clicked on empty area
+  if (!params || !params.data || params.dataType !== 'node') {
     // Clicked on empty area, clear focus
     focusedNodeId.value = null;
+    focusedNodeType.value = null;
     updateNodeFocus(null);
-    contextMenu.value.visible = false;
+    return;
   }
 
   if (params.dataType === 'node') {
@@ -230,6 +235,17 @@ onMounted(() => {
 
     myChart.on('click', handleNodeClick);
     myChart.on('contextmenu', handleContextMenu);
+
+    // Add click listener to handle empty area clicks
+    myChart.getZr().on('click', (event: any) => {
+      // If the click target is not a graph element, clear focus
+      if (!event.target) {
+        contextMenu.value.visible = false;
+        focusedNodeId.value = null;
+        focusedNodeType.value = null;
+        updateNodeFocus(null);
+      }
+    });
 
     useEventListener(window, 'resize', () => {
       if (myChart) {
@@ -367,7 +383,7 @@ function handleFileInput(event: Event) {
           </button>
         </div>
       </div>
-      <div v-if="previewHtml" v-html="previewHtml" class="border-0 w-full flex-grow my-2 border-t pt-4" />
+      <div v-if="previewHtml" v-html="previewHtml" class="border-0 w-full children:break-words children:text-pretty flex-grow my-2 border-t pt-4 max-h-120 overflow-y-auto" />
 
       <!-- Drag and Drop Upload Area for Directories -->
       <div v-if="focusedNodeType === 'directory'" class="mt-2 mb-2" @dragover="handleDragOver"

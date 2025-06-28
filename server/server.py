@@ -62,57 +62,15 @@ async def status_endpoint():
     }
 
 
-class ChatRequest(BaseModel):
-    input: str
-
-
-@app.post("/chat")
-async def chat_endpoint(request: ChatRequest):
-    # Use OpenAI SDK to get a response
-    completion = llm.chat.completions.create(
-        extra_body={},
-        model=MODEL,
-        messages=[
-            {
-                "role": "developer",
-                "content": "Talk like a pirate.",
-            },
-            {
-                "role": "user",
-                "content": request.input,
-            },
-        ],
-    )
-    return {"response": completion.choices[0].message.content}
-
-
 class AgentRequest(BaseModel):
     command: str
+    session_id: str
 
 
-@app.post("/agent")
-async def agent_endpoint(request: AgentRequest):
+@app.post("/agent/run")
+async def agent_run_endpoint(request: AgentRequest):
     """Process natural language file management commands"""
-    return await agent.process_command(request.command)
-
-
-@app.get("/files")
-@app.post("/files")
-async def list_files(request: dict | None, id: str = ""):
-    """List files and directories in the agent's managed directory"""
-    # Handle both GET and POST requests
-    if request and "id" in request:
-        id = request["id"] or ""
-
-    node = fs.get_node(id)
-    if not node:
-        raise HTTPException(status_code=404, detail="Directory not found")
-
-    items = []
-    for item in node.children():
-        items.append(item.to_dict())
-
-    return {"items": sorted(items, key=lambda x: (x["type"] == "file", x["name"]))}
+    return await agent.process_command(request.command, request.session_id)
 
 
 @app.get("/graph")
