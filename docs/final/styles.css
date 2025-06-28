@@ -1,6 +1,7 @@
 .sect {
   color: #5d8392;
   --uno: text-2xl;
+  margin-top: -2px !important;
 }
 
 .slidev-layout h1 + p  {

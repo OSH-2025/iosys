@@ -29,7 +29,7 @@ if __name__ == "__main__":
 
     processes = [
         multiprocessing.Process(target=start_main_server),
-        multiprocessing.Process(target=start_a2a_server),
+        # multiprocessing.Process(target=start_a2a_server),
     ]
     for process in processes:
         process.start()

@@ -62,7 +62,7 @@ class: bg-black bg-op-10
 
 ## 真正的意义是什么？
 
-为什么这些 LLM+FS 系统，都没有流行起来？
+为什么这些 LLM+FS 系统，都（还）没有流行起来？
 
 <div flex justify-center items-center mt-6>
 我们真的那么需要
@@ -124,18 +124,18 @@ What{.sect}
 
 ---
 
-What{.sect}
+What{.sect.mt--2!}
 
 ### The Additional Capability
 
 <div text-3xl mt-2 underlined mb-1> Agent2Agent Protocol (A2A) </div>
 <div italic text-4 op-80>(Proposed by Google, 2025.4.9)</div>
 
-<img v-drag="[55,187,336,NaN]" src="https://a2aproject.github.io/A2A/latest/assets/a2a-mcp-readme.png" />
+<img v-drag="[55,163,369,NaN]" src="https://a2aproject.github.io/A2A/latest/assets/a2a-mcp-readme.png" />
 
 <div fixed inset-2 border="yellow 4 rounded-4" />
 
-<div v-drag="[454,238,308,NaN]" border="1.5 black op-70 rounded-xl" px-2 py-1>
+<div v-drag="[458,179,308,NaN]" border="1.5 black op-70 rounded-xl" px-2 py-1>
 
 ### A2A or MCP? {.mb-2.text-primary}
 
@@ -147,11 +147,10 @@ What{.sect}
 
 ---
 
-What{.sect}
+<img fixed h-full top-0 src="./arch.svg" />
 
-## 总体架构
+---
 
-![arch](/../assets/arch.svg){.w-100.ml--3}
 
 ---
 
@@ -203,8 +202,8 @@ How{.sect}
 graph LR;
 A[PDF] -----> E((markitdown))
 B[Word] -----> E
-C[PPT] -----> E
 D[Excel] -----> E
+X[...] -----> E
 E ----> F[Markdown] ----> G((LLM))
 ```
 
@@ -252,22 +251,6 @@ JuiceFS {.text-3xl.underlined.mb-4}
 <div italic op-80 mt-8>
 Not new but it works!
 </div>
-
----
-class: mt--4
----
-
-Recap{.sect}
-
-## 我们的架构图 <span text-lg italic op-80> Work in Progress... </span>
-
-![arch](/../assets/arch.svg){.w-120.ml--4.mt--4}
-
-<div v-drag="[530,139,40,NaN]" h-20 i-vscode-icons-file-type-typescript-official />
-
-<div v-drag="[530,230,40,NaN]" h-20 i-vscode-icons-file-type-python />
-
-<div v-drag="[530,324,40,NaN]" h-20 i-vscode-icons-file-type-python />
 
 ---
 layout: end
