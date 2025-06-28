@@ -79,7 +79,9 @@ class MCPClient:
                 asyncio.create_task(self._delayed_sync())
         except RuntimeError:
             # No event loop in current thread, will need to be called manually
-            logger.warning("No event loop available for delayed sync. Call sync_config manually.")
+            logger.warning(
+                "No event loop available for delayed sync. Call sync_config manually."
+            )
 
     async def _delayed_sync(self) -> None:
         """Perform delayed sync operation"""
@@ -103,7 +105,9 @@ class MCPClient:
         try:
             with open(self.config_file_path, "r", encoding="utf-8") as f:
                 d = json.load(f)
-                logger.info(f"Loaded MCP config from {self.config_file_path} with {len(d.get('mcpServers', {}))} servers")
+                logger.info(
+                    f"Loaded MCP config from {self.config_file_path} with {len(d.get('mcpServers', {}))} servers"
+                )
                 return d
         except (json.JSONDecodeError, IOError) as e:
             print(f"Error loading MCP config from {self.config_file_path}: {e}")
