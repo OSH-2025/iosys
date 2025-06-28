@@ -27,9 +27,8 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { useLocalStorage } from '@vueuse/core';
 import rpc from '../rpc';
-import { messages, refreshStatus } from '../states';
+import { currentSessionId, messages, refreshStatus } from '../states';
 
 const inputText = ref('');
 const chatMode = ref('agent'); // useLocalStorage<'chat' | 'agent'>('iosys.mode', 'chat');
@@ -45,26 +44,25 @@ const handleSubmit = async () => {
   );
 
   try {
-    if (chatMode.value === 'chat') {
-      const { response } = await rpc.chat({ input });
-      messages.pop();
-      messages.push({ content: response, fromUser: false });
-    } else {
-      const result = await rpc.agent({ command: input });
-      messages.pop();
+    // if (chatMode.value === 'chat') {
+    //   const { response } = await rpc.chat({ input });
+    //   messages.pop();
+    //   messages.push({ content: response, fromUser: false });
+    // } else {
+    const result = await rpc.agent({ command: input, session_id: currentSessionId.value });
+    messages.pop();
 
-      let responseText = '';
-      if (result.status === 'success') {
-        responseText = `✅ ${result.message || 'Command executed successfully'}`;
-        if (result.data) {
-          responseText += `\n\nResult:\n\n<pre>\n${JSON.stringify(result.data, null, 2)}\n</pre>`;
-        }
-      } else {
-        responseText = `❌ ${result.message || 'Command failed'}`;
+    let responseText = '';
+    if (result.status === 'success') {
+      responseText = `✅ ${result.message || 'Command executed successfully'}`;
+      if (result.data) {
+        responseText += `\n\nResult:\n\n<pre>\n${JSON.stringify(result.data, null, 2)}\n</pre>`;
       }
-
-      messages.push({ content: responseText, fromUser: false });
+    } else {
+      responseText = `❌ ${result.message || 'Command failed'}`;
     }
+
+    messages.push({ content: responseText, fromUser: false });
     setTimeout(refreshStatus, 100);
   } catch (e) {
     inputText.value ||= input;

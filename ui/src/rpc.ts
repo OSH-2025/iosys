@@ -28,8 +28,7 @@ interface Status {
 const apis = {
   status: defineApi<{}, Status>("/status"),
   preview: defineApi<{ path: string }, string>("/preview"),
-  agent: defineApi<{ command: string }, { status: string, message?: string, data: any }>("/agent/run", true),
-  newHistory: defineApi<{ }, { }>("/agent/new", true),
+  agent: defineApi<{ command: string, session_id: string }, { status: string, message?: string, data: any }>("/agent/run", true),
   graph: defineApi<{}, RawGraph>("/graph"),
   mcpSync: defineApi<{ config: Record<string, any> }, {}>("/mcp/sync", true),
   mcpGetConfig: defineApi<{}, Record<string, any>>("/mcp/config"),

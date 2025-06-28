@@ -6,12 +6,9 @@ interface Message {
   content: string;
 }
 
-export const messages = reactive<Message[]>([
-  {
-    fromUser: false,
-    content: "### Hello!\nHow can I assist you today?",
-  },
-]);
+export const messages = reactive<Message[]>([]);
+export const currentSessionId = ref<string>("");
+resetMessages();
 
 export function resetMessages() {
   messages.length = 0;
@@ -19,6 +16,7 @@ export function resetMessages() {
     fromUser: false,
     content: "### Hello!\nHow can I assist you today?",
   });
+  currentSessionId.value = Date.now().toString();
 }
 
 export const errorMessage = ref<string | null>(null);

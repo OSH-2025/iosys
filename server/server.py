@@ -64,17 +64,13 @@ async def status_endpoint():
 
 class AgentRequest(BaseModel):
     command: str
+    session_id: str
 
 
 @app.post("/agent/run")
 async def agent_run_endpoint(request: AgentRequest):
     """Process natural language file management commands"""
-    return await agent.process_command(request.command)
-
-
-@app.post("/agent/new")
-async def agent_new_endpoint():
-    agent.history.clear()
+    return await agent.process_command(request.command, request.session_id)
 
 
 @app.get("/graph")
