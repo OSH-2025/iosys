@@ -1,6 +1,7 @@
 # test_cache.py
 from fs import new_fs
 
+
 def run_tests():
     fs = new_fs()
 
@@ -41,6 +42,7 @@ def run_tests():
     print("Directory removal test passed.")
 
     print("All tests passed.")
+
 
 if __name__ == "__main__":
     run_tests()
