@@ -10,7 +10,15 @@ from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStre
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.streamable_http import streamablehttp_client, SessionMessage
 from mcp.client.stdio import stdio_client
-from mcp.types import Tool, CallToolResult, ImageContent, TextContent, EmbeddedResource, AudioContent, ResourceLink
+from mcp.types import (
+    Tool,
+    CallToolResult,
+    ImageContent,
+    TextContent,
+    EmbeddedResource,
+    AudioContent,
+    ResourceLink,
+)
 
 NonTextContent = ImageContent | AudioContent | ResourceLink | EmbeddedResource
 MAX_ITERATIONS = 1000
@@ -44,7 +52,9 @@ class MCPClient:
         self.servers: Dict[str, ServerInfo] = {}
         self.sessions: Dict[str, SessionInfo] = {}  # session_id -> SessionInfo
         self._session_counter: int = 0
-        self.config_file_path = os.environ.get("MCP_CONFIG_FILE", "./data/mcp_config.json")
+        self.config_file_path = os.environ.get(
+            "MCP_CONFIG_FILE", "./data/mcp_config.json"
+        )
 
     def _load_config_from_file(self) -> Dict[str, Any]:
         """Load configuration from file"""
@@ -52,7 +62,7 @@ class MCPClient:
             return {}
 
         try:
-            with open(self.config_file_path, 'r', encoding='utf-8') as f:
+            with open(self.config_file_path, "r", encoding="utf-8") as f:
                 return json.load(f)
         except (json.JSONDecodeError, IOError) as e:
             print(f"Error loading MCP config from {self.config_file_path}: {e}")
@@ -67,7 +77,7 @@ class MCPClient:
             # Ensure directory exists
             os.makedirs(os.path.dirname(self.config_file_path), exist_ok=True)
 
-            with open(self.config_file_path, 'w', encoding='utf-8') as f:
+            with open(self.config_file_path, "w", encoding="utf-8") as f:
                 json.dump(config, f, indent=2, ensure_ascii=False)
         except IOError as e:
             print(f"Error saving MCP config to {self.config_file_path}: {e}")
