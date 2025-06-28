@@ -4,6 +4,7 @@ import time
 import json
 import datetime
 from typing import List, Tuple, Optional
+import traceback
 
 from llama_index.core.graph_stores import (
     PropertyGraphStore,
@@ -85,12 +86,31 @@ class IOSYSGraphEngine:
 
     async def delete_file(self, path: str):
         try:
-            self.delete_llama_nodes(node_ids=[path])
+            print("----------------------------------", path)
+            # self.delete_llama_nodes(node_ids=[path])
+            self.delete(ids=[path], entity_names=["file"])
             # await self.connect_event(path, "deleted")
             self.commit()
         except Exception as e:
-            print(f"Error removing file {path}: ", e)
+            print(f"Error removing file {path}:")
+            print(f"  Exception: {type(e).__name__}: {e}")
+            print(f"  Full traceback:")
+            traceback.print_exc()
+
             raise e
+        
+    def delete(
+        self,
+        entity_names: Optional[List[str]] = None,
+        relation_names: Optional[List[str]] = None,
+        properties: Optional[dict] = None,
+        ids: Optional[List[str]] = None,
+    ) -> None:
+        """Delete matching data."""
+        nodes = self.graph_store.get(properties=properties, ids=ids)
+        for node in nodes:
+            self.graph_store.graph.delete_node(node) # type: ignore
+
 
     def delete_llama_nodes(
         self,
