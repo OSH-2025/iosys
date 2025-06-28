@@ -209,8 +209,14 @@ async def fs_upload_endpoint(
             # Construct the full file path by combining directory path with filename
             file_path = f"{path.rstrip('/')}/{file.filename}"
 
+            if fs.get_node(file_path) is not None:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"File {file.filename} already exists at {file_path}",
+                )
+
             # Create the file node at the specified path
-            node = fs.write_file(file_path, content)
+            fs.write_file(file_path, content)
 
             uploaded_files.append(
                 {"filename": file.filename, "path": file_path, "size": len(content)}

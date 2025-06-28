@@ -43,6 +43,7 @@ watch([
 // Drag and drop state
 const dragOver = ref(false);
 const uploading = ref(false);
+const uploadError = ref<string | null>(null);
 
 function updateChart() {
   if (!myChart) return;
@@ -298,6 +299,7 @@ async function uploadFiles(files: File[]) {
   if (!focusedNodeId.value) return;
 
   uploading.value = true;
+  uploadError.value = null; // Clear previous errors
 
   try {
     const formData = new FormData();
@@ -325,6 +327,7 @@ async function uploadFiles(files: File[]) {
     console.log(`Successfully uploaded ${result.total_files} file(s)`);
   } catch (error) {
     console.error('Upload failed:', error);
+    uploadError.value = error instanceof Error ? error.message : 'Upload failed';
   } finally {
     uploading.value = false;
   }
@@ -335,6 +338,8 @@ function handleFileInput(event: Event) {
   if (input.files) {
     uploadFiles(Array.from(input.files));
   }
+  // Clear the input so the same file can be selected again
+  (event.target as HTMLInputElement).value = '';
 }
 </script>
 
@@ -369,17 +374,20 @@ function handleFileInput(event: Event) {
         @dragleave="handleDragLeave" @drop="handleDrop">
         <div class="border-1 rounded-lg p-6 text-center transition-all duration-200 cursor-pointer"
           :class="{
-            'border-blue-300 bg-blue-50': dragOver,
-            'border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100': !dragOver && !uploading,
-            'border-orange-300 bg-orange-50': uploading
+            'border-blue-300 bg-blue-50': dragOver && !uploadError,
+            'border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100': !dragOver && !uploading && !uploadError,
+            'border-orange-300 bg-orange-50': uploading,
+            'border-red-300 bg-red-50': uploadError
           }">
           <div class="flex flex-col items-center gap-2">
             <div v-if="uploading" class="i-mdi-loading w-6 h-6 text-orange-500 animate-spin"></div>
+            <div v-else-if="uploadError" class="i-carbon-warning-filled w-6 h-6 text-red-500"></div>
             <div v-else-if="dragOver" class="i-carbon-cloud-upload w-6 h-6 text-blue-500"></div>
             <div v-else class="i-carbon-document-add w-6 h-6 text-gray-400"></div>
 
             <label for="file-upload" class="text-sm">
               <div v-if="uploading" class="text-orange-600 font-medium">Uploading files...</div>
+              <div v-else-if="uploadError" class="text-red-600 font-medium">Upload failed</div>
               <div v-else-if="dragOver" class="text-blue-600 font-medium">Drop files here</div>
               <div v-else>
                 <div class="text-gray-600 font-medium">Drag files here to upload</div>
@@ -388,6 +396,11 @@ function handleFileInput(event: Event) {
                 </div>
               </div>
             </label>
+            
+            <!-- Error message -->
+            <div v-if="uploadError" class="text-xs text-red-500 mt-1 max-w-full break-words">
+              {{ uploadError }}
+            </div>
           </div>
           <input id="file-upload" type="file" multiple class="hidden" @change="handleFileInput" />
         </div>
