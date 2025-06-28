@@ -4,7 +4,9 @@
     "build": "vitepress build",
     "preview": "vitepress preview",
     "dev:midterm": "slidev ./midterm/slides.md",
-    "build:midterm": "slidev build ./midterm/slides.md --out ../.vitepress/dist/midterm"
+    "build:midterm": "slidev build ./midterm/slides.md --out ../.vitepress/dist/midterm",
+    "dev:final": "slidev ./final/slides.md",
+    "build:final": "slidev build ./final/slides.md --out ../.vitepress/dist/final"
   },
   "dependencies": {
     "vitepress": "^1.6.3",

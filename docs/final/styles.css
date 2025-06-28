@@ -1,0 +1,16 @@
+.sect {
+  color: #5d8392;
+  --uno: text-2xl;
+}
+
+.slidev-layout h1 + p  {
+  --uno: op-100 my-1rem;
+}
+
+.slidev-layout .sect + h2, .slidev-layout .sect + h3 {
+  --uno: mt--4;
+}
+
+.underlined, [underlined] {
+  --uno: border-b-2 border-black w-fit pb-1;
+}

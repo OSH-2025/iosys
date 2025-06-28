@@ -1,18 +1,16 @@
 ---
 theme: seriph
 background: https://cdn.jsdelivr.net/gh/USTCdev/slidev-theme-ustc@master/assets/backgrounds/bg2.jpg
-title: Midterm Report
+title: IOSYS
 mdc: true
 colorSchema: light
 canvasWidth: 800
 routerMode: hash
 ---
 
-# 中期报告
+# Team IOSYS
 
 <div class="text-4 op-80">
-
-Team IOSYS
 
 熊桐睿 张海川 朱雨田 许逸凡 冉竣宇 徐铭凯
 
@@ -29,17 +27,17 @@ Why{.sect}
 - [My-Glow (2023)](https://github.com/OSH-2023/My-Glow) 基于 [Wowkiddy (2022)](https://github.com/OSH-2022/x-WowKiddy) 和 [TOBEDONE (2022)](https://github.com/OSH-2022/x-TOBEDONE) 
 
   ✅ 分布式框架优化、鲁棒性监控 <br>
-  ⚠️ 传统打标方法 [✨ Llama Index、GraphRAG]{.float-right.mr-50}
+  ⚠️ 传统打标方法 [✨ LlamaIndex]{.float-right.mr-50}
 
 - [ArkFS (2024)](https://github.com/OSH-2024/ArkFS)
 
   ✅ 多模态向量化、二分图映射 <br>
-  ⚠️ 图结构简化 [✨ 知识图谱优化、对象-关系建模]{.float-right.mr-50}
+  ⚠️ 图结构简化 [✨ 知识图谱]{.float-right.mr-50}
 
 - [vivo50 (2024)](https://github.com/OSH-2024/vivo50)
 
   ✅ 自然语言/语音交互、任务序列转换 <br>
-  ⚠️ RAG架构限制 [✨ GraphRAG]{.float-right.mr-50}
+  ⚠️ RAG架构限制 [✨ Tool call]{.float-right.mr-50}
 
 <div v-drag="[389,168,310,282]" border="3 yellow-500 dashed rounded-xl" pt-1 pl-2 text-yellow-600>
 我们的改进
