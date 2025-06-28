@@ -20,6 +20,7 @@ from .preview import render_preview_html
 load_dotenv()
 
 MODEL = os.environ["LLM_MODEL_NAME"]
+
 llm = OpenAI(
     base_url=os.environ["LLM_BASE_URL"],
     api_key=os.environ["LLM_API_KEY"],
@@ -149,9 +150,16 @@ class MCPServerRequest(BaseModel):
     config: dict
 
 
-@app.post("/mcp")
+@app.post("/mcp/sync")
 async def sync_mcp_server(request: MCPServerRequest):
     await agent.mcp.sync_config(request.config)
+
+
+@app.get("/mcp/config")
+@app.post("/mcp/config")
+async def get_mcp_config():
+    """Get current MCP configuration"""
+    return agent.mcp.get_config()
 
 
 @app.post("/logs")

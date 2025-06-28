@@ -1,4 +1,3 @@
-<!-- filepath: d:\homework\OSH\team\ui\src\components\McpServers.vue -->
 <template>
   <div class="p-6 max-w-4xl mx-auto">
     <!-- Header -->
@@ -285,11 +284,12 @@ const totalServersCount = computed(() =>
   Object.keys(mcpServers.value).length
 )
 
-const loadCurrentConfig = () => {
-  // In a real app, this would load from localStorage or API
-  const stored = localStorage.getItem('mcpServersConfig')
-  if (stored) {
-    currentConfig.value = JSON.parse(stored)
+const loadCurrentConfig = async () => {
+  try {
+    currentConfig.value = await apis.mcpGetConfig({})
+  } catch (error) {
+    console.error('Failed to load MCP config:', error)
+    currentConfig.value = {}
   }
 
   const stopWatch = watch(() => status.value.mcp_servers, added => {
@@ -304,7 +304,7 @@ const loadCurrentConfig = () => {
 }
 
 const saveCurrentConfig = () => {
-  localStorage.setItem('mcpServersConfig', JSON.stringify(currentConfig.value))
+  // No longer needed - config is saved on backend
 }
 
 const getServerTypeDisplay = (serverName: string) => {
@@ -447,7 +447,7 @@ const saveServer = async () => {
 const syncConfig = async () => {
   try {
     await apis.mcpSync({ config: currentConfig.value })
-    saveCurrentConfig()
+    // No need to save to localStorage anymore
   } catch (error) {
     console.error('Failed to sync MCP config:', error)
     alert('Failed to sync server configuration')
@@ -472,6 +472,6 @@ const removeServer = async (serverName: string) => {
 
 // Initialize
 onMounted(async () => {
-  loadCurrentConfig()
+  await loadCurrentConfig()
 })
 </script>
