@@ -22,7 +22,6 @@
     "vue": "^3.5.17"
   },
   "dependencies": {
-    "@gongrzhe/quickchart-mcp-server": "^1.0.6",
     "@vueuse/core": "^13.4.0",
     "echarts": "^5.6.0"
   }
