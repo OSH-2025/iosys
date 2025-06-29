@@ -132,7 +132,7 @@ class IOSYSGraphEngine:
                     # 检查节点是否存在
                     if (
                         subj_id in self.graph_store.graph.nodes  # type: ignore
-                        and obj_id in self.graph_store.graph.nodes
+                        and obj_id in self.graph_store.graph.nodes  # type: ignore
                     ):  # type: ignore
                         rel_key = self.graph_store.graph._get_relation_key(  # type: ignore
                             obj_id=obj_id, subj_id=subj_id, rel_id=rel_id
