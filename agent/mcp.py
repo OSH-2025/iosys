@@ -159,7 +159,9 @@ class MCPClient:
                     try:
                         await session_info.exit_stacks[name].aclose()
                     except Exception as cleanup_error:
-                        logger.warning(f"Error during session exit stack cleanup for {name}: {cleanup_error}")
+                        logger.warning(
+                            f"Error during session exit stack cleanup for {name}: {cleanup_error}"
+                        )
                     finally:
                         del session_info.exit_stacks[name]
 
@@ -193,7 +195,9 @@ class MCPClient:
             del self.sessions[session_id]
             logger.debug(f"Session {session_id} ended")
 
-    async def _cleanup_session_exit_stack(self, name: str, exit_stack: AsyncExitStack) -> None:
+    async def _cleanup_session_exit_stack(
+        self, name: str, exit_stack: AsyncExitStack
+    ) -> None:
         """Helper method to clean up a session exit stack"""
         try:
             await exit_stack.aclose()
