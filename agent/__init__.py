@@ -54,7 +54,7 @@ class IOSYSAgent:
         self.logger.info(f"接收到用户输入 (会话 {session_id}): {user_input}")
         result = await self._process(user_input, session_id)
         self.logger.info(
-            f"处理结果 (会话 {session_id}): {json.dumps(result, ensure_ascii=False)}"
+            f"处理结果 (会话 {session_id}): {json.dumps(result)}"
         )
         return dict(result)
 
@@ -209,7 +209,7 @@ class IOSYSAgent:
                                     "role": "tool",
                                     "tool_call_id": result_item["tool_call_id"],
                                     "content": json.dumps(
-                                        result_item["result"], ensure_ascii=False
+                                        result_item["result"]
                                     ),
                                 }
                             )

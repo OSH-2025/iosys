@@ -101,7 +101,7 @@ class MCPClient:
             os.makedirs(os.path.dirname(self.config_file_path), exist_ok=True)
 
             with open(self.config_file_path, "w", encoding="utf-8") as f:
-                json.dump(config, f, indent=2, ensure_ascii=False)
+                json.dump(config, f, indent=2)
         except IOError as e:
             print(f"Error saving MCP config to {self.config_file_path}: {e}")
             raise

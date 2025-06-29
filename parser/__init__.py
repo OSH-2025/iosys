@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import os
 from dataclasses import dataclass
@@ -185,6 +186,8 @@ class IOSYSParser:
             return str(e)
 
     async def parse(self, node: FileSystemNode):
+        await asyncio.sleep(100)  # Yield control to the event loop
+
         logger.info(f"Parsing file {node.path}...")
 
         (verbose_text, embedded_files) = await self._generate_verbose(node)

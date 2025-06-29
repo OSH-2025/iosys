@@ -397,7 +397,6 @@ class IOSYSKnowledgeGraphTask:
                         "result": self.result,
                         "done_at": self.done_at,
                     },
-                    ensure_ascii=False,
                 )
             )
 
