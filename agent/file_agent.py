@@ -690,12 +690,25 @@ class FileAgent:
                     }
                 )
 
-            data = sorted(data, key=lambda x: x["score"], reverse=False)
+            data = sorted(data, key=lambda x: x["score"], reverse=True)
+
+            # 简化返回消息
+            if len(data) == 0:
+                message = "未找到相关文件"
+            elif len(data) == 1:
+                message = f"找到 1 个相关文件: {data[0]['file']}"
+            else:
+                # 只显示前3个文件的文件名
+                top_files = [item['file'].split('/')[-1] for item in data[:3]]
+                if len(data) > 3:
+                    message = f"找到 {len(data)} 个相关文件，最相关的是: {', '.join(top_files[:2])} 等"
+                else:
+                    message = f"找到 {len(data)} 个相关文件: {', '.join(top_files)}"
 
             return {
                 "status": "success",
-                "message": f"成功找到 {len(data)} 个相关文件",
-                "data": data,  # type: ignore
+                "message": message,
+                "data": data, # type: ignore
             }
 
         except Exception as e:
