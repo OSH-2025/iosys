@@ -22,9 +22,13 @@ defineProps<{
 </script>
 
 <style scoped>
-.slidev-nav-go-forward .fade-in {
+.fade-in {
   animation: fadeIn 0.3s ease-in-out;
 }
+
+.slidev-nav-go-backward .fade-in {
+  animation: none;
+} 
 
 @keyframes fadeIn {
   from {

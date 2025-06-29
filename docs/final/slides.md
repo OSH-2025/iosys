@@ -8,11 +8,17 @@ canvasWidth: 800
 routerMode: hash
 ---
 
+<div backdrop-blur-md py-8 bg-gray-100 bg-op-10 rounded-2xl>
+
 # Team IOSYS
+
+更强大的文件系统 Agent
 
 <div class="text-4 op-80">
 
 熊桐睿 张海川 朱雨田 许逸凡 冉竣宇 徐铭凯
+
+</div>
 
 </div>
 
@@ -39,7 +45,7 @@ Why{.sect}
   ✅ 自然语言/语音交互、任务序列转换 <br>
   ⚠️ RAG架构限制 [✨ Tool call]{.float-right.mr-50}
 
-<div v-drag="[389,168,310,282]" border="3 yellow-500 dashed rounded-xl" pt-1 pl-2 text-yellow-600>
+<div v-drag="[392,162,310,282]" border="3 yellow-500 dashed rounded-xl" pt-1 pl-2 text-yellow-600>
 我们的改进
 </div>
 
@@ -82,19 +88,23 @@ What{.sect}
 
 更强大的文件系统 Agent {.text-3xl.underlined.mb-4}
 
+<br>
+
 - 用自然语言进行文件操作
+
 - 用图形式重新组织文件
+
 - 提升增删查改等操作的效率
 
 ---
-zoom: 0.85
+zoom: 0.95
 ---
 
 What{.sect}
 
 ## 创新点
 
-<div v-drag="[85,141,400,95]">
+<div v-drag="[88,136,400,95]">
 
 ### 1. 深度语义理解驱动的文件管理
 
@@ -103,7 +113,7 @@ What{.sect}
 
 </div>
 
-<div v-drag="[542,201,335,127]">
+<div v-drag="[484,182,335,127]">
 
 ### 2. 图状文件组织范式
 
@@ -113,7 +123,7 @@ What{.sect}
 
 </div>
 
-<div v-drag="[150,347,583,159]">
+<div v-drag="[162,307,583,159]">
 
 ### 3. 全面的语义信息集成
 
@@ -147,6 +157,49 @@ What{.sect.mt--2!}
 
 ---
 
+# Implementation Overview
+
+
+- **Modular design** <div mt-2 font-mono>Web UI, Backend, Agent, RAG Core,<br>File System, File Parser, A2A Server</div>
+
+- **Conventional commit**: <span font-mono>feat(module): desc</span>
+
+- **CI - AutoFix**: Format and Lint ([Ruff]{.font-mono})
+
+- **Modern toolchain**: [uv]{.font-mono} + [PNPM]{.font-mono} + [Vite]{.font-mono}
+
+<!-- 
+| Python | 33 | 4,782 | 762 | 968 | 6,512+ |
+| vue | 11 | 1,610 | 49 | 236 | 1,895+ |
+| TypeScript | 10 | 371 | 13 | 53 | 437+ | -->
+
+
+<div v-drag="[498,100,337,241]" flex gap-2>
+
+<div>
+
+- **Line of code:**
+
+<div font-mono leading-8 grid grid-cols-2 w-20 mt-2 ml-6 mb-2>
+
+<logos-python mt-1/> 6512+
+<logos-vue mt-1/> 1895+
+<logos-typescript-icon mt-1/> 437+
+
+</div>
+
+
+- **Commits:**{.font-sans} &nbsp;[540+]{.font-mono}
+<!-- 
+<div font-mono leading-8 grid grid-cols-2 w-20 mt--2 ml-2>
+540+
+</div> -->
+
+</div>
+</div>
+
+---
+
 <img fixed h-full top-0 src="./assets/arch.svg" />
 
 ---
@@ -164,10 +217,12 @@ What{.sect.mt--2!}
 <br>
 
 1. 处理用户请求
+
 2. 使用 LLM 进行自然语言理解
+
 3. 调用工具获取信息/执行操作
 
-<img v-drag="[432,102,282,NaN]" src="./assets/agent.svg" rounded-lg />
+<img v-drag="[431,84,282,NaN]" src="./assets/agent.svg" rounded-lg />
 
 ---
 
@@ -179,8 +234,11 @@ LLM 调用外部工具的方式
 
 <br>
 
-- **获取信息**：读取文件内容 / 绘制图表
-- **执行操作**：创建目录 / 生成文档
+- **获取信息**：读取文件内容, 绘制图表 ...
+
+<div ml-6 italic text-xl my-2> or </div>
+
+- **执行操作**：创建目录, 生成文档, ...
 
 <img src="/../assets/feasibility/function-call.png" fixed top-0 right-0 h-full rounded-8 />
 
@@ -214,16 +272,16 @@ B --> D((Response));
 <br>
 
 - 最广泛采用的 Tool Call 协议
-- 自由启用 / 关闭工具
+
+- 轻松启用 / 关闭工具
+
 - 支持官方 JSON 格式配置文件
 
-<img v-drag="[331,155,444,NaN]" src="./assets/mcp.png" border="#AAA 1.5px rounded" />
+<img v-drag="[340,155,433,NaN]" src="./assets/mcp.png" border="#AAA 1.5px rounded" />
 
 ---
 
 # Server & Agent
-
-## 
 
 
 ---
@@ -238,13 +296,13 @@ B --> D((Response));
 
 <div h-2 />
 
-- 一套接口，支持两种实现
+- **一套接口**，支持**两种实现**
   - **OSFS**：本地文件系统
   - **JFS**：JuiceFS 分布式文件系统
 
-- 原生支持嵌入文件
+- 原生支持**嵌入文件**
 
-- 原生支持元数据
+- 原生支持**元数据**
 
 ```plantuml {scale:0.5,class:'fixed top--30 right--40'}
 @startuml
@@ -306,13 +364,13 @@ CLOUD --> META_DB  : stores metadata
 
 Word 中内嵌的图片，如何体现在文件系统中？<br>
 
-- 统一文件与目录：<span block mt--2 />
+- **统一文件与目录**：<span block mt--2 />
   - 目录 $=$ 文件 $-$ 内容
   - 文件 $=$ 目录 $+$ 内容
 
-- 嵌入文件作为原文件的子节点
+- 嵌入文件作为**源文件的子节点**
 
-- 嵌入文件具有一致操作接口
+- 嵌入文件具有**一致操作接口**
 
 ```mermaid {class:'fixed top-8 right-30'}
 graph TB;
@@ -348,16 +406,16 @@ A(Root) --> B(Directory * n) --> C(File) --> D(Embedded File);
 # File Parser
 
 <div v-drag="[18,104,350,NaN]">
-<div text-sm ml-10> 输入: Word 文档 </div>
+<div scale-80 ml-1 text-xl> 输入: Word 文档 </div>
 <img src="./assets/parser-example.png" />
 </div>
 
-<div v-drag="[354,-5,450,NaN]">
+<div v-drag="[352,-3,450,NaN]">
 
 
 <div scale-80>
 
-<div mb-2>
+<div mb-2 text-xl>
 输出: 文本
 </div>
 
@@ -380,7 +438,7 @@ ZKY-GD-4 智能光电效应（普朗克常数）实验仪如上图所示。
 
 <div flex gap-8>
 <div>
-<div mb-1>
+<div mb-1 text-xl>
 输出: 嵌入文件
 </div>
 
@@ -391,8 +449,8 @@ A --> C(操作面板.png)
 A --> D(...)
 ```
 
-</div><div>
-<div>
+</div><div ml-4>
+<div text-xl>
 输出: 元数据
 </div>
 
@@ -409,6 +467,17 @@ A --> D(...)
 </div>
 </div>
 </div>
+
+---
+
+# File Parser
+
+### Async Execution
+
+<br>
+
+- 不需要在第一时间完成解析
+- 优先执行其他任务
 
 ---
 
@@ -490,6 +559,44 @@ graph LR
 
 <img fixed h-full top-0 src="./assets/arch.svg" />
 
+<FocusOn :left="532" :top="157" :radius="50" />
+
+---
+
+# Vector Indexing
+
+## Architecture
+
+**Indexing**:
+
+```mermaid
+graph LR;
+A(User) -->|Raw Content| B(File Parser);
+B -->|Textual Content| C(LlamaIndex);
+C -->|Vector Embedding| D(Qdrant DB);
+```
+
+**Retrieval**:
+
+```mermaid
+graph LR;
+A(User) -->|① Query| B(LlamaIndex);
+B -->|② Vector Search| C(Qdrant DB);
+C -->|③ Relevant Vectors| B;
+B -->|④ Search Results| A;
+```
+
+---
+
+# Vector Indexing
+
+## 
+
+
+---
+
+<img fixed h-full top-0 src="./assets/arch.svg" />
+
 <FocusOn :left="355" :top="50" :radius="110" />
 
 ---
@@ -504,72 +611,201 @@ graph LR
 
 ---
 
+# Web UI
 
+### 设计理念
 
----
+<div h-4 />
 
-How{.sect}
+- 支持直接操作文件: **很多情况下，直接操作比请求 Agent 更方便**
+- 直观: 图的展示形式
+- 美观: Geist style
+- <span border-b-1.5 border-black> Vibe coding </span>
 
-### 如何让大模型调用外部工具？{.op-80}
+<br>
 
-Tool & Function Calling {.text-3xl.underlined.mb-4}
+<div ml-4 mt-4 text-2xl>
 
-```py {*}{class:'w-100'}
-tools = [{
-  "type": "function",
-  "function": {
-    "name": "get_weather",
-    "description": "Get current temperature.",
-    "parameters": {
-      ...
-    }
-  }
-}]
-```
-
-<img src="/../assets/feasibility/function-call.png" fixed top-0 right-0 h-full rounded-8 />
-
----
-
-How{.sect}
-
-### 如何保证输出符合格式？{.op-80}
-
-Structured Outputs {.text-3xl.underlined.mb-4}
-
-强制要求 LLM 的输出严格遵守用户提供的 JSON Schema {.text-2xl}
-
-- 可靠的指令生成
-- 精确的数据提取
-- 简化下游处理
-- 类型安全
-
----
-
-How{.sect}
-
-### 复杂文件的文本化？{.op-80}
-
-[Microsoft/markitdown](https://github.com/microsoft/markitdown){.text-2xl}
-
-```mermaid {scale:0.6}
-graph LR;
-A[PDF] -----> E((markitdown))
-B[Word] -----> E
-D[Excel] -----> E
-X[...] -----> E
-E ----> F[Markdown] ----> G((LLM))
-```
-
-<div v-drag="[439,75,315,NaN]" border="1.5 black op-70 rounded-xl" px-2 py-1>
-
-### Embedded image? {.mb-2.text-primary}
-
-- Fork [Microsoft/markitdown]{.font-mono.ml-1}
-- Convert to text description
-- As separate images with links
+<logos-typescript-icon />  <carbon-add /> <logos-vitejs />  <carbon-add /> <logos-vue />  <carbon-add /> <logos-unocss /> <carbon-add /> <logos-vueuse />
 
 </div>
+
+
+<img v-drag="[433,209,330,NaN]" src="./assets/webui-example-1.png" border="#aaa rounded-lg 2"/>
+
+---
+
+# Web UI
+
+<!-- ### 文件预览
+
+<img v-drag="[57,165,334,NaN]" src="./assets/webui-example-2.png" border="#aaa rounded-lg 2"/>
+
+<img v-drag="[413,165,334,NaN]" src="./assets/webui-example-3.png" border="#aaa rounded-lg 2"/> -->
+<div grid grid-cols-2 gap-8>
+<div>
+
+### 文件预览
+
+<img src="./assets/webui-example-2.png" border="#aaa rounded-lg 2" mt-4/>
+
+</div>
+<div>
+
+### 日志列表
+
+<img src="./assets/webui-example-3.png" border="#aaa rounded-lg 2" mt-4/>
+
+
+</div>
+</div>
+
+
+---
+
+# Web UI
+
+### MCP Configuration
+
+
+<img v-drag="[56,141,416,NaN]" src="./assets/webui-example-4.png" border="#aaa rounded-lg 2" />
+
+---
+
+<img fixed h-full top-0 src="./assets/arch.svg" />
+
+<FocusOn :left="205" :top="85" :radius="100" />
+
+<!-- <div v-drag="[305,143,194,NaN]" text-3xl mb-2 animate-fade-in>
+
+# A2A Server {.text-red-400!}
+
+</div> -->
+
+---
+
+<div text-3xl mt-2 underlined mb-1> Agent2Agent Protocol (A2A) </div>
+<div italic text-4 op-80>(Proposed by Google, 2025.4.9)</div>
+
+<img v-drag="[52,138,369,NaN]" src="https://a2aproject.github.io/A2A/latest/assets/a2a-mcp-readme.png" />
+
+<!-- <div fixed inset-2 border="yellow 4 rounded-4" /> -->
+
+<div v-drag="[457,159,308,NaN]" border="1.5 black op-70 rounded-xl" px-2 py-1>
+
+### A2A or MCP? {.mb-2.text-primary}
+
+- A2A: How agents collaborate
+- MCP: How functions are provided
+- No conflict
+
+</div>
+
+---
+
+# A2A Server
+
+<div h-4 />
+
+- 与其他 Agent 交互
+ 
+<carbon-arrow-shift-down my-2 ml-20 text-xl/>
+
+- 双方都能理解自然语言
+
+<carbon-arrow-shift-down my-2 ml-20 text-xl/>
+
+<div>
+
+- 使用自然语言描述自己
+- 接收自然语言请求
+
+</div>
+
+<div fixed top-10 right-10 w-110>
+
+```py {*}{class:'children:children:text-3! children:children:leading-thin!'}
+description = """
+Helps with manipulating files in the user's file system.
+This agent can perform various file operations including reading, writing, and querying files.
+It can also get useful information about the user's file content and structure.
+""".strip()
+
+tags = [
+    "filesystem",
+    "querying",
+    "file management",
+]
+
+examples = [
+    "Create a new file named 'example.txt' with the content 'Hello, World!'",
+    "Read the content of 'example.txt'",
+    "List all files in the current directory",
+    "Delete the file 'example.txt'",
+    "What is the size of 'example.txt'?",
+    "Find a file containing a story about a tree",
+]
+```
+
+</div>
+
+---
+
+# A2A Server
+
+
+---
+
+# 分工
+
+| 姓名 | 负责模块 | 其他工作 |
+| :--- | --- | --- |
+| 熊桐睿 | Web UI | 统筹项目，协调组合各模块 |
+| 张海川 | File System | 配置云存储服务 |
+| 朱雨田 | Knowledge Graph | RAG 的大量调研与实践工作 |
+| 许逸凡 | A2A Server | 购置 token |
+| 冉竣宇 | File Agent | 大量调试与 bug 修复  |
+| 徐铭凯 | File Parser | 测试数据的制备 |
+| [(全组)]{.op-50} | Backend | - |
+
+<style scoped>
+table {
+  --uno: mt--2;
+}
+:deep(td) {
+  padding: 4px 0.5rem !important;  
+}
+:deep(td:nth-child(1)) {
+  font-weight: bold;
+}
+:deep(td:nth-child(2)) {
+  --uno: font-[Consolas];
+}
+</style>
+
+---
+
+# 回忆
+
+- 一学期的时间过得很快
+
+- 最初的选题（Nova）被否，大家积极寻找新的方向
+
+- 最初比较迷茫
+
+- 随着架构图的完善，大家逐渐找到自己的位置
+
+- 这几天的集中调试，大家都很努力
+
+- 然而还是不够鲁棒，还请见谅
+
+---
+class: text-center text-2xl
+---
+
+<div h-24 />感谢邢凯老师的指导和支持！
+<div h-4 />感谢组员们的努力和付出！
+<div h-4 />感谢助教们的帮助和鼓励！
 
 ---
 
