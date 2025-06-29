@@ -107,21 +107,12 @@ class IOSYSParser:
             prompt = "Write a detailed caption for this image."
             data_uri = f"data:{content_type};base64,{b64_data}"
             additional = {"type": "image_url", "image_url": {"url": data_uri}}
-
-            try:
-                description = await self._chat(prompt, additional)
-            except Exception:
-                description = "LLM Description failed"
-            else:
-                # Step 2. Get a concise title for the image.
-
-                prompt = "The following text describes an image. Write a concise title for the image based on the text."
-                additional = {"type": "text", "text": description}
-
-                try:
-                    name = await self._chat(prompt, additional)
-                except Exception:
-                    name = "LLM Description failed"
+            description = await self._chat(prompt, additional)
+            
+            # Step 2. Get a concise title for the image.
+            prompt = "The following text describes an image. Write a concise title for the image based on the text."
+            additional = {"type": "text", "text": description}
+            name = await self._chat(prompt, additional)
 
             embedded_files.append(
                 EmbeddedFile(

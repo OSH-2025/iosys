@@ -25,16 +25,15 @@ llm = OpenAI(
     base_url=os.environ["LLM_BASE_URL"],
     api_key=os.environ["LLM_API_KEY"],
 )
-
-fs = new_fs()
-parser = IOSYSParser(llm=llm)
-rag = IOSYSRAG(fs=fs, parser=parser)
-agent = IOSYSAgent(AgentConfig(llm=llm, fs=fs, rag=rag))
-
 async_llm = AsyncOpenAI(
     base_url=os.environ["LLM_BASE_URL"],
     api_key=os.environ["LLM_API_KEY"],
 )
+
+fs = new_fs()
+parser = IOSYSParser(llm=async_llm)
+rag = IOSYSRAG(fs=fs, parser=parser)
+agent = IOSYSAgent(AgentConfig(llm=llm, fs=fs, rag=rag))
 knowledge_graph = IOSYSKnowledgeGraph(
     llm=async_llm, fs=fs, parser=parser, chunk_size=400
 )
