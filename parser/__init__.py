@@ -108,7 +108,7 @@ class IOSYSParser:
             data_uri = f"data:{content_type};base64,{b64_data}"
             additional = {"type": "image_url", "image_url": {"url": data_uri}}
             description = await self._chat(prompt, additional)
-            
+
             # Step 2. Get a concise title for the image.
             prompt = "The following text describes an image. Write a concise title for the image based on the text."
             additional = {"type": "text", "text": description}
