@@ -294,7 +294,9 @@ class CacheFileSystemNode(FileSystemNode):
         if not backend_node:
             self.fs.backend_fs.ensure_directory(self.path)
 
-        self.update_meta(type="directory", created_at=int(time.time()), modified_at=int(time.time()))
+        self.update_meta(
+            type="directory", created_at=int(time.time()), modified_at=int(time.time())
+        )
         self.fs.fire_event("create", self)
 
     def parent(self) -> Optional["CacheFileSystemNode"]:
