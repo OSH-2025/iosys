@@ -186,7 +186,7 @@ class IOSYSParser:
             return str(e)
 
     async def parse(self, node: FileSystemNode):
-        await asyncio.sleep(100)  # Yield control to the event loop
+        await asyncio.sleep(0.5)  # Yield control to the event loop
 
         logger.info(f"Parsing file {node.path}...")
 
