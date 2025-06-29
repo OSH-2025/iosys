@@ -31,18 +31,18 @@ class OSFileSystemNode(FileSystemNode):
             self.update_meta(
                 modified_at=int(time.time()),
             )
-            return
-        if self._meta.get("type") == "directory":
-            raise IsADirectoryError(
-                f"Cannot write to a directory as a file: {self.path}"
+        else:
+            if self._meta.get("type") == "directory":
+                raise IsADirectoryError(
+                    f"Cannot write to a directory as a file: {self.path}"
+                )
+            real_path = self.fs._get_real_path(self.path)
+            with open(real_path, "wb") as f:
+                f.write(content)
+            self.update_meta(
+                type="file",
+                modified_at=int(time.time()),
             )
-        real_path = self.fs._get_real_path(self.path)
-        with open(real_path, "wb") as f:
-            f.write(content)
-        self.update_meta(
-            type="file",
-            modified_at=int(time.time()),
-        )
         self.fs.fire_event("update", self)
 
     def makedir(self):
@@ -144,7 +144,7 @@ class OSFileSystemNode(FileSystemNode):
             }
             self.fs.fire_event("metadata", self)
         with open(meta_json, "w") as f:
-            f.write(json.dumps(self._meta, ensure_ascii=False, indent=2))
+            f.write(json.dumps(self._meta, indent=2))
 
 
 class OSFileSystem(IOSYSFileSystem):

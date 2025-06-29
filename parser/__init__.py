@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import os
 from dataclasses import dataclass
@@ -118,6 +119,7 @@ class IOSYSParser:
 
     async def _generate_verbose(self, node: FileSystemNode):
         embedded_files = []  # type: list[EmbeddedFile]
+        all_names = set()  # To ensure unique names for embedded files
 
         def image_converter(image):
             # A function using llm to get a image's description. It serves as an argument for Markitdown.
@@ -133,11 +135,22 @@ class IOSYSParser:
             data_uri = f"data:{content_type};base64,{b64_data}"
             additional = {"type": "image_url", "image_url": {"url": data_uri}}
             description = self._chat(prompt, additional)
-            
-            # Step 2. Get a concise title for the image.
-            prompt = "The following text describes an image. Write a concise title for the image based on the text."
+
+            # Step 2. Get file name for the image.
+            prompt = f""""
+The following text describes an image. You should generate a representative name for the image based on the description.
+The name must be less than 20 characters, and must be valid as a file name.
+The extension of the file should match the minetype of the image, which is {content_type}.
+Only return the name, do not return any other text.
+"""
             additional = {"type": "text", "text": description}
             name = self._chat(prompt, additional)
+
+            # Ensure the name is unique
+            while name in all_names:
+                basename, ext = os.path.splitext(name)
+                name = f"{basename}_{len(all_names)}{ext}"
+            all_names.add(name)
 
             embedded_files.append(
                 EmbeddedFile(
@@ -148,13 +161,8 @@ class IOSYSParser:
                 )
             )
 
-            if "png" in content_type:
-                source = "./{0}.png".format(name)
-            else:
-                source = "./{0}.jpg".format(name)
-
             return {
-                "src": source,
+                "src": name,
                 "alt": description,
             }
 
@@ -185,10 +193,24 @@ class IOSYSParser:
             return str(e)
 
     async def parse(self, node: FileSystemNode):
+        await asyncio.sleep(2)  # Yield control to the event loop
+
         logger.info(f"Parsing file {node.path}...")
 
         (verbose_text, embedded_files) = await self._generate_verbose(node)
+
+        logger.info(
+            f"Parsing file {node.path}: verbose text generated. Length: {len(verbose_text)}"
+        )
+        logger.info(
+            f"Parsing file {node.path}: embedded files found: {len(embedded_files)}"
+        )
+
         brief_text = await self._generate_brief(verbose_text, node)
+
+        logger.info(
+            f"Parsing file {node.path}: brief text generated. Length: {len(brief_text)}"
+        )
 
         node.update_meta(
             verbose_text=verbose_text,
@@ -198,7 +220,7 @@ class IOSYSParser:
             embedded_node = node.create_child(embedded_file.name)
             embedded_node.write(content=embedded_file.content)
             embedded_node.update_meta(
-                type=embedded_file.type,
+                # type=embedded_file.type,
                 description=embedded_file.description,
             )
 
