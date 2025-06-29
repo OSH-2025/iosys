@@ -699,7 +699,7 @@ class FileAgent:
                 message = f"找到 1 个相关文件: {data[0]['file']}"
             else:
                 # 只显示前3个文件的文件名
-                top_files = [item['file'].split('/')[-1] for item in data[:3]]
+                top_files = [item["file"].split("/")[-1] for item in data[:3]]
                 if len(data) > 3:
                     message = f"找到 {len(data)} 个相关文件，最相关的是: {', '.join(top_files[:2])} 等"
                 else:
@@ -708,7 +708,7 @@ class FileAgent:
             return {
                 "status": "success",
                 "message": message,
-                "data": data, # type: ignore
+                "data": data,  # type: ignore
             }
 
         except Exception as e:
