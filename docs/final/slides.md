@@ -97,14 +97,12 @@ What{.sect}
 - 提升增删查改等操作的效率
 
 ---
-zoom: 0.95
----
 
 What{.sect}
 
 ## 创新点
 
-<div v-drag="[88,136,400,95]">
+<div v-drag="[87,123,400,95]">
 
 ### 1. 深度语义理解驱动的文件管理
 
@@ -113,7 +111,7 @@ What{.sect}
 
 </div>
 
-<div v-drag="[484,182,335,127]">
+<div v-drag="[429,177,335,127]">
 
 ### 2. 图状文件组织范式
 
@@ -122,7 +120,7 @@ What{.sect}
 
 </div>
 
-<div v-drag="[162,307,583,159]">
+<div v-drag="[135,275,583,159]">
 
 ### 3. 全面的语义信息集成
 
@@ -838,6 +836,15 @@ transition: view-transition
 
 <img fixed h-full top-0 src="./assets/arch.svg" view-transition-arch />
 
+---
+
+# &emsp;&emsp;Docs Site
+
+<div v-drag="[427,56,414,NaN]" op-80>
+Powered by VitePress + Slidev
+</div>
+
+<img v-drag="[123,96,540,NaN]" src="./assets/docs-site.png" border="#aaa rounded-lg 2"/>
 
 ---
 transition: view-transition
