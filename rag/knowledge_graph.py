@@ -244,7 +244,11 @@ class IOSYSKnowledgeGraphTask:
 
                 # Handle if response_format={'type':'json_object'} returns a dict containing the list
                 if isinstance(parsed_data, dict):
-                    if "subject" in parsed_data and "predicate" in parsed_data and "object" in parsed_data:
+                    if (
+                        "subject" in parsed_data
+                        and "predicate" in parsed_data
+                        and "object" in parsed_data
+                    ):
                         # If it's a single triple, wrap it in a list
                         parsed_json = [parsed_data]
                     else:
