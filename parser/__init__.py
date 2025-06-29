@@ -1,8 +1,9 @@
+import asyncio
 import os
 import base64
 
 from typing import Literal
-from openai import OpenAI
+from openai import AsyncOpenAI
 from markitdown import MarkItDown, StreamInfo, UnsupportedFormatException
 from dataclasses import dataclass
 
@@ -43,11 +44,11 @@ class IOSYSParsedFile:
 
 
 class IOSYSParser:
-    llm: OpenAI
+    llm: AsyncOpenAI
     model: str
     md: MarkItDown
 
-    def __init__(self, llm: OpenAI):
+    def __init__(self, llm: AsyncOpenAI):
         self.llm = llm
         self.model = os.environ["LLM_MODEL_NAME"]
         self.md = MarkItDown(
@@ -55,7 +56,7 @@ class IOSYSParser:
             llm_model=self.model,
         )
 
-    def _chat(
+    async def _chat(
         self,
         prompt: str,
         additional,
@@ -73,7 +74,7 @@ class IOSYSParser:
             }
         ]
 
-        response = self.llm.chat.completions.create(
+        response = await self.llm.chat.completions.create(
             model=self.model,
             messages=messages,  # type: ignore
         )
@@ -89,10 +90,10 @@ class IOSYSParser:
         #     return ".txt"  # To make sure it can be parsed as a plain text
         return extention
 
-    def _generate_verbose(self, node: FileSystemNode):
+    async def _generate_verbose(self, node: FileSystemNode):
         embedded_files = []  # type: list[EmbeddedFile]
 
-        def image_converter(image):
+        async def image_converter(image):
             # A function using llm to get a image's description. It serves as an argument for Markitdown.
             with image.open() as image_bytes:
                 img_data = image_bytes.read()
@@ -107,7 +108,7 @@ class IOSYSParser:
             additional = {"type": "image_url", "image_url": {"url": data_uri}}
 
             try:
-                description = self._chat(prompt, additional)
+                description = await self._chat(prompt, additional)
             except Exception:
                 description = "LLM Description failed"
             else:
@@ -117,7 +118,7 @@ class IOSYSParser:
                 additional = {"type": "text", "text": description}
 
                 try:
-                    name = self._chat(prompt, additional)
+                    name = await self._chat(prompt, additional)
                 except Exception:
                     name = "LLM Description failed"
 
@@ -147,30 +148,30 @@ class IOSYSParser:
                     filename=node.name,
                     extension=self._get_extension(node.name),
                 ),
-                image_converter=image_converter,
+                image_converter=lambda image: asyncio.run(image_converter(image)),
             )
             return (result.markdown, embedded_files)
         except UnsupportedFormatException:
             return ("ERROR: Unsupported file format", [])
 
-    def _generate_brief(
+    async def _generate_brief(
         self, verbose: str, node: FileSystemNode
     ) -> str:  # the node argument is useless for now
         prompt = "Generate an abstracted text summarized from the following text."
         additional = {"type": "text", "text": verbose}
 
         try:
-            description = self._chat(prompt, additional)
+            description = await self._chat(prompt, additional)
             return description
 
         except Exception as e:
             return str(e)
 
-    def parse(self, node: FileSystemNode):
+    async def parse(self, node: FileSystemNode):
         logger.info(f"Parsing file {node.path}...")
 
-        (verbose_text, embedded_files) = self._generate_verbose(node)
-        brief_text = self._generate_brief(verbose_text, node)
+        (verbose_text, embedded_files) = await self._generate_verbose(node)
+        brief_text = await self._generate_brief(verbose_text, node)
 
         node.update_meta(
             verbose_text=verbose_text,
@@ -201,8 +202,8 @@ class IOSYSParser:
             embedded_files=embedded_files,
         )
 
-    def get_verbose_text(self, node: FileSystemNode) -> str:
+    async def get_verbose_text(self, node: FileSystemNode) -> str:
         result = node.get_meta("verbose_text")
         if result is None:
-            result = self.parse(node).verbose_text
+            result = (await self.parse(node)).verbose_text
         return str(result)

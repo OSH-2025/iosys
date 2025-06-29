@@ -297,7 +297,7 @@ class IOSYSKnowledgeGraphTask:
         node = self.node
         logger.info(f"File {node.path} Starting knowledge graph extraction...")
 
-        content = self.parser.get_verbose_text(node)
+        content = await self.parser.get_verbose_text(node)
         words = list(jieba.cut(content))
         total_words = len(words)
         total_chunks = (total_words // (self.chunk_size - self.overlap)) + 1

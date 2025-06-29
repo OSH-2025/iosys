@@ -44,16 +44,16 @@ class IOSYSRAG:
     async def on_file_change(self, node: FileSystemNode, change_type: CHANGE_TYPE):
         match change_type:
             case "create":
-                parsed = self.parser.parse(node)
+                await self.graph.create_file(node)
+                parsed = await self.parser.parse(node)
                 await self.query.create_node(node.path, parsed)
-                await self.graph.create_file(node.path, parsed)
             case "update":
-                parsed = self.parser.parse(node)
+                await self.graph.update_file(node)
+                parsed = await self.parser.parse(node)
                 await self.query.update_node(node.path, parsed)
-                await self.graph.update_file(node.path, parsed)
             case "delete":
-                await self.query.delete_node(node.path)
                 await self.graph.delete_file(node.path)
+                await self.query.delete_node(node.path)
 
     async def on_directory_change(self, node: FileSystemNode, change_type: CHANGE_TYPE):
         parent = node.parent()

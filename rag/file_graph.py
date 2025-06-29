@@ -15,7 +15,7 @@ from llama_index.core.graph_stores import (
 from llama_index.graph_stores.nebula import NebulaPropertyGraphStore
 from llama_index.core.llms.llm import LLM
 
-from parser import IOSYSParsedFile
+from fs import FileSystemNode
 
 
 RECENT_TIME_SPAN = 2 * 60  # 2 minutes
@@ -55,33 +55,35 @@ class IOSYSGraphEngine:
                 overwrite=True,
             )
 
-    async def create_file(self, path: str, parsed: IOSYSParsedFile):
-        return await self.update_file(path, parsed)
+    async def create_file(self, node: FileSystemNode):
+        return await self.update_file(node)
 
-    async def update_file(self, path: str, parsed: IOSYSParsedFile):
+    async def update_file(self, node: FileSystemNode):
         try:
             await self.graph_store.aupsert_nodes(
                 [
                     EntityNode(
-                        name=path,
+                        name=node.path,
                         label="file",
                         # properties=asdict(parsed),
                     )
                 ]
             )
+            parent = node.parent()
+            assert parent is not None, "Parent node must not be None"
             await self.graph_store.aupsert_relations(
                 [
                     Relation(
-                        source_id=parsed.parent_path,
+                        source_id=parent.path,
                         label="contains",
-                        target_id=path,
+                        target_id=node.path,
                     )
                 ]
             )
-            await self.connect_event(path, "updated")
+            await self.connect_event(node.path, "updated")
             self.commit()
         except Exception as e:
-            print(f"Error updating file {path}: ", e)
+            print(f"Error updating file {node.path}: ", e)
             raise e
 
     async def delete_file(self, path: str):
@@ -129,6 +131,7 @@ class IOSYSGraphEngine:
             # 安全地获取所有三元组
             for subj_id, rel_id, obj_id in self.graph_store.graph.triplets:  # type: ignore
                 try:
+                    assert isinstance(self.graph_store, SimplePropertyGraphStore)
                     # 检查节点是否存在
                     if (
                         subj_id in self.graph_store.graph.nodes  # type: ignore
