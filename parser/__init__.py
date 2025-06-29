@@ -1,6 +1,7 @@
 import asyncio
 import os
 import base64
+from concurrent.futures import ThreadPoolExecutor
 
 from typing import Literal
 from openai import AsyncOpenAI
@@ -141,6 +142,20 @@ class IOSYSParser:
                 "alt": description,
             }
 
+        def run_image_converter_in_thread(image):
+            # Create a new event loop in a separate thread
+            def run_async():
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    return loop.run_until_complete(image_converter(image))
+                finally:
+                    loop.close()
+
+            with ThreadPoolExecutor() as executor:
+                future = executor.submit(run_async)
+                return future.result()
+
         try:
             result = self.md.convert_stream(
                 node.read_stream(),
@@ -148,7 +163,7 @@ class IOSYSParser:
                     filename=node.name,
                     extension=self._get_extension(node.name),
                 ),
-                image_converter=lambda image: asyncio.run(image_converter(image)),
+                image_converter=run_image_converter_in_thread,
             )
             return (result.markdown, embedded_files)
         except UnsupportedFormatException:
