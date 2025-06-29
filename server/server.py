@@ -37,6 +37,7 @@ agent = IOSYSAgent(AgentConfig(llm=llm, fs=fs, rag=rag))
 knowledge_graph = IOSYSKnowledgeGraph(
     llm=async_llm, fs=fs, parser=parser, chunk_size=400
 )
+fs.fire_event("create", fs.get_root())
 
 app = FastAPI()
 app.add_middleware(

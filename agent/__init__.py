@@ -90,13 +90,11 @@ class IOSYSAgent:
                 )
                 message = message.strip() if message else ""
 
+                tool_calls = response.choices[0].message.tool_calls
                 history.append(
                     {
                         "role": "assistant",
                         "content": message,
-                        "tool_calls": response.choices[0].message.tool_calls
-                        if response.choices
-                        else [],  # type: ignore
                     }
                 )
 
@@ -200,8 +198,26 @@ class IOSYSAgent:
                                     f"[{i + 1}] {function_name}: {error_msg}"
                                 )
 
-                        # 将所有工具调用结果一次性添加到历史记录
+                        # 立即为每个 tool_call 添加对应的 tool 消息
                         for result_item in results:
+                            history.append(
+                                {
+                                    "role": "assistant",
+                                    "content": "",
+                                    "tool_calls": [
+                                        {
+                                            "id": result_item["tool_call_id"],
+                                            "function": {
+                                                "name": result_item["tool_name"],
+                                                "arguments": json.dumps(
+                                                    result_item["args"]
+                                                ),
+                                            },
+                                            "type": "function",
+                                        }
+                                    ],
+                                }
+                            )
                             history.append(
                                 {
                                     "role": "tool",

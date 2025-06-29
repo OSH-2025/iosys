@@ -221,7 +221,8 @@ Only return the name, do not return any other text.
             embedded_node.write(content=embedded_file.content)
             embedded_node.update_meta(
                 # type=embedded_file.type,
-                description=embedded_file.description,
+                verbose_text=embedded_file.description,
+                brief_text=embedded_file.description,
             )
 
         parent = node.parent()

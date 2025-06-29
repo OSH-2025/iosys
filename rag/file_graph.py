@@ -55,6 +55,16 @@ class IOSYSGraphEngine:
                 overwrite=True,
             )
 
+        self.graph_store.upsert_nodes(
+            [
+                EntityNode(
+                    name="/",
+                    label="directory",
+                )
+            ]
+        )
+        self.commit()
+
     async def create_file(self, node: FileSystemNode):
         return await self.update_file(node)
 

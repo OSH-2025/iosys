@@ -251,6 +251,4 @@ def new_fs() -> IOSYSFileSystem:
 
         fs = JuiceFSFileSystem()
 
-    fs.get_root().makedir()
-
     return fs
