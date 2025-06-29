@@ -44,7 +44,7 @@ export async function refreshStatus() {
   }
 }
 
-const intervalId = setInterval(refreshStatus, 5000);
+const intervalId = setInterval(refreshStatus, 1000);
 
 if (import.meta.hot) {
   import.meta.hot.on('vite:beforeUpdate', () => {
