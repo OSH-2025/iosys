@@ -8,6 +8,7 @@ from openai import OpenAI
 from typing import Optional, TypedDict, Union
 
 from fs import CHANGE_TYPE, FileSystemNode, IOSYSFileSystem
+from parser import IOSYSParser
 from utils.logger import IOSYSLogger
 
 # Configure settings for better display and fewer warnings
@@ -66,6 +67,7 @@ class IOSYSKnowledgeGraph:
     def __init__(
         self,
         fs: IOSYSFileSystem,
+        parser: IOSYSParser,
         llm: OpenAI,
         chunk_size: int = 300,
         overlap: int = 30,
@@ -73,6 +75,7 @@ class IOSYSKnowledgeGraph:
         user_prompt_template: str = extraction_user_prompt_template,
     ):
         self.llm = llm
+        self.parser = parser
         self.llm_api_key = os.environ["LLM_API_KEY"]
         self.llm_model = os.environ["KG_LLM_MODEL_NAME"]
         self.llm_api_base = os.environ["LLM_BASE_URL"]
@@ -178,6 +181,7 @@ class IOSYSKnowledgeGraphTask:
     def __init__(self, node: FileSystemNode, config: IOSYSKnowledgeGraph):
         self.config = config
         self.node = node
+        self.parser = config.parser
         self.llm_client = config.llm
         self.llm_model_name = config.llm_model
         self.llm_temperature = 0.0  # Default temperature for LLM responses
@@ -196,7 +200,6 @@ class IOSYSKnowledgeGraphTask:
         cache = node.get_meta("knowledge_graph")
         if cache:
             cache = json.loads(str(cache))
-            # TODO: Check revision
             self.done_at = cache.get("done_at", 0)
             if self.done_at:
                 self.result = cache.get("result", None)
@@ -284,14 +287,8 @@ class IOSYSKnowledgeGraphTask:
         node = self.node
         logger.info(f"File {node.path} Starting knowledge graph extraction...")
 
-        name = node.name
-        content = ""
-        # TODO: Read as text (Markitdown part)
-        if name.endswith(".txt"):
-            content_bytes = node.read()
-            content = content_bytes.decode("utf-8", errors="ignore")
-        rawtext = f"**File: {node.path}**\n{content}\n\n"
-        words = list(jieba.cut(rawtext))
+        content = self.parser.get_verbose_text(node)
+        words = list(jieba.cut(content))
         total_words = len(words)
         total_chunks = (total_words // (self.chunk_size - self.overlap)) + 1
         total_words = 0

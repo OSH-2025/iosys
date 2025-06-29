@@ -7,6 +7,9 @@ from markitdown import MarkItDown, StreamInfo, UnsupportedFormatException
 from dataclasses import dataclass
 
 from fs import FileSystemNode
+from utils.logger import IOSYSLogger
+
+logger = IOSYSLogger("Parser")
 
 
 @dataclass
@@ -164,6 +167,8 @@ class IOSYSParser:
             return str(e)
 
     def parse(self, node: FileSystemNode):
+        logger.info(f"Parsing file {node.path}...")
+
         (verbose_text, embedded_files) = self._generate_verbose(node)
         brief_text = self._generate_brief(verbose_text, node)
 
@@ -183,6 +188,8 @@ class IOSYSParser:
         if not parent:
             raise ValueError("Node must have a parent")
 
+        logger.info(f"Parsed file {node.path} successfully.")
+
         return IOSYSParsedFile(
             path=node.path,
             name=node.name,
@@ -193,3 +200,9 @@ class IOSYSParser:
             brief_text=brief_text,
             embedded_files=embedded_files,
         )
+
+    def get_verbose_text(self, node: FileSystemNode) -> str:
+        result = node.get_meta("verbose_text")
+        if result is None:
+            result = self.parse(node).verbose_text
+        return str(result)
