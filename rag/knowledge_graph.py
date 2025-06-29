@@ -1,10 +1,12 @@
+import asyncio
 import datetime
 import os  # For accessing environment variables (safer for API keys)
+import threading
 import warnings  # To suppress potential deprecation warnings
 import json  # For parsing LLM responses
 import re  # For basic text cleaning (regular expressions)
 import jieba
-from openai import OpenAI
+from openai import AsyncOpenAI
 from typing import Optional, TypedDict, Union
 
 from fs import CHANGE_TYPE, FileSystemNode, IOSYSFileSystem
@@ -68,7 +70,7 @@ class IOSYSKnowledgeGraph:
         self,
         fs: IOSYSFileSystem,
         parser: IOSYSParser,
-        llm: OpenAI,
+        llm: AsyncOpenAI,
         chunk_size: int = 300,
         overlap: int = 30,
         system_prompt: str = extraction_system_prompt,
@@ -118,39 +120,42 @@ class IOSYSKnowledgeGraph:
 
         create_tasks(node)
 
-        # pool = Pool(4)
+        loop = asyncio.new_event_loop()
 
-        def callback(_):
-            logger.info(f"Knowledge graph tasks completed for {node.path}")
+        def run_async_tasks_in_thread():
+            async def main_async_coroutine():
+                await asyncio.gather(*[task.generate() for task in tasks])
+                loop.stop()
 
-            for dir_node in dir_nodes:
-                self.tasks[dir_node.path] = True  # Mark directories as done
+                for dir_node in dir_nodes:
+                    self.tasks[dir_node.path] = True  # Mark directories as done
 
-            # pool.close()
-            # pool.join()
+                logger.info(f"Knowledge graph tasks completed for {node.path}")
 
-        # pool.map_async(lambda t: t.generate(), iterable=tasks, callback=callback)
+            asyncio.run_coroutine_threadsafe(main_async_coroutine(), loop)
+            loop.run_forever()
 
-        for task in tasks:
-            task.generate()
-        callback(None)  # Simulate completion callback
+        async_thread = threading.Thread(target=run_async_tasks_in_thread, daemon=True)
+        async_thread.start()
 
     def get_result(self, node: FileSystemNode):
         result = []  # type: list[KnowledgeGraphTriplet]
 
-        def extend_result(path: str):
-            task = self.tasks.get(path)
-            assert task is not None, f"Task for {path} not found."
-            if isinstance(task, bool):
-                assert task, f"Task for {path} is not done."
-            else:
-                assert task.result is not None, f"Task for {path} is not finished."
-                result.extend(task.result)
+        def extend_result(n: FileSystemNode):
+            if n.get_meta("type") != "directory":
+                task = self.tasks.get(n.path)
+                assert task is not None, f"Task for {n.path} not found."
+                if isinstance(task, bool):
+                    assert task, f"Task for {n.path} is not done."
+                else:
+                    assert task.result is not None, f"Task for {n.path} is not finished."
+                    result.extend(task.result)
 
-        if node.get_meta("type") != "directory":
-            extend_result(node.path)
-        for child in node.children():
-            extend_result(child.path)
+            for child in n.children():
+                extend_result(child)
+
+        extend_result(node)
+
         return result
 
     def status_dict(self):
@@ -206,11 +211,11 @@ class IOSYSKnowledgeGraphTask:
                 if self.result is not None:
                     logger.info(f"Knowledge graph cache found for {node.path}.")
 
-    def chunk_to_raw_kg_json(self, text: str):
+    async def chunk_to_raw_kg_json(self, text: str):
         user_prompt = self.user_prompt_template.format(text_chunk=text)
         llm_output = None
 
-        response = self.llm_client.chat.completions.create(
+        response = await self.llm_client.chat.completions.create(
             model=self.llm_model_name,
             messages=[
                 {"role": "system", "content": self.system_prompt},
@@ -280,7 +285,7 @@ class IOSYSKnowledgeGraphTask:
                 logger.error(self.error)
         return {"content": parsed_json, "error": parsing_error, "response": llm_output}
 
-    def generate(self):
+    async def generate(self):
         if self.result is not None and not self.error:
             return
 
@@ -306,7 +311,7 @@ class IOSYSKnowledgeGraphTask:
 
             self.progress = int((chunk_num / total_chunks) * 100)
             try:
-                raw_kg = self.chunk_to_raw_kg_json(chunk_text)
+                raw_kg = await self.chunk_to_raw_kg_json(chunk_text)
                 parsed_json = raw_kg.get("content", None)
             except Exception as e:
                 self.error += str(e)
