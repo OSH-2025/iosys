@@ -147,9 +147,363 @@ What{.sect.mt--2!}
 
 ---
 
-<img fixed h-full top-0 src="./arch.svg" />
+<img fixed h-full top-0 src="./assets/arch.svg" />
 
 ---
+
+<img fixed h-full top-0 src="./assets/arch.svg" />
+
+<FocusOn :left="340" :top="185" :radius="120" />
+
+---
+
+# Server & Agent
+
+## Agent: 用户交互的枢纽
+
+<br>
+
+1. 处理用户请求
+2. 使用 LLM 进行自然语言理解
+3. 调用工具获取信息/执行操作
+
+<img v-drag="[432,102,282,NaN]" src="./assets/agent.svg" rounded-lg />
+
+---
+
+# Server & Agent
+
+## Tool Call
+
+LLM 调用外部工具的方式
+
+<br>
+
+- **获取信息**：读取文件内容 / 绘制图表
+- **执行操作**：创建目录 / 生成文档
+
+<img src="/../assets/feasibility/function-call.png" fixed top-0 right-0 h-full rounded-8 />
+
+
+---
+
+# Server & Agent
+
+## Tool Call
+
+<br>
+
+- **多轮调用**："请总结文件 a 的内容，并将结果保存到文件 b 中"
+
+<br>
+
+```mermaid
+graph LR;
+A((User Input)) --> B{LLM} -->|Tool Calls| C[Tools] -->|Actions| E[Real World];
+C -->|Results| B;
+B --> D((Response));
+```
+
+
+---
+
+# Server & Agent
+
+## Model Context Protocol (MCP)
+
+<br>
+
+- 最广泛采用的 Tool Call 协议
+- 自由启用 / 关闭工具
+- 支持官方 JSON 格式配置文件
+
+<img v-drag="[331,155,444,NaN]" src="./assets/mcp.png" border="#AAA 1.5px rounded" />
+
+---
+
+# Server & Agent
+
+## 
+
+
+---
+
+<img fixed h-full top-0 src="./assets/arch.svg" />
+
+<FocusOn :left="310" :top="355" :radius="120" />
+
+---
+
+# FileSystem
+
+<div h-2 />
+
+- 一套接口，支持两种实现
+  - **OSFS**：本地文件系统
+  - **JFS**：JuiceFS 分布式文件系统
+
+- 原生支持嵌入文件
+
+- 原生支持元数据
+
+```plantuml {scale:0.5,class:'fixed top--30 right--40'}
+@startuml
+'——布局与样式——
+skinparam shadowing false
+skinparam componentStyle rectangle
+skinparam ranksep 30
+skinparam dpi 150
+'默认从上到下布局（不加 left to right direction）
+
+'——顶层接口——
+rectangle "IOSYS FileSystem API\n(Unified Interface)" as API #EFEFEF
+
+'——抽象层（__init__.py）——
+rectangle "__init__.py\nIOSYSFileSystem\nFileSystemNode" as ABSTRACT
+
+'——实现层——
+rectangle "osfs_impl.py\nOSFileSystem\nOSFileSystemNode" as OSFS
+rectangle "jfs_impl.py\nJuiceFSFileSystem\nJuiceFSFileSystemNode" as JFS
+rectangle "cache_impl.py\nCacheFileSystem\nCacheFileSystemNode" as CACHE
+
+'——存储层（Local Disk）——
+database "Local Disk" as DISK
+folder "Disk Metadata\n(.meta file)" as DISK_META
+folder "File Objects\n(file or .content)" as DISK_OBJ
+
+'——存储层（JuiceFS Cloud）——
+cloud "JuiceFS Cloud Service" as CLOUD
+folder "Alibaba Cloud OSS\n(Object Storage)" as OSS
+database "JuiceFS Meta DB\n(Redis / TiKV)" as META_DB
+
+'——层级关系——
+API --> ABSTRACT
+ABSTRACT --> OSFS
+ABSTRACT --> JFS
+ABSTRACT --> CACHE
+
+'——CacheFileSystem 组合关系——
+CACHE ..> OSFS : wraps
+CACHE ..> JFS  : wraps
+
+'——OSFS → Local Disk——
+OSFS --> DISK : uses
+DISK --> DISK_META : stores
+DISK --> DISK_OBJ  : stores
+
+'——JFS → JuiceFS Cloud——
+JFS --> CLOUD : uses
+CLOUD --> OSS      : stores objects
+CLOUD --> META_DB  : stores metadata
+@enduml
+```
+
+---
+
+# FileSystem
+
+## “嵌入文件”
+
+Word 中内嵌的图片，如何体现在文件系统中？<br>
+
+- 统一文件与目录：<span block mt--2 />
+  - 目录 $=$ 文件 $-$ 内容
+  - 文件 $=$ 目录 $+$ 内容
+
+- 嵌入文件作为原文件的子节点
+
+- 嵌入文件具有一致操作接口
+
+```mermaid {class:'fixed top-8 right-30'}
+graph TB;
+A(Root) --> B(Directory * n) --> C(File) --> D(Embedded File);
+```
+
+---
+
+<img fixed h-full top-0 src="./assets/arch.svg" />
+
+<FocusOn :left="560" :top="375" :radius="140" />
+
+---
+
+# File Parser
+
+多模态数据的**解析**、**文本化**与**概要生成**
+<div h-4 />
+
+- 文本化功能基于修改后的 markitdown
+- 使用 LLM 生成多层级概要
+- 提取嵌入文件
+
+<br>
+
+- 便于索引和检索
+- 节约后续操作的成本和时间
+
+<img v-drag="[340,177,429,NaN]" src="./assets/parser.svg" rounded-lg />
+
+---
+
+# File Parser
+
+<div v-drag="[18,104,350,NaN]">
+<div text-sm ml-10> 输入: Word 文档 </div>
+<img src="./assets/parser-example.png" />
+</div>
+
+<div v-drag="[354,-5,450,NaN]">
+
+
+<div scale-80>
+
+<div mb-2>
+输出: 文本
+</div>
+
+
+```md {class:'children:children:text-sm!'}
+![This diagram illustrates....](./optical analysis apparatus structure.png)
+
+ZKY-GD-4 智能光电效应（普朗克常数）实验仪如上图所示。
+
+实验数据记录以及分析处理基本必做实验内容
+
+1. 零电流法、补偿法分别测遏止电压；
+2. 饱和光电流与光强之间的变化关系。
+
+1. 固定一种直径大小光阑的情况下，分别测量 5 种不同单色光照射下，光电流的遏止电压。
+
+```
+
+<div h-8 />
+
+<div flex gap-8>
+<div>
+<div mb-1>
+输出: 嵌入文件
+</div>
+
+```mermaid {scale:0.6}
+graph LR;
+A(讲义.docx) --> B(仪器结构图.png)
+A --> C(操作面板.png)
+A --> D(...)
+```
+
+</div><div>
+<div>
+输出: 元数据
+</div>
+
+<div text-4 mt-1>
+
+
+- 文件类型： Word 文档
+- 文件大小： 1.2 MB
+- 创建时间： 1751116881663
+- ...
+
+</div>
+</div>
+</div>
+</div>
+</div>
+
+---
+
+<img fixed h-full top-0 src="./assets/arch.svg" />
+
+<FocusOn :left="590" :top="124" :radius="50" />
+
+---
+
+# Knowledge Graph
+
+借助大语言模型，提取文件中的实体与关系
+<div h-4 />
+
+- **输入：** 文本（来自于 File Parser 模块）
+- **输出：** 尽可能多的 **“主-谓-宾”**（Subject-Predicate-Object）三元组。
+- **格式：** 将三元组输出为易于程序读取的格式，如 JSON。
+
+<div h-8 />
+
+> **System Prompt**:
+>
+> You are an AI expert specialized in knowledge graph extraction. 
+> Your task is to identify and extract factual Subject-Predicate-Object (SPO) triples from the given text.
+> Focus on accuracy and adhere strictly to the JSON output format requested in the user prompt.
+> Extract core entities and the most direct relationship.
+
+---
+
+# Knowledge Graph
+
+### 工作流程
+
+<div h-4 />
+
+```mermaid {scale:0.54,class:'ml--2'}
+graph LR
+    subgraph "处理小文件"
+        A(文件输入) -- 小 --> H_small[直接送入 LLM];
+    end
+
+    subgraph "处理大文件"
+        A -- 大 --> G[Jieba: 文本分块];
+        G --> H_large(按 chunk 送入 LLM);
+    end
+    
+    subgraph "后续处理"
+        H_small & H_large --> J[LLM: 提取三元组];
+        J --> L[标准化/过滤/去重];
+        L --> M(知识图谱);
+    end
+```
+
+---
+
+# Knowledge Graph
+
+- **按需生成**：不是所有文件都需要知识图谱
+- **持久化**：避免重复生成
+- **合并展示**：支持合并展示目录中的所有知识图谱
+
+---
+
+<div text-xl mt--6>三体人物关系（部分）</div>
+
+<img v-drag="[51,49,702,NaN]" src="./assets/kg-demo.png" rounded-md />
+
+---
+
+<img fixed h-full top-0 src="./assets/arch.svg" />
+
+<FocusOn :left="530" :top="92" :radius="50" />
+
+---
+
+# File Graph
+
+---
+
+<img fixed h-full top-0 src="./assets/arch.svg" />
+
+<FocusOn :left="355" :top="50" :radius="110" />
+
+---
+
+<img v-drag="[20,14,681,NaN]" src="./assets/webui.png" border="#aaa rounded-lg 2"/>
+
+<div v-drag="[575,154,326,NaN,90]">
+
+# Web UI {.text-14!}
+
+</div>
+
+---
+
 
 
 ---

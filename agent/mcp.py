@@ -63,39 +63,17 @@ class MCPClient:
         self._shutdown_lock = asyncio.Lock()
         self._load_config_from_file()
 
-        # Schedule delayed sync operation
-        self._schedule_delayed_sync()
+        # Remove the automatic delayed sync - let it be called manually when needed
 
-    def _schedule_delayed_sync(self) -> None:
-        """Schedule a delayed sync operation"""
+    async def ensure_initialized(self) -> None:
+        """Ensure the client is initialized with config. Call this manually when needed."""
         try:
-            # Get the current event loop or create a new one
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # If loop is running, schedule the task
-                loop.create_task(self._delayed_sync())
-            else:
-                # If no loop is running, create a task that will run when loop starts
-                asyncio.create_task(self._delayed_sync())
-        except RuntimeError:
-            # No event loop in current thread, will need to be called manually
-            logger.warning(
-                "No event loop available for delayed sync. Call sync_config manually."
-            )
-
-    async def _delayed_sync(self) -> None:
-        """Perform delayed sync operation"""
-        try:
-            # Wait a short delay to allow initialization to complete
-            await asyncio.sleep(0.1)
-
-            # Load current config and sync
             config = self._load_config_from_file()
             if config:
                 await self.sync_config(config)
-                logger.info("Initial sync completed successfully")
+                logger.info("Initialization sync completed successfully")
         except Exception as e:
-            logger.error(f"Error during delayed sync: {e}")
+            logger.error(f"Error during initialization sync: {e}")
 
     def _load_config_from_file(self) -> Dict[str, Any]:
         """Load configuration from file"""
@@ -176,10 +154,16 @@ class MCPClient:
             except Exception as e:
                 logger.error(f"Failed to start session for server {name}: {e}")
                 server_info.errors.append(str(e))
-                # Clean up the exit stack if it was created
+                # Clean up the exit stack if it was created with better error handling
                 if name in session_info.exit_stacks:
-                    await session_info.exit_stacks[name].aclose()
-                    del session_info.exit_stacks[name]
+                    try:
+                        await session_info.exit_stacks[name].aclose()
+                    except Exception as cleanup_error:
+                        logger.warning(
+                            f"Error during session exit stack cleanup for {name}: {cleanup_error}"
+                        )
+                    finally:
+                        del session_info.exit_stacks[name]
 
         logger.info(
             f"Session {session_id} started with {len(all_tools)} tools from {len([s for s in self.servers.values() if not s.errors])} servers"
@@ -192,19 +176,40 @@ class MCPClient:
             logger.info(f"Ending session {session_id}")
             session_info = self.sessions[session_id]
 
-            # Close session exit stacks in reverse order
-            for name in list(session_info.exit_stacks.keys()):
+            # Close session exit stacks with proper error handling
+            exit_stacks_to_close = list(session_info.exit_stacks.items())
+            for name, exit_stack in exit_stacks_to_close:
                 try:
-                    exit_stack = session_info.exit_stacks[name]
-                    await exit_stack.aclose()
-                    del session_info.exit_stacks[name]
+                    # Direct cleanup with cancel scope error handling
+                    await self._cleanup_session_exit_stack(name, exit_stack)
+                    if name in session_info.exit_stacks:
+                        del session_info.exit_stacks[name]
                 except Exception as e:
                     logger.error(f"Error closing session for {name}: {e}")
                     if name in self.servers:
                         self.servers[name].errors.append(f"Session cleanup error: {e}")
+                    # Always remove from dict even if cleanup failed
+                    if name in session_info.exit_stacks:
+                        del session_info.exit_stacks[name]
 
             del self.sessions[session_id]
             logger.debug(f"Session {session_id} ended")
+
+    async def _cleanup_session_exit_stack(
+        self, name: str, exit_stack: AsyncExitStack
+    ) -> None:
+        """Helper method to clean up a session exit stack"""
+        try:
+            await exit_stack.aclose()
+        except Exception as e:
+            # Handle cancel scope errors more gracefully
+            error_msg = str(e)
+            if "cancel scope" in error_msg.lower():
+                logger.debug(f"Cancel scope conflict during cleanup for {name}: {e}")
+                # Don't re-raise cancel scope errors as they're expected during shutdown
+            else:
+                logger.warning(f"Error during exit stack cleanup for {name}: {e}")
+                raise
 
     async def _add_http_server(self, server_name: str, server_url: str) -> None:
         """Add a new HTTP MCP server"""

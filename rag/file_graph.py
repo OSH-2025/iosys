@@ -127,27 +127,32 @@ class IOSYSGraphEngine:
         triplets = []
         try:
             # 安全地获取所有三元组
-            for subj_id, rel_id, obj_id in self.graph_store.graph.triplets: # type: ignore
+            for subj_id, rel_id, obj_id in self.graph_store.graph.triplets:  # type: ignore
                 try:
                     # 检查节点是否存在
-                    if (subj_id in self.graph_store.graph.nodes and # type: ignore
-                        obj_id in self.graph_store.graph.nodes): # type: ignore
-                        
-                        rel_key = self.graph_store.graph._get_relation_key( # type: ignore
+                    if (
+                        subj_id in self.graph_store.graph.nodes  # type: ignore
+                        and obj_id in self.graph_store.graph.nodes
+                    ):  # type: ignore
+                        rel_key = self.graph_store.graph._get_relation_key(  # type: ignore
                             obj_id=obj_id, subj_id=subj_id, rel_id=rel_id
                         )
-                        
-                        if rel_key in self.graph_store.graph.relations: # type: ignore
+
+                        if rel_key in self.graph_store.graph.relations:  # type: ignore
                             triplet = (
-                                self.graph_store.graph.nodes[subj_id], # type: ignore
-                                self.graph_store.graph.relations[rel_key], # type: ignore
-                                self.graph_store.graph.nodes[obj_id], # type: ignore
+                                self.graph_store.graph.nodes[subj_id],  # type: ignore
+                                self.graph_store.graph.relations[rel_key],  # type: ignore
+                                self.graph_store.graph.nodes[obj_id],  # type: ignore
                             )
                             triplets.append(triplet)
                     else:
-                        print(f"Warning: Missing nodes for triplet {subj_id}-{rel_id}-{obj_id}")
+                        print(
+                            f"Warning: Missing nodes for triplet {subj_id}-{rel_id}-{obj_id}"
+                        )
                 except KeyError as e:
-                    print(f"Warning: KeyError when processing triplet {subj_id}-{rel_id}-{obj_id}: {e}")
+                    print(
+                        f"Warning: KeyError when processing triplet {subj_id}-{rel_id}-{obj_id}: {e}"
+                    )
                     continue
         except Exception as e:
             print(f"Error getting triplets: {e}")
@@ -212,7 +217,7 @@ class IOSYSGraphEngine:
         except Exception as e:
             print(f"Error removing file {path}:")
             print(f"  Exception: {type(e).__name__}: {e}")
-            print(f"  Full traceback:")
+            print("  Full traceback:")
             traceback.print_exc()
             raise e
 

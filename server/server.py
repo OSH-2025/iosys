@@ -35,7 +35,9 @@ async_llm = AsyncOpenAI(
     base_url=os.environ["LLM_BASE_URL"],
     api_key=os.environ["LLM_API_KEY"],
 )
-knowledge_graph = IOSYSKnowledgeGraph(llm=llm, fs=fs, chunk_size=400)
+knowledge_graph = IOSYSKnowledgeGraph(
+    llm=async_llm, fs=fs, parser=parser, chunk_size=400
+)
 
 app = FastAPI()
 app.add_middleware(

@@ -7,6 +7,9 @@ from markitdown import MarkItDown, StreamInfo, UnsupportedFormatException
 from dataclasses import dataclass
 
 from fs import FileSystemNode
+from utils.logger import IOSYSLogger
+
+logger = IOSYSLogger("Parser")
 
 
 @dataclass
@@ -79,6 +82,13 @@ class IOSYSParser:
         assert description is not None
         return description
 
+    def _get_extension(self, fullname: str):
+        basename = os.path.basename(fullname)
+        extention = os.path.splitext(basename)[1]
+        # if extention == "":
+        #     return ".txt"  # To make sure it can be parsed as a plain text
+        return extention
+
     def _generate_verbose(self, node: FileSystemNode):
         embedded_files = []  # type: list[EmbeddedFile]
 
@@ -120,8 +130,13 @@ class IOSYSParser:
                 )
             )
 
+            if "png" in content_type:
+                source = "./{0}.png".format(name)
+            else:
+                source = "./{0}.jpg".format(name)
+
             return {
-                "src": "data:{0};base64,{1}".format(content_type, b64_data),
+                "src": source,
                 "alt": description,
             }
 
@@ -130,6 +145,7 @@ class IOSYSParser:
                 node.read_stream(),
                 stream_info=StreamInfo(
                     filename=node.name,
+                    extension=self._get_extension(node.name),
                 ),
                 image_converter=image_converter,
             )
@@ -151,6 +167,8 @@ class IOSYSParser:
             return str(e)
 
     def parse(self, node: FileSystemNode):
+        logger.info(f"Parsing file {node.path}...")
+
         (verbose_text, embedded_files) = self._generate_verbose(node)
         brief_text = self._generate_brief(verbose_text, node)
 
@@ -170,6 +188,8 @@ class IOSYSParser:
         if not parent:
             raise ValueError("Node must have a parent")
 
+        logger.info(f"Parsed file {node.path} successfully.")
+
         return IOSYSParsedFile(
             path=node.path,
             name=node.name,
@@ -180,3 +200,9 @@ class IOSYSParser:
             brief_text=brief_text,
             embedded_files=embedded_files,
         )
+
+    def get_verbose_text(self, node: FileSystemNode) -> str:
+        result = node.get_meta("verbose_text")
+        if result is None:
+            result = self.parse(node).verbose_text
+        return str(result)
