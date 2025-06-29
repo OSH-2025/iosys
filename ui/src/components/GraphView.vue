@@ -26,6 +26,13 @@ const confirmDialog = ref({
   nodeName: ''
 });
 
+// New folder dialog state
+const newFolderDialog = ref({
+  visible: false,
+  folderName: '',
+  error: null as string | null
+});
+
 // Focus state
 const focusedNodeId = ref<string | null>(null);
 const focusedNodeType = ref<string | null>(null);
@@ -229,6 +236,38 @@ function hideContextMenu() {
   contextMenu.value.visible = false;
 }
 
+function showNewFolderDialog() {
+  newFolderDialog.value = {
+    visible: true,
+    folderName: '',
+    error: null
+  };
+}
+
+function cancelNewFolder() {
+  newFolderDialog.value.visible = false;
+}
+
+async function createNewFolder() {
+  const folderName = newFolderDialog.value.folderName.trim();
+  if (!folderName) {
+    newFolderDialog.value.error = 'Folder name cannot be empty';
+    return;
+  }
+
+  if (!focusedNodeId.value) return;
+
+  // Construct the full path
+  const newFolderPath = `${focusedNodeId.value.replace(/\/$/, '')}/${folderName}`;
+
+  try {
+    await apis.fsCreateFolder({ path: newFolderPath });
+    newFolderDialog.value.visible = false;
+  } catch (error) {
+    newFolderDialog.value.error = error instanceof Error ? error.message : 'Failed to create folder';
+  }
+}
+
 onMounted(() => {
   if (container.value) {
     myChart = echarts.init(container.value);
@@ -373,6 +412,10 @@ function handleFileInput(event: Event) {
       <div class="flex items-center justify-between">
         <div class="text-lg text-gray-800 font-mono text-wrap w-0 flex-grow break-words">{{ focusedNodeId }}</div>
         <div class="flex items-center gap-2">
+          <button v-if="focusedNodeType === 'directory' || focusedNodeType === 'root'" @click="showNewFolderDialog"
+            class="p-1 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded transition-colors" title="New Folder">
+            <div class="i-carbon-folder-add w-4 h-4"></div>
+          </button>
           <button v-if="focusedNodeType !== 'directory'" @click="downloadNode"
             class="p-1 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Download">
             <div class="i-carbon-download w-4 h-4"></div>
@@ -495,6 +538,51 @@ function handleFileInput(event: Event) {
           <button @click="confirmDelete"
             class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors">
             Delete
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- New Folder Dialog -->
+    <div v-if="newFolderDialog.visible"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm">
+      <div class="bg-white rounded-lg shadow-xl border border-gray-200 p-6 max-w-md w-full mx-4">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center">
+            <div class="i-carbon-folder-add w-5 h-5 text-green-600"></div>
+          </div>
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900">New Folder</h3>
+            <p class="text-sm text-gray-600">Create a new folder</p>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Folder Name</label>
+          <input 
+            v-model="newFolderDialog.folderName"
+            @keyup.enter="createNewFolder"
+            @keyup.escape="cancelNewFolder"
+            type="text" 
+            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            :class="{ 'border-red-300 focus:ring-red-500': newFolderDialog.error }"
+            placeholder="Enter folder name"
+            autofocus
+          />
+          <div v-if="newFolderDialog.error" class="mt-1 text-sm text-red-600">
+            {{ newFolderDialog.error }}
+          </div>
+        </div>
+
+        <div class="flex gap-3 justify-end">
+          <button @click="cancelNewFolder"
+            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors">
+            Cancel
+          </button>
+          <button @click="createNewFolder"
+            :disabled="!newFolderDialog.folderName.trim()"
+            class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+            Create
           </button>
         </div>
       </div>

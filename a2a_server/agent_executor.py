@@ -48,6 +48,7 @@ class IOSYSAgentExecutor(AgentExecutor):
             self.agent_endpoint,
             json={
                 "command": query,
+                "session_id": task.id,
             },
         ).json()
 

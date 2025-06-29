@@ -120,7 +120,9 @@ class IOSYSQueryEngine:
         files = []
         for node in result.source_nodes:
             file_path = get_file_path(node)
-            print(f"\n[DEBUG] ========== {file_path}, {node.score}, {node.text} ==========")
+            print(
+                f"\n[DEBUG] ========== {file_path}, {node.score}, {node.text} =========="
+            )
             if filter(file_path):
                 files.append(file_path)
 
