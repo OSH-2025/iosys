@@ -106,18 +106,16 @@ class FileSystemNode(abc.ABC):
 CHANGE_TYPE = Literal["create", "update", "delete", "metadata"]
 
 
+logger = IOSYSLogger("FileSystem")
+
+
 class IOSYSFileSystem(abc.ABC):
     on_change: list[Callable[[FileSystemNode, CHANGE_TYPE], Awaitable[None]]]
 
     _previous_task: asyncio.Task | None = None
 
     def __init__(self):
-        logger = IOSYSLogger("FileSystem")
-
-        async def log_callback(node: FileSystemNode, change_type: CHANGE_TYPE):
-            logger.info(f"event: {change_type} - {node.path}")
-
-        self.on_change = [log_callback]
+        self.on_change = []
 
     @abc.abstractmethod
     def is_running(self) -> bool: ...
@@ -206,6 +204,8 @@ class IOSYSFileSystem(abc.ABC):
         src_node.move_to(dst_path)
 
     def fire_event(self, change_type: CHANGE_TYPE, node: FileSystemNode):
+        logger.info(f"event: {change_type} - {node.path}")
+
         if not self.on_change:
             return
 

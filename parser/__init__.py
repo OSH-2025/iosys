@@ -220,7 +220,7 @@ Only return the name, do not return any other text.
             embedded_node = node.create_child(embedded_file.name)
             embedded_node.write(content=embedded_file.content)
             embedded_node.update_meta(
-                type=embedded_file.type,
+                # type=embedded_file.type,
                 description=embedded_file.description,
             )
 

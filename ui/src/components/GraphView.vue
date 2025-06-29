@@ -371,7 +371,7 @@ function handleFileInput(event: Event) {
     <div v-if="focusedNodeId"
       class="absolute top-4 right-4 bg-white/90 backdrop-blur-sm border border-gray-200 rounded-lg px-3 py-2 shadow-lg w-80 flex flex-col overflow-y-auto max-h-180">
       <div class="flex items-center justify-between">
-        <div class="text-lg text-gray-800 font-mono">{{ focusedNodeId }}</div>
+        <div class="text-lg text-gray-800 font-mono text-wrap w-0 flex-grow break-words">{{ focusedNodeId }}</div>
         <div class="flex items-center gap-2">
           <button v-if="focusedNodeType !== 'directory'" @click="downloadNode"
             class="p-1 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Download">
