@@ -48,7 +48,8 @@ class JuiceFSFileSystemNode(FileSystemNode):
         return io.BytesIO(content_bytes)
 
     def write(self, content: bytes):
-        if self._meta.get("type") == "embedded":
+        node_type = self._meta.get("type")
+        if node_type == "embedded":
             parent = self.parent()
             assert parent
             self.fs.client.setxattr(
@@ -56,18 +57,18 @@ class JuiceFSFileSystemNode(FileSystemNode):
                 "user.iosys.embedded.content." + self.name,
                 content,
             )
-            return
-        node_type = self._meta.get("type")
-        if node_type == "directory":
-            raise IsADirectoryError(f"Cannot write to a directory: {self.path}")
-        # 如果是新建的占位节点或嵌入节点，可能需要在JuiceFS创建文件
-        filecode = self.fs.client.open(self.path, "wb")
-        try:
-            filecode.write(content)
-        finally:
-            filecode.close()
-        # 更新元数据类型为文件，记录修改时间
-        self.update_meta(type="file", modified_at=_now())
+            self.update_meta(modified_at=_now())
+        else:
+            if node_type == "directory":
+                raise IsADirectoryError(f"Cannot write to a directory: {self.path}")
+            # 如果是新建的占位节点或嵌入节点，可能需要在JuiceFS创建文件
+            filecode = self.fs.client.open(self.path, "wb")
+            try:
+                filecode.write(content)
+            finally:
+                filecode.close()
+            # 更新元数据类型为文件，记录修改时间
+            self.update_meta(type="file", modified_at=_now())
         self.fs.fire_event("update", self)
 
     def makedir(self):
