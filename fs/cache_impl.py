@@ -267,8 +267,7 @@ class CacheFileSystemNode(FileSystemNode):
                 raise FileNotFoundError(
                     f"Failed to create parent directory {self.path} in cache."
                 )
-        else:
-            cache_node.create_child(name)
+        cache_node.create_child(name)
         # 2) 在远端创建
         backend_node = self._backend_node
         if backend_node is None:
@@ -278,8 +277,7 @@ class CacheFileSystemNode(FileSystemNode):
                 raise FileNotFoundError(
                     f"Failed to create parent directory {self.path} in backend."
                 )
-        else:
-            backend_node.create_child(name)
+        backend_node.create_child(name)
         return CacheFileSystemNode(self.fs, child_path)
 
     def makedir(self):
@@ -288,7 +286,16 @@ class CacheFileSystemNode(FileSystemNode):
         if not parent:
             raise FileNotFoundError(f"Parent directory {parent_path} not found")
         # use create_child to make a new directory in both cache and backend
-        return parent.create_child(os.path.basename(self.path))
+        cache_node = self.fs.cache_fs.get_node(self.path)
+        if not cache_node:
+            self.fs.cache_fs.ensure_directory(self.path)
+
+        backend_node = self.fs.backend_fs.get_node(self.path)
+        if not backend_node:
+            self.fs.backend_fs.ensure_directory(self.path)
+
+        self.update_meta(type="directory", created_at=int(time.time()), modified_at=int(time.time()))
+        self.fs.fire_event("create", self)
 
     def parent(self) -> Optional["CacheFileSystemNode"]:
         parent_path = os.path.dirname(self.path) or "/"
