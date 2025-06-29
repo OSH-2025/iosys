@@ -209,6 +209,6 @@ async def fs_create_folder_endpoint(request: FsCreateFolderRequest):
             status_code=400,
             detail=f"Path {request.path} already exists",
         )
-    
+
     # Create the directory
     fs.ensure_directory(request.path)
