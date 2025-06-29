@@ -665,37 +665,39 @@ class FileAgent:
         """基于embedding模型的语义文件搜索"""
         try:
             query = params["query"]
-            
+
             # 调试信息
             print(f"语义搜索查询: {query}")
-            
+
             # 使用RAG查询接口
             result = await self.config.rag.query.query_nodes(
                 query,
                 include_glob=["**/*"],
                 exclude_glob=[],
             )
-            
+
             # print(f"response: {result.response}\nfiles: {result.files}\nnodes: {result.nodes}")
-            files= result.files
+            files = result.files
             nodes = result.nodes
 
             data = []
 
             for i, file in enumerate(files):
-                data.append({
-                    "file": file,
-                    "score": abs(nodes[i].score) # type: ignore
-                })
+                data.append(
+                    {
+                        "file": file,
+                        "score": abs(nodes[i].score),  # type: ignore
+                    }
+                )
 
             data = sorted(data, key=lambda x: x["score"], reverse=False)
 
             return {
                 "status": "success",
                 "message": f"成功找到 {len(data)} 个相关文件",
-                "data": data # type: ignore
+                "data": data,  # type: ignore
             }
-            
+
         except Exception as e:
             print(f"语义搜索错误: {str(e)}")
             return {
