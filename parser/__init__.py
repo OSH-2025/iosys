@@ -1,12 +1,10 @@
-import asyncio
-import os
 import base64
-from concurrent.futures import ThreadPoolExecutor
-
-from typing import Literal
-from openai import AsyncOpenAI
-from markitdown import MarkItDown, StreamInfo, UnsupportedFormatException
+import os
 from dataclasses import dataclass
+from typing import Literal
+
+from markitdown import MarkItDown, StreamInfo, UnsupportedFormatException
+from openai import AsyncOpenAI, OpenAI
 
 from fs import FileSystemNode
 from utils.logger import IOSYSLogger
@@ -45,24 +43,24 @@ class IOSYSParsedFile:
 
 
 class IOSYSParser:
-    llm: AsyncOpenAI
     model: str
     md: MarkItDown
 
-    def __init__(self, llm: AsyncOpenAI):
+    def __init__(self, llm: OpenAI, async_llm: AsyncOpenAI):
         self.llm = llm
+        self.async_llm = async_llm
         self.model = os.environ["LLM_MODEL_NAME"]
         self.md = MarkItDown(
             llm_client=self.llm,
             llm_model=self.model,
         )
 
-    async def _chat(
+    def _chat(
         self,
         prompt: str,
         additional,
     ) -> str:
-        if not self.llm or not self.model:
+        if not self.async_llm or not self.model:
             raise Exception("LLM not initialized")
 
         messages = [
@@ -75,7 +73,34 @@ class IOSYSParser:
             }
         ]
 
-        response = await self.llm.chat.completions.create(
+        response = self.llm.chat.completions.create(
+            model=self.model,
+            messages=messages,  # type: ignore
+        )
+
+        description = response.choices[0].message.content
+        assert description is not None
+        return description
+
+    async def _achat(
+        self,
+        prompt: str,
+        additional,
+    ) -> str:
+        if not self.async_llm or not self.model:
+            raise Exception("LLM not initialized")
+
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    additional,
+                ],
+            }
+        ]
+
+        response = await self.async_llm.chat.completions.create(
             model=self.model,
             messages=messages,  # type: ignore
         )
@@ -94,7 +119,7 @@ class IOSYSParser:
     async def _generate_verbose(self, node: FileSystemNode):
         embedded_files = []  # type: list[EmbeddedFile]
 
-        async def image_converter(image):
+        def image_converter(image):
             # A function using llm to get a image's description. It serves as an argument for Markitdown.
             with image.open() as image_bytes:
                 img_data = image_bytes.read()
@@ -107,12 +132,12 @@ class IOSYSParser:
             prompt = "Write a detailed caption for this image."
             data_uri = f"data:{content_type};base64,{b64_data}"
             additional = {"type": "image_url", "image_url": {"url": data_uri}}
-            description = await self._chat(prompt, additional)
-
+            description = self._chat(prompt, additional)
+            
             # Step 2. Get a concise title for the image.
             prompt = "The following text describes an image. Write a concise title for the image based on the text."
             additional = {"type": "text", "text": description}
-            name = await self._chat(prompt, additional)
+            name = self._chat(prompt, additional)
 
             embedded_files.append(
                 EmbeddedFile(
@@ -133,20 +158,6 @@ class IOSYSParser:
                 "alt": description,
             }
 
-        def run_image_converter_in_thread(image):
-            # Create a new event loop in a separate thread
-            def run_async():
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                try:
-                    return loop.run_until_complete(image_converter(image))
-                finally:
-                    loop.close()
-
-            with ThreadPoolExecutor() as executor:
-                future = executor.submit(run_async)
-                return future.result()
-
         try:
             result = self.md.convert_stream(
                 node.read_stream(),
@@ -154,7 +165,7 @@ class IOSYSParser:
                     filename=node.name,
                     extension=self._get_extension(node.name),
                 ),
-                image_converter=run_image_converter_in_thread,
+                image_converter=image_converter,
             )
             return (result.markdown, embedded_files)
         except UnsupportedFormatException:
@@ -167,7 +178,7 @@ class IOSYSParser:
         additional = {"type": "text", "text": verbose}
 
         try:
-            description = await self._chat(prompt, additional)
+            description = await self._achat(prompt, additional)
             return description
 
         except Exception as e:

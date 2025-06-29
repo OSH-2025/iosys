@@ -31,7 +31,7 @@ async_llm = AsyncOpenAI(
 )
 
 fs = new_fs()
-parser = IOSYSParser(llm=async_llm)
+parser = IOSYSParser(llm=llm, async_llm=async_llm)
 rag = IOSYSRAG(fs=fs, parser=parser)
 agent = IOSYSAgent(AgentConfig(llm=llm, fs=fs, rag=rag))
 knowledge_graph = IOSYSKnowledgeGraph(
