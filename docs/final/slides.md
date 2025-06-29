@@ -23,7 +23,7 @@ routerMode: hash
 </div>
 
 ---
-zoom: 0.85
+zoom: 0.9
 ---
 
 Why{.sect}
@@ -33,19 +33,19 @@ Why{.sect}
 - [My-Glow (2023)](https://github.com/OSH-2023/My-Glow) 基于 [Wowkiddy (2022)](https://github.com/OSH-2022/x-WowKiddy) 和 [TOBEDONE (2022)](https://github.com/OSH-2022/x-TOBEDONE) 
 
   ✅ 分布式框架优化、鲁棒性监控 <br>
-  ⚠️ 传统打标方法 [✨ LlamaIndex]{.float-right.mr-50}
+  ⚠️ 传统打标方法 [✨ LlamaIndex]{.float-right.mr-30}
 
 - [ArkFS (2024)](https://github.com/OSH-2024/ArkFS)
 
   ✅ 多模态向量化、二分图映射 <br>
-  ⚠️ 图结构简化 [✨ 知识图谱]{.float-right.mr-50}
+  ⚠️ 图结构简化 [✨ 知识图谱]{.float-right.mr-30}
 
 - [vivo50 (2024)](https://github.com/OSH-2024/vivo50)
 
   ✅ 自然语言/语音交互、任务序列转换 <br>
-  ⚠️ RAG架构限制 [✨ Tool call]{.float-right.mr-50}
+  ⚠️ RAG架构限制 [✨ Tool Call-based action]{.float-right.mr-30}
 
-<div v-drag="[392,162,310,282]" border="3 yellow-500 dashed rounded-xl" pt-1 pl-2 text-yellow-600>
+<div v-drag="[472,164,262,282]" border="3 yellow-500 dashed rounded-xl" pt-1 pl-2 text-yellow-600>
 我们的改进
 </div>
 
@@ -58,7 +58,7 @@ Why{.sect}
 ## The [AIOS]{.text-4xl} [Trend]{.text-primary}
 
 <div flex justify-center>
-<img src="/../assets/research/image-1.png" w-160 mt-2 ml--4 />
+<img src="/../assets/research/image-1.png" w-180 mt-2 ml--4 />
 </div>
 
 ---
@@ -117,9 +117,8 @@ What{.sect}
 
 ### 2. 图状文件组织范式
 
-- 编码大量的异构和关系信息
-- 多维度的语义标签
-- 多对多的关系映射
+- 打破目录、文件、嵌入文件的界限
+- 知识图谱的结合
 
 </div>
 
@@ -132,6 +131,8 @@ What{.sect}
 
 </div>
 
+---
+hide: true
 ---
 
 What{.sect.mt--2!}
@@ -159,8 +160,10 @@ What{.sect.mt--2!}
 
 # Implementation Overview
 
+<div h-4 />
 
-- **Modular design** <div mt-2 font-mono>Web UI, Backend, Agent, RAG Core,<br>File System, File Parser, A2A Server</div>
+
+- **Modular design**  (7 modules) <div mt-2 font-mono>Web UI, Backend, Agent, RAG Core,<br>File System, File Parser, A2A Server</div>
 
 - **Conventional commit**: <span font-mono>feat(module): desc</span>
 
@@ -174,7 +177,7 @@ What{.sect.mt--2!}
 | TypeScript | 10 | 371 | 13 | 53 | 437+ | -->
 
 
-<div v-drag="[498,100,337,241]" flex gap-2>
+<div v-drag="[504,128,337,241]" flex gap-2>
 
 <div>
 
@@ -188,8 +191,9 @@ What{.sect.mt--2!}
 
 </div>
 
+<div h-12 />
 
-- **Commits:**{.font-sans} &nbsp;[540+]{.font-mono}
+- **Commits:**{.font-sans} &nbsp;[540+]{.font-mono.text-2xl.text-green-700}
 <!-- 
 <div font-mono leading-8 grid grid-cols-2 w-20 mt--2 ml-2>
 540+
@@ -281,11 +285,6 @@ B --> D((Response));
 
 ---
 
-# Server & Agent
-
-
----
-
 <img fixed h-full top-0 src="./assets/arch.svg" />
 
 <FocusOn :left="310" :top="355" :radius="120" />
@@ -360,6 +359,25 @@ CLOUD --> META_DB  : stores metadata
 
 # FileSystem
 
+
+## ![logo](https://github.com/juicedata/juicefs/raw/main/docs/en/images/juicefs-logo-new.svg){.scale-80.origin-left-top}
+
+<div text-xl mt-4>
+
+- 云原生文件存储，分布式，支持多种存储后端
+  - (我们目前使用阿里云 OSS)
+- 相比 Ceph 和 3FS 的优势：跨平台，泛用性强，容易二次开发
+
+</div>
+
+<div italic op-80 mt-8>
+Not new but it works!
+</div>
+
+---
+
+# FileSystem
+
 ## “嵌入文件”
 
 Word 中内嵌的图片，如何体现在文件系统中？<br>
@@ -390,9 +408,9 @@ A(Root) --> B(Directory * n) --> C(File) --> D(Embedded File);
 多模态数据的**解析**、**文本化**与**概要生成**
 <div h-4 />
 
-- 文本化功能基于修改后的 markitdown
-- 使用 LLM 生成多层级概要
-- 提取嵌入文件
+- 文本化功能基于**修改后的 markitdown**
+- 使用 LLM 生成**多层级概要**
+- 提取**嵌入文件**
 
 <br>
 
@@ -477,7 +495,17 @@ A --> D(...)
 <br>
 
 - 不需要在第一时间完成解析
+
 - 优先执行其他任务
+
+<div op-60 mt-12>
+
+- TODO: Multiple Threading / Processing
+- (GIL free in latest Python?)
+
+</div>
+
+<img v-drag="[483,56,224,NaN]" src="./assets/async.png" />
 
 ---
 
@@ -494,7 +522,7 @@ A --> D(...)
 
 - **输入：** 文本（来自于 File Parser 模块）
 - **输出：** 尽可能多的 **“主-谓-宾”**（Subject-Predicate-Object）三元组。
-- **格式：** 将三元组输出为易于程序读取的格式，如 JSON。
+- **格式：** 将三元组输出为易于程序读取的格式，(JSON)。
 
 <div h-8 />
 
@@ -511,7 +539,7 @@ A --> D(...)
 
 ### 工作流程
 
-<div h-4 />
+<div h-10 />
 
 ```mermaid {scale:0.54,class:'ml--2'}
 graph LR
@@ -536,21 +564,54 @@ graph LR
 # Knowledge Graph
 
 - **按需生成**：不是所有文件都需要知识图谱
+
 - **持久化**：避免重复生成
+
 - **合并展示**：支持合并展示目录中的所有知识图谱
+
+<div flex>
+<div>
+
+```mermaid {scale:0.7}
+graph LR;
+A(文件目录) --> B(文件1) --> C((知识图谱1));
+A --> D(文件2) --> E((知识图谱2));
+```
+
+</div>
+
+<div mx-8 flex items-center>
+<carbon-arrow-right text-3xl my-2 />
+</div>
+
+<div>
+
+```mermaid {scale:0.7}
+graph LR;
+A(文件目录) --> B(文件1);
+A --> D(文件2);
+A ---> C((合并知识图谱));
+```
+
+</div>
+</div>
 
 ---
 
 <div text-xl mt--6>三体人物关系（部分）</div>
 
-<img v-drag="[51,49,702,NaN]" src="./assets/kg-demo.png" rounded-md />
+<img v-drag="[51,49,702,NaN]" src="./assets/kg-demo.png" rounded-md border="#aaa 2" />
 
+---
+hide: true
 ---
 
 <img fixed h-full top-0 src="./assets/arch.svg" />
 
 <FocusOn :left="530" :top="92" :radius="50" />
 
+---
+hide: true
 ---
 
 # File Graph
@@ -588,10 +649,19 @@ B -->|④ Search Results| A;
 
 ---
 
-# Vector Indexing
+# Vector Indexing & RAG
 
-## 
+## 一些探索
 
+<br>
+
+- 这是我们花最多时间探索的部分
+
+- 尝试过 GraphRAG 和 RAGFlow <span>(见 `rag/examples` 文件夹)</span>
+
+- 最终选择 LlamaIndex，是因为它的成熟度和它的 API 友好程度
+
+- 仍需进一步调优
 
 ---
 
@@ -669,6 +739,8 @@ B -->|④ Search Results| A;
 
 
 <img v-drag="[56,141,416,NaN]" src="./assets/webui-example-4.png" border="#aaa rounded-lg 2" />
+
+<div v-drag="[568,221,138,83]" text-xl op-60 class="text-sm italic">（Vibed）</div>
 
 ---
 
@@ -753,12 +825,31 @@ examples = [
 
 # A2A Server
 
+<div text-4xl text-center mt-24>
+
+该项目在未来的最大意义 (?)
+
+</div>
 
 ---
+transition: view-transition
+---
+
+
+<img fixed h-full top-0 src="./assets/arch.svg" view-transition-arch />
+
+
+---
+transition: view-transition
+---
+
+<img fixed top-0 right-0 w-75 src="./assets/arch.svg" view-transition-arch z--1 />
+
+<!-- <div z-100000> -->
 
 # 分工
 
-| 姓名 | 负责模块 | 其他工作 |
+| 姓名 | 负责模块 | 其他工作 <div inline-block w-60 /> |
 | :--- | --- | --- |
 | 熊桐睿 | Web UI | 统筹项目，协调组合各模块 |
 | 张海川 | File System | 配置云存储服务 |
@@ -767,6 +858,9 @@ examples = [
 | 冉竣宇 | File Agent | 大量调试与 bug 修复  |
 | 徐铭凯 | File Parser | 测试数据的制备 |
 | [(全组)]{.op-50} | Backend | - |
+
+
+<!-- </div> -->
 
 <style scoped>
 table {
@@ -785,7 +879,7 @@ table {
 
 ---
 
-# 回忆
+# 总结
 
 - 一学期的时间过得很快
 
@@ -803,47 +897,6 @@ table {
 class: text-center text-2xl
 ---
 
-<div h-24 />感谢邢凯老师的指导和支持！
-<div h-4 />感谢组员们的努力和付出！
-<div h-4 />感谢助教们的帮助和鼓励！
-
----
-
-<img src="https://microsoft.github.io/graphrag/img/GraphRag-Figure1.jpg" z--1 fixed op-40 inset-y-20 right-0 />
-
-How{.sect}
-
-### 信息提取和检索？{.op-80}
-
-GraphRAG {.text-3xl.underlined.mb-4}
-
-1. **图结构知识库**：知识库通过图来表示，其中节点代表实体，边表示实体之间的关系
-2. **图检索 [(Graph Retrieval)]{.text-sm}**：通过节点和边来寻找相关信息，具备更强的关系推理能力
-3. **增强生成 [(Generation)]{.text-sm}**：结合检索到的图信息，生成更加精准和上下文相关的回答
-
----
-
-How{.sect}
-
-### 分布式？{.op-80}
-
-JuiceFS {.text-3xl.underlined.mb-4}
-
-![logo](https://github.com/juicedata/juicefs/raw/main/docs/en/images/juicefs-logo-new.svg){.fixed.right-2.top-10.scale-70}
-
-<div text-xl mt-8>
-
-- 云原生文件存储，分布式，支持多种存储后端
-- 相比 Ceph 和 3FS 的优势：跨平台，泛用性强，容易二次开发
-
-</div>
-
-<div italic op-80 mt-8>
-Not new but it works!
-</div>
-
----
-layout: end
----
-
-Thanks!
+<div h-24 />感谢邢凯老师的指导和支持
+<div h-4 />感谢组员们的努力和付出
+<div h-4 />感谢助教们的帮助和鼓励
