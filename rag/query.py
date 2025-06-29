@@ -117,11 +117,11 @@ class IOSYSQueryEngine:
         engine = self.index.as_query_engine(llm=self.llm, use_async=True)
         result = cast(Response, engine.query(query))
 
-        files = set()
+        files = []
         for node in result.source_nodes:
             file_path = get_file_path(node)
             if filter(file_path):
-                files.add(file_path)
+                files.append(file_path)
 
         return QueryResponse(
             response=result.response or "",

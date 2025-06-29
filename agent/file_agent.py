@@ -648,42 +648,61 @@ class FileAgent:
         }
 
     @tool(
-        name="search_file",
-        description="搜索文件工作流",
+        name="semantic_search_files",
+        description="基于语义embedding模型搜索文件",
         parameters={
             "type": "object",
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": "自然语言表述的查询内容",
-                },
-                "include_glob": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "包含的文件路径glob模式",
-                    "default": ["**/*"],
-                },
-                "exclude_glob": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "排除的文件路径glob模式",
-                    "default": [],
+                    "description": "自然语言查询内容",
                 },
             },
-            "required": ["key_words"],
+            "required": ["query"],
         },
     )
-    async def _search_file_workflow(self, params: Dict[str, Any]) -> ToolCallResult:
-        result = await self.config.rag.query.query_nodes(
-            params["query"],
-            include_glob=params.get("include_glob", ["**/*"]),
-            exclude_glob=params.get("exclude_glob", []),
-        )
-        return {
-            "status": "success",
-            "message": f"搜索完成，共找到 {len(result.nodes)} 个相关文件。具体回复：{result.response}",
-            "data": result.to_dict(),
-        }
+    async def _semantic_search_files(self, params: Dict[str, Any]) -> ToolCallResult:
+        """基于embedding模型的语义文件搜索"""
+        try:
+            query = params["query"]
+            
+            # 调试信息
+            print(f"语义搜索查询: {query}")
+            
+            # 使用RAG查询接口
+            result = await self.config.rag.query.query_nodes(
+                query,
+                include_glob=["**/*"],
+                exclude_glob=[],
+            )
+            
+            # print(f"response: {result.response}\nfiles: {result.files}\nnodes: {result.nodes}")
+            files= result.files
+            nodes = result.nodes
+
+            data = []
+
+            for i, file in enumerate(files):
+                data.append({
+                    "file": file,
+                    "score": abs(nodes[i].score) # type: ignore
+                })
+
+            data = sorted(data, key=lambda x: x["score"], reverse=False)
+
+            return {
+                "status": "success",
+                "message": f"成功找到 {len(data)} 个相关文件",
+                "data": data # type: ignore
+            }
+            
+        except Exception as e:
+            print(f"语义搜索错误: {str(e)}")
+            return {
+                "status": "error",
+                "message": f"语义搜索失败: {str(e)}",
+                "data": {"query": params.get("query", "")},
+            }
 
     @tool(
         name="get_file_info",
