@@ -570,9 +570,10 @@ class FileAgent:
                 "message": f"文件不存在: {params['file_path']}",
             }
 
+        print(f"读取文件: {file_id}")
         # 读取文件内容
-        content_bytes = self.fs.read(file_id)
-        content = content_bytes.decode("utf-8")
+        content = file_node.get_meta("verbose_text")
+        # content = "Debug"
 
         return {
             "status": "success",
