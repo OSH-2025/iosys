@@ -244,15 +244,19 @@ class IOSYSKnowledgeGraphTask:
 
                 # Handle if response_format={'type':'json_object'} returns a dict containing the list
                 if isinstance(parsed_data, dict):
-                    list_values = [
-                        v for v in parsed_data.values() if isinstance(v, list)
-                    ]
-                    if len(list_values) == 1:
-                        parsed_json = list_values[0]
+                    if "subject" in parsed_data and "predicate" in parsed_data and "object" in parsed_data:
+                        # If it's a single triple, wrap it in a list
+                        parsed_json = [parsed_data]
                     else:
-                        logger.error(f"LLM raw output: {llm_output}")
-                        self.error += "JSON object received, but doesn't contain a single list of triples.\n"
-                        raise ValueError(self.error)
+                        list_values = [
+                            v for v in parsed_data.values() if isinstance(v, list)
+                        ]
+                        if len(list_values) == 1:
+                            parsed_json = list_values[0]
+                        else:
+                            logger.error(f"LLM raw output: {llm_output}")
+                            self.error += "JSON object received, but doesn't contain a single list of triples.\n"
+                            raise ValueError(self.error)
                 elif isinstance(parsed_data, list):
                     parsed_json = parsed_data
                 else:

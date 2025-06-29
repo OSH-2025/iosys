@@ -132,7 +132,6 @@ const updateChart = () => {
   }
 
   chart.setOption(option)
-  chart.resize()
 }
 
 // Add refresh functionality
