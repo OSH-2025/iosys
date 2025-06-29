@@ -22,6 +22,7 @@ watch(() => {
   const s = status.value.knowledge_graph?.[props.path]
   return [props.path, s?.status === 'done' ? s.done_at : false] as const
 }, async ([path, done_at]) => {
+  console.log(path, done_at)
   if (!done_at) return
   try {
     const myWork = lastWork = Date.now()

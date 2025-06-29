@@ -1,11 +1,11 @@
 import asyncio
 import datetime
+import logging
 import os  # For accessing environment variables (safer for API keys)
 import threading
 import warnings  # To suppress potential deprecation warnings
 import json  # For parsing LLM responses
 import re  # For basic text cleaning (regular expressions)
-import jieba
 from openai import AsyncOpenAI
 from typing import Optional, TypedDict, Union
 
@@ -13,10 +13,13 @@ from fs import CHANGE_TYPE, FileSystemNode, IOSYSFileSystem
 from parser import IOSYSParser
 from utils.logger import IOSYSLogger
 
-# Configure settings for better display and fewer warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+warnings.filterwarnings("ignore", message="pkg_resources is deprecated as an API.*")
+import jieba  # noqa: E402
+
+jieba.setLogLevel(logging.ERROR)
+
 logger = IOSYSLogger("KG")
-# jieba.setLogLevel(logging.INFO)
 
 # --- System Prompt: Sets the context/role for the LLM ---
 extraction_system_prompt = """
@@ -148,7 +151,9 @@ class IOSYSKnowledgeGraph:
                 if isinstance(task, bool):
                     assert task, f"Task for {n.path} is not done."
                 else:
-                    assert task.result is not None, f"Task for {n.path} is not finished."
+                    assert task.result is not None, (
+                        f"Task for {n.path} is not finished."
+                    )
                     result.extend(task.result)
 
             for child in n.children():
