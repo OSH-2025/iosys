@@ -148,7 +148,9 @@ class IOSYSKnowledgeGraph:
                 if isinstance(task, bool):
                     assert task, f"Task for {n.path} is not done."
                 else:
-                    assert task.result is not None, f"Task for {n.path} is not finished."
+                    assert task.result is not None, (
+                        f"Task for {n.path} is not finished."
+                    )
                     result.extend(task.result)
 
             for child in n.children():
