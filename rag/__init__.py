@@ -69,4 +69,10 @@ class IOSYSRAG:
                 await self.graph.delete_directory(node.path)
 
     async def on_embedded_change(self, node: FileSystemNode, change_type: CHANGE_TYPE):
-        raise NotImplementedError()
+        match change_type:
+            case "create":
+                await self.graph.create_file(node)
+            case "update":
+                await self.graph.update_file(node)
+            case "delete":
+                await self.graph.delete_file(node.path)
