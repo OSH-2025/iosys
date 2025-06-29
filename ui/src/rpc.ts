@@ -36,6 +36,7 @@ const apis = {
   kgSpawn: defineApi<{ path: string }, {}>("/kg/spawn", true),
   kgContent: defineApi<{ path: string }, { subject: string, predicate: string, object: string }[]>("/kg/content"),
   fsDelete: defineApi<{ path: string }, {}>("/fs/delete", true),
+  fsCreateFolder: defineApi<{ path: string }, {}>("/fs/create_folder", true),
 };
 
 export default apis;

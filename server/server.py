@@ -196,3 +196,19 @@ async def fs_upload_endpoint(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
+
+class FsCreateFolderRequest(BaseModel):
+    path: str
+
+
+@app.post("/fs/create_folder")
+async def fs_create_folder_endpoint(request: FsCreateFolderRequest):
+    if fs.get_node(request.path) is not None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Path {request.path} already exists",
+        )
+    
+    # Create the directory
+    fs.ensure_directory(request.path)
