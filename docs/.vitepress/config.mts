@@ -68,7 +68,7 @@ export default defineConfig({
           },
           {
             text: "结题报告",
-            link: "/final/entry",
+            link: "/final/report",
           },
         ],
       },
