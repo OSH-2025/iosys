@@ -1,30 +1,48 @@
-# 结题报告
-
+---
+aside: false
 ---
 
+# 结题报告
+
+<div text-2xl mt-6 mb--4 font-bold>
+Slides
+</div>
+
+<ClientOnly>
+<div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;" class="mt-6">
+  <iframe :src="url" frameborder="0" style="position: absolute; top:0; left:0; width:100%; height:100%;" allowfullscreen></iframe>
+</div>
+</ClientOnly>
+
+<div mt-2 text-xl>
+(
+<span op-80>悬停于幻灯片左下角以导航</span>
+or
+<a :href="url" target="_blank">全屏观看</a>
+)
+</div>
+
+<script setup>
+import { withBase } from 'vitepress'
+const url = withBase('/final/index.html')
+</script>
+
+
 ## 目录
-- [项目简介](#项目简介)
-- [1. 引言](#1-引言)  
-  - [1.1. 项目背景与动机](#11-项目背景与动机)
-  - [1.2. 项目目标](#12-项目目标)
-  - [1.3. 核心创新点](#13-核心创新点)
-- [2. 系统架构与实现](#2-系统架构与实现)
-  - [2.1. 总体架构](#21-总体架构)
-  - [2.2. 核心模块详解](#22-核心模块详解)
-    - [2.2.1. Agent 模块与交互协议](#221-agent-模块与交互协议)
-    - [2.2.2. File System 模块](#222-file-system-模块)
-    - [2.2.3. File Parser 模块](#223-file-parser-模块)
-    - [2.2.4. RAG Core: 知识图谱与向量索引](#224-rag-core-知识图谱与向量索引)
-    - [2.2.5. Web UI 模块](#225-web-ui-模块)
-    - [2.2.6. A2A Server 模块](#226-a2a-server-模块)
-- [3. 项目管理与开发实践](#3-项目管理与开发实践)
-- [4. 总结与展望](#4-总结与展望)
+
+[[toc]]
 
 ---
 
 ## 项目简介
 
 IOSYS 主要致力于开发出 “更强大的文件系统 Agent”。我们希望通过深度语义理解、图状文件组织范式以及全面的语义信息集成，构建一个以自然语言为核心交互界面的智能文件管理系统。报告将详细介绍项目的背景动机、核心创新点、系统总体架构、各功能模块（包括 Agent、文件系统、文件解析器、RAG 核心、Web UI 及 A2A 服务器）的设计与实现、项目管理实践以及最终成果。IOSYS 不仅继承并优化了往届项目的技术积累，更在体系结构、交互范式和未来可扩展性上做出了有价值的探索，例如引入知识图谱技术和前瞻性的 Agent2Agent (A2A) 协议，为下一代智能操作系统（AIOS）的发展趋势提供了实践性的参考。
+
+**项目参数**：
+- 6600+ Python 代码行
+- 1800+ Vue 代码行
+- 440+ TypeScript 代码行
+- 560+ 提交数
 
 ---
 
@@ -111,7 +129,7 @@ File System 模块提供了一套统一的存储接口，原生支持元数据�
 
 该模块负责对多模态数据进行解析、文本化和概要生成，是连接原始文件和上层语义理解的桥梁。
 
-![alt text](./assets/parser.svg)
+![alt text](./assets/parser.svg){.bg-white}
 
 - **核心功能**:
 
