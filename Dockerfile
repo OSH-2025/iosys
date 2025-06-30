@@ -1,7 +1,7 @@
 FROM python:3.12-slim
 
 # Install uv (Python dependency manager)
-RUN pip install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # Install Node.js and pnpm
 RUN apt-get update && \
