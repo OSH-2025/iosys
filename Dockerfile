@@ -12,19 +12,14 @@ RUN apt-get update && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+COPY . .
 
-# Copy Python files and install dependencies
-COPY pyproject.toml ./
 RUN uv sync
 
-# Copy UI and install JS dependencies
-COPY ui ./ui
 WORKDIR /app/ui
 RUN pnpm install
 
-# Copy the rest of the code
 WORKDIR /app
-COPY . .
 
 # 设置可配置的环境变量（示例，按需添加/修改）
 ARG LLM_BASE_URL

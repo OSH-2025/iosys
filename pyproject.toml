@@ -26,6 +26,7 @@ dependencies = [
     "llama-index-graph-stores-nebula>=0.4.2",
     "nebula3-python>=3.8.3",
     "jupyter-nebulagraph>=0.14.3",
+    "juicefs_local==1.3.0",
     "qdrant-client>=1.12.1",
     "llama-index-vector-stores-qdrant>=0.6.0",
     "mcp>=1.10.0",
@@ -36,6 +37,7 @@ dependencies = [
 a2a = { path = "a2a_server/a2a-python-sdk" }
 markitdown = { path = "parser/markitdown" }
 juicefs = { url = "https://static.juicefs.com/misc/juicefs-5.2.1.202506040923-py3-none-any.whl" }
+juicefs_local = { path = "fs/juicefs-1.3.0-sdk" }
 
 [[tool.uv.index]]
 url = "https://mirrors.ustc.edu.cn/pypi/simple"
