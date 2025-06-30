@@ -21,6 +21,6 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag ghcr.io/${{ github.repository }}:latest
+      run: docker build . --file Dockerfile --tag ghcr.io/osh-2025/iosys:latest
     - name: Push Docker image to GHCR
-      run: docker push ghcr.io/${{ github.repository }}:latest
+      run: docker push ghcr.io/osh-2025/iosys:latest
