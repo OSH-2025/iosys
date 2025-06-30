@@ -4,6 +4,13 @@
 
 Team IOSYS of USTC OSH 2025 - not "IOSYS".
 
+Yet another Graph File Agent.
+
+![](./docs/final/assets/arch.svg)<br>
+![](./docs/final/assets/webui.png)<br>
+![](./docs/final/assets/webui-example-2.png)<br>
+![](./docs/final/assets/kg-demo.png)
+
 # Development
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md).
