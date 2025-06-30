@@ -4,6 +4,10 @@ aside: false
 
 # 结题报告
 
+<div text-2xl mt-6 mb--4 font-bold>
+Slides
+</div>
+
 <ClientOnly>
 <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;" class="mt-6">
   <iframe :src="url" frameborder="0" style="position: absolute; top:0; left:0; width:100%; height:100%;" allowfullscreen></iframe>
@@ -25,7 +29,7 @@ const url = withBase('/final/index.html')
 
 ---
 
-<div h-8 />
+<div h-32 />
 
 # 更强大的文件系统 Agent
 
