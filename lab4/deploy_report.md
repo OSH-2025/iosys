@@ -18,7 +18,7 @@ huggingface-cli download Qwen/Qwen2.5-7B-Instruct-GGUF --include "qwen2.5-7b-ins
 llama-cli -m <model_filepath>
 ```
 
-一并下载一项 FP16 版本的 qwen3 8B 模型到目录下，用于性能测试的比较项目：
+若下载 FP16 版本的 qwen3 8B 模型到目录下：
 
 ```bash
 huggingface-cli download Qwen/Qwen3-Embedding-8B-GGUF --include "qwen3-embedding-8b-f16.gguf" --local-dir <model_path> 
