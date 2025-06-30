@@ -24,11 +24,13 @@ PROMPTS = [
     "描述一下太阳系中各行星的顺序。",
     "如何用正则表达式匹配电子邮箱？",
     "生成一段鼓励人的话。",
-    "简述深度学习和传统机器学习的区别。"
+    "简述深度学习和传统机器学习的区别。",
 ]
 
 
-def measure_run(cmd: str, prompt: str, interval: float) -> Optional[Tuple[float, float]]:
+def measure_run(
+    cmd: str, prompt: str, interval: float
+) -> Optional[Tuple[float, float]]:
     """
     启动 llama-cli，将 prompt 通过 stdin 传入；采样期间每 interval 秒记录 RSS（MB）。
     若进程退出码 != 0，返回 None 表示此次测量无效。
@@ -36,7 +38,9 @@ def measure_run(cmd: str, prompt: str, interval: float) -> Optional[Tuple[float,
     """
     parts = shlex.split(cmd)
     # 启动子进程
-    proc = subprocess.Popen(parts, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    proc = subprocess.Popen(
+        parts, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
     p = psutil.Process(proc.pid)
 
     # 发送 prompt 并关闭 stdin
@@ -75,15 +79,22 @@ def main():
     parser = argparse.ArgumentParser(
         description="测量 llama-cli 推理内存占用的平均值和峰值，随机使用预定义的 16 个 prompt。"
     )
-    parser.add_argument("-c", "--cmd", required=True,
+    parser.add_argument(
+        "-c",
+        "--cmd",
+        required=True,
         help="启动 llama-cli 的命令，不含 prompt 部分，例如：\n"
-             "./main -m ./models/ggml-model.bin -n 128"
+        "./main -m ./models/ggml-model.bin -n 128",
     )
-    parser.add_argument("-n", "--runs", type=int, default=5,
-        help="重复测量次数，默认为 5"
+    parser.add_argument(
+        "-n", "--runs", type=int, default=5, help="重复测量次数，默认为 5"
     )
-    parser.add_argument("-i", "--interval", type=float, default=0.1,
-        help="内存采样间隔（秒），默认为 0.1"
+    parser.add_argument(
+        "-i",
+        "--interval",
+        type=float,
+        default=0.1,
+        help="内存采样间隔（秒），默认为 0.1",
     )
     args = parser.parse_args()
 
@@ -112,6 +123,7 @@ def main():
     print(f"各次平均值的平均: {statistics.mean(avgs):.2f} MB")
     print(f"各次峰值的平均: {statistics.mean(peaks):.2f} MB")
     print(f"最大峰值:       {max(peaks):.2f} MB")
+
 
 if __name__ == "__main__":
     main()
