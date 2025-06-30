@@ -115,12 +115,12 @@ class FileAgent:
         path = self._normalize_path(f"{parent_path}/{file_name}")
         print(f"创建文件: {path}")
 
-        # 检查文件是否已存在
-        if self.fs.get_node(path):
-            return {
-                "status": "success",
-                "message": f"文件已存在: {path}",
-            }
+        # # 检查文件是否已存在
+        # if self.fs.get_node(path):
+        #     return {
+        #         "status": "success",
+        #         "message": f"文件已存在: {path}",
+        #     }
 
         # self.fs.write_file(path, content.encode("utf-8"))
 
@@ -547,7 +547,7 @@ class FileAgent:
 
     @tool(
         name="read_file",
-        description="读取文件内容",
+        description="读取文件的文本内容。若源文件非文本，则返回等价的文本内容",
         parameters={
             "type": "object",
             "properties": {"file_path": {"type": "string", "description": "文件路径"}},
@@ -570,7 +570,6 @@ class FileAgent:
                 "message": f"文件不存在: {params['file_path']}",
             }
 
-        print(f"读取文件: {file_id}")
         # 读取文件内容
         content = file_node.get_meta("verbose_text")
         # content = "Debug"
