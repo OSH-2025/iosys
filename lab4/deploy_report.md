@@ -34,9 +34,12 @@ huggingface-cli download Qwen/Qwen3-Embedding-8B-GGUF --include "qwen3-embedding
 
 ## 分布式部署
 
+> 从机环境：AMD R5 6600H，ubuntu 24.04
+
 分布式部署需要重新编译 llama.cpp 并选择 `-DGGML_RPC=ON`，由于主机和从机均没有 cuda，故不添加 `-DGGML_CUDA=ON`。
 
 ```bash
+git clone https://github.com/ggml-org/llama.cpp
 #进入llama.cpp目录下
 mkdir build-rpc
 cd build-rpc
@@ -44,14 +47,36 @@ cmake .. -DGGML_RPC=ON
 cmake --build . --config Release
 ```
 
-主机和从机都需要进行编译，等待编译完成即可。
+主机和从机都需要进行克隆与编译，等待编译完成即可。
 
 ```bash
 # 在从机上启动 rpc-server 与对应后端
-bin/rpc-server -p 50052
+bin/rpc-server -p 50052 -H 192.168.2.40
 ```
+
+注意有如下提示时即说明已经成功连接到局域网中，`-H` 后的地址为从机在网络中的地址。
+
+```bash
+WARNING: Host ('192.168.2.40') is != '127.0.0.1'
+         Never expose the RPC server to an open network!
+         This is an experimental feature and is not secure!
+```
+
+随后在主机中启用 llama_cli，即可进入交互模式。
 
 ```bash
 # 在主机上启动使用 RPC 的 llama-cli，
-bin/llama-cli -m [model_path] -p [prompt] --rpc 192.168.88.10:50052,192.168.88.11:50052,...
+bin/llama-cli -m <model_path> --rpc 192.168.2.40:50052
 ```
+
+主机加载时会将部分参数发送至从机：
+
+![alt text](fig/Fig3.png)
+
+观察从机的 rpc 终端与性能使用情况可以发现为从机在进行推理，主机的性能并无明显消耗。
+
+![alt text](fig/Fig4.png)
+
+推理可以正常输出（在主机上）：
+
+![alt text](fig/Fig5.png)
