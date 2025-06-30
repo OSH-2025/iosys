@@ -77,18 +77,23 @@ Agent 是用户交互的核心枢纽。其主要职责是：处理用户的自�
 ![agent](./assets/agent.svg)
 
 - **工具调用 (Tool Call)**: 
-为了让 LLM 理解用户需求并解析出机器友好的信息, 我们采用了 Tool Call 机制，赋予 LLM 主动调用工具的能力。但注意, 全部的 Tool 都必须自己实现, 他们并不是由服务商提供的, 所谓的 Tool Call 机制是让 LLM 从我们自己设计的一系列 Tool 中选择一系列它认为为了完成任务所需要的工具。这使得 Agent 不仅能查询信息（如读取文件内容），还能执行动作（如创建目录、生成文档）。
-![tool-call](./assets/tool-call.png)
-为了支持完成复杂任务, 例如 “请总结文件夹 A 下全部文件的内容，并将结果保存到文件 B”, 我们引入了类似思维链的多轮调用机制, 也即 agent 在执行完一轮任务后, 并不会立刻返回处理结果, 而是开启一轮新的思考, 结合先前已经完成的任务, 判断接下来一轮需要用到的 Tool, 如此循环, 直到解析出不再需要调用 Tool, 此时任务就真正地完成了。
-![multi-round](./assets/multi-round.png)
+  为了让 LLM 理解用户需求并解析出机器友好的信息, 我们采用了 Tool Call 机制，赋予 LLM 主动调用工具的能力。但注意, 全部的 Tool 都必须自己实现, 他们并不是由服务商提供的, 所谓的 Tool Call 机制是让 LLM 从我们自己设计的一系列 Tool 中选择一系列它认为为了完成任务所需要的工具。这使得 Agent 不仅能查询信息（如读取文件内容），还能执行动作（如创建目录、生成文档）。
+
+  ![tool-call](./assets/tool-call.png)
+
+  为了支持完成复杂任务, 例如 “请总结文件夹 A 下全部文件的内容，并将结果保存到文件 B”, 我们引入了类似思维链的多轮调用机制, 也即 agent 在执行完一轮任务后, 并不会立刻返回处理结果, 而是开启一轮新的思考, 结合先前已经完成的任务, 判断接下来一轮需要用到的 Tool, 如此循环, 直到解析出不再需要调用 Tool, 此时任务就真正地完成了。
+
+  ![multi-round](./assets/multi-round.png)
 
 - **模型上下文协议 (MCP)**
-为了标准化工具的定义与调用，我们采用了业界广泛使用的 Model Context Protocol (MCP) 协议。该协议支持通过 JSON 格式的配置文件轻松启用或关闭特定外部工具，具有良好的通用性和可管理性。
-![mcp](./assets/mcp.png)
+  为了标准化工具的定义与调用，我们采用了业界广泛使用的 Model Context Protocol (MCP) 协议。该协议支持通过 JSON 格式的配置文件轻松启用或关闭特定外部工具，具有良好的通用性和可管理性。
+
+  ![mcp](./assets/mcp.png)
 
 - **Agent2Agent (A2A) 协议**
-为了系统能够被进一步开发，我们集成了 Google 于 2025 年 4 月提出的 Agent2Agent (A2A) 协议。与 MCP 专注于“Agent 如何使用工具”不同，A2A 定义了“Agent 之间如何协作”。这为 IOSYS 在未来融入更广泛的 Agent 生态系统，实现跨 Agent 的任务协同，奠定了基础。
-![agent2agent](./assets/A2A.png)
+  为了系统能够被进一步开发，我们集成了 Google 于 2025 年 4 月提出的 Agent2Agent (A2A) 协议。与 MCP 专注于“Agent 如何使用工具”不同，A2A 定义了“Agent 之间如何协作”。这为 IOSYS 在未来融入更广泛的 Agent 生态系统，实现跨 Agent 的任务协同，奠定了基础。
+
+  ![agent2agent](./assets/A2A.png)
 
 #### 2.2.2. File System 模块
 
@@ -105,6 +110,7 @@ File System 模块提供了一套统一的存储接口，原生支持元数据�
 #### 2.2.3. File Parser 模块
 
 该模块负责对多模态数据进行解析、文本化和概要生成，是连接原始文件和上层语义理解的桥梁。
+
 ![alt text](./assets/parser.svg)
 
 - **核心功能**:
@@ -122,7 +128,9 @@ RAG (Retrieval-Augmented Generation) 是系统实现深度语义理解的关键�
 - **知识图谱 (Knowledge Graph)**:
   - **目标**: 从文件文本中提取 “主-谓-宾” 三元组，构建结构化的知识网络。
   - **工作流程**: 对于小文件，直接调用 LLM 提取；对于大文件，先使用 `Jieba` 进行分块，再分批处理。提取出的三元组经过标准化、过滤和去重后，存入知识图谱。
-  ![alt text](./assets/rag-workflow.png)
+
+    ![alt text](./assets/rag-workflow.png)
+  
   - **特性**: 知识图谱支持按需生成、持久化存储以及将目录下多个文件的图谱合并展示，使用户能宏观地洞察文件集合内的知识关联。下图为《三体》人物关系图谱的生成示例。
 
     <img src="./assets/kg-demo.png" alt="Knowledge Graph Demo for The Three-Body Problem" />
@@ -132,7 +140,9 @@ RAG (Retrieval-Augmented Generation) 是系统实现深度语义理解的关键�
   - **架构**:
     - **索引**: 文件经由 File Parser 文本化后，送入 **LlamaIndex** 框架，生成向量嵌入（Vector Embedding），并存入 **Qdrant** 向量数据库。
     - **检索**: 用户查询通过 LlamaIndex 在 Qdrant 中进行向量相似度搜索，召回最相关的文本片段，作为上下文提供给 LLM 生成最终答案。
+
     ![alt text](./assets/vec-index.png)
+
   - **技术选型**: 我们调研并实践了 GraphRAG、RAGFlow 等方案，最终因其成熟的生态和友好的 API 而选择了 LlamaIndex。所以理论上该部分的性能仍有进一步调优的空间。
 
 #### 2.2.5. Web UI 模块
@@ -153,6 +163,7 @@ Web UI 是用户与 IOSYS 系统交互的主要前端界面。
 #### 2.2.6. A2A Server 模块
 
 此模块是为实现 Agent 间通信而设计的独立服务器。它负责接收来自其他 Agent 的自然语言请求，并根据自身的描述和能力进行响应。我们通过 Python 代码定义了 Agent 的自我描述、能力标签和交互示例，这使其具备了被其他 Agent 发现和调用的潜力，我们认为这是项目未来最具价值的探索方向之一。
+
 ![a2a](./assets/A2A.png)
 
 ---
