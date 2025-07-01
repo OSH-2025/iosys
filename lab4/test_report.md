@@ -299,6 +299,8 @@ uv run lab4/test_mem.py \
 
 ## 测试分布式部署
 
+分布式部署方式详见 [lab4/deploy_report.md](./deploy_report.md)。
+
 分布式部署的测试主要侧重于输出速度的测试，测试相同情况下使用分布式推理和单机推理的速度差距。
 
 |                           | threads |            test |                  t/s |
