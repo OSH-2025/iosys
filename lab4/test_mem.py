@@ -44,11 +44,9 @@ def measure_run(
     p = psutil.Process(proc.pid)
 
     # 发送 prompt 并关闭 stdin
-    try:
-        proc.stdin.write((prompt + "\n").encode())
-        proc.stdin.flush()
-    except Exception:
-        pass
+    assert proc.stdin is not None, "子进程 stdin 为空"
+    proc.stdin.write((prompt + "\n").encode())
+    proc.stdin.flush()
     proc.stdin.close()
 
     # 采样内存
@@ -63,7 +61,7 @@ def measure_run(
 
     # 等待结束并获取 stderr
     proc.wait()
-    err = proc.stderr.read().decode().strip()
+    err = proc.stderr.read().decode().strip() if proc.stderr else ""
 
     if proc.returncode != 0:
         print(f"  [错误] 退出码 {proc.returncode}: {err}")
